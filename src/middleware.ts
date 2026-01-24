@@ -1,0 +1,70 @@
+/**
+ * Next.js Middleware for authentication and route protection.
+ * Simplified version that allows demo mode without Supabase.
+ */
+
+import { NextResponse, type NextRequest } from 'next/server';
+
+// Check if Supabase is configured
+const isSupabaseConfigured = () => {
+  return (
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://your-project-id.supabase.co" &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== "your-anon-key-here"
+  );
+};
+
+export async function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
+
+  // Skip middleware for static files, API routes, etc.
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/api') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next();
+  }
+
+  // If Supabase is not configured, allow all routes (demo mode)
+  if (!isSupabaseConfigured()) {
+    return NextResponse.next();
+  }
+
+  // If Supabase IS configured, handle auth
+  try {
+    const {
+      updateSession,
+      getAuthRedirect,
+    } = await import('@/lib/supabase/middleware');
+
+    // Update the Supabase session (refresh tokens if needed)
+    const { supabaseResponse, user } = await updateSession(request);
+
+    // Check if we need to redirect based on auth state
+    const redirectPath = getAuthRedirect(pathname, !!user);
+
+    if (redirectPath) {
+      const redirectUrl = new URL(redirectPath, request.url);
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    // Continue with the request
+    return supabaseResponse;
+  } catch (error) {
+    // If there's an error, allow the request to continue
+    console.error('Middleware error:', error);
+    return NextResponse.next();
+  }
+}
+
+/**
+ * Configure which routes the middleware should run on.
+ */
+export const config = {
+  matcher: [
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+  ],
+};

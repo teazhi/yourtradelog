@@ -1,0 +1,133 @@
+"use client";
+
+import Link from "next/link";
+import { ArrowUpRight, ArrowDownRight, FileSpreadsheet } from "lucide-react";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+  Badge,
+  Button,
+} from "@/components/ui";
+import { formatCurrency, formatDate } from "@/lib/calculations/formatters";
+
+interface Trade {
+  id: string;
+  symbol: string;
+  direction: "long" | "short";
+  entryDate: string;
+  exitDate: string;
+  pnl: number;
+  status: "win" | "loss" | "breakeven";
+}
+
+interface RecentTradesProps {
+  trades?: Trade[];
+}
+
+export function RecentTrades({ trades = [] }: RecentTradesProps) {
+  // Empty state
+  if (trades.length === 0) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Trades</CardTitle>
+          <CardDescription>Your last closed trades</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center justify-center py-8 text-center">
+            <FileSpreadsheet className="h-12 w-12 text-muted-foreground mb-4" />
+            <p className="text-muted-foreground mb-4">
+              No trades yet. Get started by adding your first trade.
+            </p>
+            <div className="flex gap-2">
+              <Button asChild size="sm">
+                <Link href="/trades/new">Add Trade</Link>
+              </Button>
+              <Button asChild variant="outline" size="sm">
+                <Link href="/import">Import CSV</Link>
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Recent Trades</CardTitle>
+        <CardDescription>Your last {trades.length} closed trades</CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Symbol</TableHead>
+              <TableHead>Direction</TableHead>
+              <TableHead>Exit Date</TableHead>
+              <TableHead className="text-right">P&L</TableHead>
+              <TableHead>Status</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {trades.map((trade) => (
+              <TableRow key={trade.id}>
+                <TableCell className="font-medium">{trade.symbol}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-1">
+                    {trade.direction === "long" ? (
+                      <ArrowUpRight className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <ArrowDownRight className="h-4 w-4 text-red-500" />
+                    )}
+                    <span className="capitalize">{trade.direction}</span>
+                  </div>
+                </TableCell>
+                <TableCell>{formatDate(trade.exitDate, "medium")}</TableCell>
+                <TableCell
+                  className={`text-right font-medium ${
+                    trade.pnl > 0
+                      ? "text-green-500"
+                      : trade.pnl < 0
+                      ? "text-red-500"
+                      : "text-muted-foreground"
+                  }`}
+                >
+                  {trade.pnl > 0 ? "+" : ""}
+                  {formatCurrency(trade.pnl)}
+                </TableCell>
+                <TableCell>
+                  <Badge
+                    variant={
+                      trade.status === "win"
+                        ? "default"
+                        : trade.status === "loss"
+                        ? "destructive"
+                        : "secondary"
+                    }
+                  >
+                    {trade.status === "win"
+                      ? "Win"
+                      : trade.status === "loss"
+                      ? "Loss"
+                      : "B/E"}
+                  </Badge>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
