@@ -82,10 +82,10 @@ export default function LandingPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-background overflow-x-hidden">
+    <div className="flex min-h-screen flex-col bg-background overflow-x-hidden overflow-y-auto" style={{ height: '100vh' }}>
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg">
-        <div className="container flex h-16 items-center justify-between">
+        <div className="container px-4 sm:px-6 lg:px-8 mx-auto flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
               <TrendingUp className="h-5 w-5 text-white" />
@@ -112,7 +112,7 @@ export default function LandingPage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative container flex flex-col lg:flex-row items-center gap-12 py-20 lg:py-32">
+      <section className="relative container px-4 sm:px-6 lg:px-8 mx-auto flex flex-col lg:flex-row items-center gap-12 py-20 lg:py-32">
         {/* Background gradient */}
         <div className="absolute inset-0 -z-10 overflow-hidden">
           <div className="absolute top-0 left-1/4 w-96 h-96 bg-green-500/20 rounded-full blur-3xl" />
@@ -261,7 +261,7 @@ export default function LandingPage() {
 
       {/* Stats Section */}
       <section className="border-y bg-muted/30 py-16">
-        <div className="container">
+        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             <div className="text-center">
               <div className="text-4xl font-bold text-foreground">
@@ -293,7 +293,7 @@ export default function LandingPage() {
 
       {/* Features Section */}
       <section id="features" className="py-24">
-        <div className="container">
+        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="mx-auto max-w-2xl text-center mb-16">
             <div className="inline-flex items-center gap-2 rounded-full border bg-muted/50 px-4 py-1.5 text-sm mb-4">
               <Zap className="h-4 w-4 text-yellow-500" />
@@ -384,7 +384,7 @@ export default function LandingPage() {
 
       {/* How It Works */}
       <section id="how-it-works" className="py-24 bg-muted/30">
-        <div className="container">
+        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="mx-auto max-w-2xl text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               Get Started in{" "}
@@ -434,7 +434,7 @@ export default function LandingPage() {
 
       {/* Pricing Section */}
       <section id="pricing" className="py-24">
-        <div className="container">
+        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="mx-auto max-w-2xl text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               Simple,{" "}
@@ -535,7 +535,7 @@ export default function LandingPage() {
 
       {/* Testimonials */}
       <section id="testimonials" className="py-24 bg-muted/30">
-        <div className="container">
+        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="mx-auto max-w-2xl text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
               Loved by{" "}
@@ -591,7 +591,7 @@ export default function LandingPage() {
 
       {/* Final CTA */}
       <section className="py-24">
-        <div className="container">
+        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="relative rounded-3xl bg-gradient-to-r from-green-500 to-emerald-600 p-12 md:p-20 overflow-hidden">
             {/* Background decoration */}
             <div className="absolute inset-0 overflow-hidden">
@@ -624,7 +624,7 @@ export default function LandingPage() {
 
       {/* Footer */}
       <footer className="border-t py-12">
-        <div className="container">
+        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div className="col-span-2 md:col-span-1">
               <div className="flex items-center gap-2 mb-4">
