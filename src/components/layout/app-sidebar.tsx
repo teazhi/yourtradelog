@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   Calendar,
@@ -12,6 +12,12 @@ import {
   Settings,
   Shield,
   Upload,
+  Users,
+  Trophy,
+  Rss,
+  UserCircle,
+  LogOut,
+  TrendingUp,
 } from "lucide-react";
 import {
   Sidebar,
@@ -25,9 +31,11 @@ import {
   SidebarMenuItem,
   SidebarFooter,
   SidebarRail,
+  Button,
 } from "@/components/ui";
+import { createClient } from "@/lib/supabase/client";
 
-const navigationItems = [
+const mainNavItems = [
   {
     title: "Dashboard",
     url: "/dashboard",
@@ -63,6 +71,32 @@ const navigationItems = [
     url: "/import",
     icon: Upload,
   },
+];
+
+const socialNavItems = [
+  {
+    title: "Feed",
+    url: "/feed",
+    icon: Rss,
+  },
+  {
+    title: "Leaderboard",
+    url: "/leaderboard",
+    icon: Trophy,
+  },
+  {
+    title: "Squads",
+    url: "/squads",
+    icon: Users,
+  },
+];
+
+const accountNavItems = [
+  {
+    title: "Profile",
+    url: "/profile",
+    icon: UserCircle,
+  },
   {
     title: "Settings",
     url: "/settings",
@@ -72,23 +106,89 @@ const navigationItems = [
 
 export function AppSidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const [isLoading, setIsLoading] = React.useState(false);
+
+  const handleSignOut = async () => {
+    setIsLoading(true);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Error signing out:", error);
+      router.push("/login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b border-border px-6 py-4">
         <Link href="/dashboard" className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-            <BarChart3 className="h-4 w-4" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600 text-white">
+            <TrendingUp className="h-4 w-4" />
           </div>
-          <span className="text-lg font-semibold">TradingLog</span>
+          <span className="text-lg font-semibold">YourTradeLog</span>
         </Link>
       </SidebarHeader>
       <SidebarContent>
+        {/* Main Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Trading</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {navigationItems.map((item) => {
+              {mainNavItems.map((item) => {
+                const isActive =
+                  pathname === item.url ||
+                  (item.url !== "/" && pathname.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Social/Multiplayer Navigation */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Community</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {socialNavItems.map((item) => {
+                const isActive =
+                  pathname === item.url ||
+                  (item.url !== "/" && pathname.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Account Navigation */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Account</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {accountNavItems.map((item) => {
                 const isActive =
                   pathname === item.url ||
                   (item.url !== "/" && pathname.startsWith(item.url));
@@ -108,9 +208,15 @@ export function AppSidebar() {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="border-t border-border p-4">
-        <div className="text-xs text-muted-foreground">
-          TradingLog v0.1.0
-        </div>
+        <Button
+          variant="ghost"
+          className="w-full justify-start text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+          onClick={handleSignOut}
+          disabled={isLoading}
+        >
+          <LogOut className="mr-2 h-4 w-4" />
+          <span>{isLoading ? "Signing out..." : "Sign out"}</span>
+        </Button>
       </SidebarFooter>
       <SidebarRail />
     </Sidebar>
