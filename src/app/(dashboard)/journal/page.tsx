@@ -26,6 +26,7 @@ import {
   Brain,
   FileText,
   ExternalLink,
+  ImageIcon,
 } from "lucide-react";
 import {
   Button,
@@ -51,6 +52,7 @@ import {
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
+import { JournalScreenshots } from "@/components/journal/journal-screenshots";
 
 // Common mistakes for futures day traders
 const COMMON_MISTAKES = [
@@ -330,6 +332,7 @@ export default function JournalPage() {
         }
 
         setTrades(tradesData || []);
+
         setHasChanges(false);
       } catch (err) {
         console.error("Exception fetching data:", err);
@@ -610,6 +613,10 @@ export default function JournalPage() {
             <TabsTrigger value="trades" className="gap-2">
               <BarChart3 className="h-4 w-4" />
               Trades ({trades.length})
+            </TabsTrigger>
+            <TabsTrigger value="screenshots" className="gap-2">
+              <ImageIcon className="h-4 w-4" />
+              Screenshots
             </TabsTrigger>
           </TabsList>
 
@@ -991,6 +998,11 @@ export default function JournalPage() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        {/* Screenshots Tab */}
+        <TabsContent value="screenshots">
+          <JournalScreenshots date={dateKey} />
         </TabsContent>
       </Tabs>
     </div>
