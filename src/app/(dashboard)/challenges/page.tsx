@@ -309,10 +309,10 @@ export default function ChallengesPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Challenges</h1>
-        <p className="text-muted-foreground mt-2">
+    <div className="flex flex-1 flex-col gap-6 p-6">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-3xl font-bold tracking-tight">Challenges</h1>
+        <p className="text-muted-foreground">
           Complete daily and weekly challenges to build good trading habits
         </p>
       </div>

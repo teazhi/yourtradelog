@@ -308,7 +308,7 @@ export default function AccountabilityPartnerPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
+    <div className="flex flex-1 flex-col gap-6 p-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Accountability Partner</h1>
         <p className="text-muted-foreground mt-2">

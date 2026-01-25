@@ -24,6 +24,7 @@ import {
   LogOut,
   ChevronDown,
   UserCircle,
+  FileText,
 } from "lucide-react";
 import { Button, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -34,6 +35,7 @@ const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
   { title: "Trades", url: "/trades", icon: List },
   { title: "Journal", url: "/journal", icon: BookOpen },
+  { title: "Templates", url: "/templates", icon: FileText },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Risk Management", url: "/risk", icon: Shield },
