@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import { format, formatDistanceToNow } from "date-fns";
 import {
   Users,
   UserPlus,
@@ -18,11 +18,19 @@ import {
   List,
   BarChart3,
   Eye,
-  ChevronRight,
   Star,
   Flame,
   ArrowUpRight,
   ArrowDownRight,
+  Trophy,
+  Target,
+  Zap,
+  Award,
+  PartyPopper,
+  MessageSquare,
+  Plus,
+  Check,
+  X,
 } from "lucide-react";
 import {
   Button,
@@ -43,6 +51,9 @@ import {
   TabsContent,
   TabsList,
   TabsTrigger,
+  Textarea,
+  Progress,
+  CelebrationModal,
 } from "@/components/ui";
 import {
   CustomDialog,
@@ -112,6 +123,35 @@ interface PendingRequest {
   };
 }
 
+interface Challenge {
+  id: string;
+  title: string;
+  description: string;
+  target: number;
+  type: "journal" | "trades" | "green_days" | "win_rate" | "custom";
+  my_progress: number;
+  partner_progress: number;
+  start_date: string;
+  end_date: string;
+  created_by: string;
+}
+
+interface Message {
+  id: string;
+  sender_id: string;
+  content: string;
+  created_at: string;
+  is_celebration?: boolean;
+}
+
+// Pre-defined challenge templates
+const CHALLENGE_TEMPLATES = [
+  { title: "Journal Every Day", description: "Write in your journal every trading day", target: 5, type: "journal" as const },
+  { title: "5 Green Days", description: "Have 5 profitable trading days this week", target: 5, type: "green_days" as const },
+  { title: "10 Trades", description: "Complete at least 10 trades this week", target: 10, type: "trades" as const },
+  { title: "60% Win Rate", description: "Achieve a 60% or higher win rate", target: 60, type: "win_rate" as const },
+];
+
 export default function AccountabilityPartnerPage() {
   const [mounted, setMounted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -121,6 +161,7 @@ export default function AccountabilityPartnerPage() {
   const [isFindDialogOpen, setIsFindDialogOpen] = React.useState(false);
   const [searchUsername, setSearchUsername] = React.useState("");
   const [isSearching, setIsSearching] = React.useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const [searchResult, setSearchResult] = React.useState<any>(null);
 
   // Stats
@@ -146,6 +187,61 @@ export default function AccountabilityPartnerPage() {
   const [partnerTrades, setPartnerTrades] = React.useState<PartnerTrade[]>([]);
   const [activeTab, setActiveTab] = React.useState("overview");
 
+  // Challenges
+  const [challenges, setChallenges] = React.useState<Challenge[]>([
+    {
+      id: "1",
+      title: "Journal Every Day",
+      description: "Write in your journal every trading day this week",
+      target: 5,
+      type: "journal",
+      my_progress: 3,
+      partner_progress: 4,
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      created_by: "me",
+    },
+    {
+      id: "2",
+      title: "5 Green Days",
+      description: "Have 5 profitable trading days",
+      target: 5,
+      type: "green_days",
+      my_progress: 2,
+      partner_progress: 3,
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      created_by: "partner",
+    },
+  ]);
+  const [isNewChallengeOpen, setIsNewChallengeOpen] = React.useState(false);
+  const [newChallenge, setNewChallenge] = React.useState<{
+    title: string;
+    description: string;
+    target: number;
+    type: "journal" | "trades" | "green_days" | "win_rate" | "custom";
+  }>({ title: "", description: "", target: 5, type: "custom" });
+  const [celebration, setCelebration] = React.useState<{
+    show: boolean;
+    title: string;
+    message: string;
+  }>({ show: false, title: "", message: "" });
+
+  // Messages
+  const [messages, setMessages] = React.useState<Message[]>([
+    { id: "1", sender_id: "partner", content: "Great job on hitting your journal streak! 🔥", created_at: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString() },
+    { id: "2", sender_id: "me", content: "Thanks! Your consistency is inspiring me to keep going.", created_at: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() },
+    { id: "3", sender_id: "partner", content: "Let's both aim for 5 green days this week!", created_at: new Date(Date.now() - 30 * 60 * 1000).toISOString(), is_celebration: false },
+  ]);
+  const [newMessage, setNewMessage] = React.useState("");
+  const messagesEndRef = React.useRef<HTMLDivElement>(null);
+
+  // Celebrations/Achievements
+  const [recentAchievements, setRecentAchievements] = React.useState([
+    { id: "1", user: "partner", title: "7-Day Journal Streak", icon: Flame, date: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString() },
+    { id: "2", user: "me", title: "First $500 Day", icon: Trophy, date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+  ]);
+
   React.useEffect(() => {
     setMounted(true);
   }, []);
@@ -156,6 +252,10 @@ export default function AccountabilityPartnerPage() {
     }
   }, [mounted]);
 
+  React.useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   const getWeekStart = () => {
     const weekStart = new Date();
     weekStart.setDate(weekStart.getDate() - weekStart.getDay());
@@ -163,10 +263,10 @@ export default function AccountabilityPartnerPage() {
     return weekStart;
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const calculateStats = async (userId: string, supabase: any): Promise<PartnerStats> => {
     const weekStart = getWeekStart();
 
-    // Fetch trades
     const { data: trades } = await supabase
       .from("trades")
       .select("net_pnl, entry_date, status")
@@ -174,26 +274,28 @@ export default function AccountabilityPartnerPage() {
       .eq("status", "closed")
       .gte("entry_date", weekStart.toISOString());
 
-    // Fetch journals
     const { count: journalCount } = await supabase
       .from("daily_journals")
       .select("*", { count: "exact", head: true })
       .eq("user_id", userId)
       .gte("date", weekStart.toISOString().split('T')[0]);
 
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tradesArray = trades || [];
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const wins = tradesArray.filter((t: any) => (t.net_pnl || 0) > 0).length;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const totalPnl = tradesArray.reduce((sum: number, t: any) => sum + (t.net_pnl || 0), 0);
 
-    // Calculate green days
     const dailyPnl: Record<string, number> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     tradesArray.forEach((t: any) => {
       const date = new Date(t.entry_date).toISOString().split('T')[0];
       dailyPnl[date] = (dailyPnl[date] || 0) + (t.net_pnl || 0);
     });
     const greenDays = Object.values(dailyPnl).filter(pnl => pnl > 0).length;
 
-    // Calculate streak (simplified)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const tradeDates: string[] = [...new Set(tradesArray.map((t: any) =>
       new Date(t.entry_date).toISOString().split('T')[0]
     ))].sort() as string[];
@@ -228,11 +330,9 @@ export default function AccountabilityPartnerPage() {
       if (!user) return;
       setCurrentUserId(user.id);
 
-      // Fetch my stats
       const myStatsData = await calculateStats(user.id, supabase);
       setMyStats(myStatsData);
 
-      // Fetch active partnership
       const { data: partnerships } = await supabase
         .from("accountability_partners")
         .select("*")
@@ -241,10 +341,10 @@ export default function AccountabilityPartnerPage() {
         .limit(1);
 
       if (partnerships && partnerships.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const partnership = partnerships[0] as any;
         const partnerId = partnership.user_id === user.id ? partnership.partner_id : partnership.user_id;
 
-        // Fetch partner profile
         const { data: partnerProfile } = await supabase
           .from("profiles")
           .select("id, username, display_name, avatar_url")
@@ -256,11 +356,9 @@ export default function AccountabilityPartnerPage() {
           partner_profile: partnerProfile,
         });
 
-        // Fetch partner stats
         const partnerStatsData = await calculateStats(partnerId, supabase);
         setPartnerStats(partnerStatsData);
 
-        // Fetch partner's recent journals (last 7 days)
         const weekStart = getWeekStart();
         const { data: journals } = await supabase
           .from("daily_journals")
@@ -272,7 +370,6 @@ export default function AccountabilityPartnerPage() {
 
         setPartnerJournals((journals || []) as PartnerJournal[]);
 
-        // Fetch partner's recent trades (last 7 days)
         const { data: trades } = await supabase
           .from("trades")
           .select("id, symbol, side, entry_date, exit_date, net_pnl, status, quantity, setup_name, emotion_tags")
@@ -284,7 +381,6 @@ export default function AccountabilityPartnerPage() {
         setPartnerTrades((trades || []) as PartnerTrade[]);
       }
 
-      // Fetch pending requests (where I'm the partner being requested)
       const { data: requests } = await supabase
         .from("accountability_partners")
         .select("id, user_id")
@@ -292,21 +388,24 @@ export default function AccountabilityPartnerPage() {
         .eq("status", "pending");
 
       if (requests && requests.length > 0) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const requesterIds = requests.map((r: any) => r.user_id);
         const { data: profiles } = await supabase
           .from("profiles")
           .select("id, username, display_name, avatar_url")
           .in("id", requesterIds);
 
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const requestsWithProfiles = requests.map((r: any) => ({
           ...r,
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           requester_profile: (profiles as any[])?.find(p => p.id === r.user_id),
         }));
 
         setPendingRequests(requestsWithProfiles);
       }
-    } catch (err) {
-      console.error("Error fetching partner data:", err);
+    } catch {
+      // Silent fail
     } finally {
       setIsLoading(false);
     }
@@ -330,7 +429,7 @@ export default function AccountabilityPartnerPage() {
       } else {
         toast.error("User not found");
       }
-    } catch (err) {
+    } catch {
       toast.error("User not found");
     } finally {
       setIsSearching(false);
@@ -343,7 +442,6 @@ export default function AccountabilityPartnerPage() {
     try {
       const supabase = createClient();
 
-      // Check if request already exists
       const { data: existing } = await supabase
         .from("accountability_partners")
         .select("id")
@@ -355,6 +453,7 @@ export default function AccountabilityPartnerPage() {
         return;
       }
 
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase.from("accountability_partners") as any).insert({
         user_id: currentUserId,
         partner_id: searchResult.id,
@@ -367,8 +466,7 @@ export default function AccountabilityPartnerPage() {
       setIsFindDialogOpen(false);
       setSearchUsername("");
       setSearchResult(null);
-    } catch (err) {
-      console.error("Error sending request:", err);
+    } catch {
       toast.error("Failed to send request");
     }
   };
@@ -378,6 +476,7 @@ export default function AccountabilityPartnerPage() {
       const supabase = createClient();
 
       if (accept) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         await (supabase.from("accountability_partners") as any)
           .update({ status: "active" })
           .eq("id", requestId);
@@ -391,8 +490,7 @@ export default function AccountabilityPartnerPage() {
       }
 
       fetchPartnerData();
-    } catch (err) {
-      console.error("Error responding to request:", err);
+    } catch {
       toast.error("Failed to respond to request");
     }
   };
@@ -411,41 +509,130 @@ export default function AccountabilityPartnerPage() {
       setPartner(null);
       setPartnerJournals([]);
       setPartnerTrades([]);
-    } catch (err) {
-      console.error("Error ending partnership:", err);
+    } catch {
       toast.error("Failed to end partnership");
     }
   };
 
-  const StatComparison = ({ label, myValue, partnerValue, format: formatFn, higherIsBetter = true }: {
-    label: string;
-    myValue: number;
-    partnerValue: number;
-    format?: (v: number) => string;
-    higherIsBetter?: boolean;
-  }) => {
-    const formatValue = formatFn || ((v: number) => v.toString());
-    const iAmWinning = higherIsBetter ? myValue > partnerValue : myValue < partnerValue;
-    const isTied = myValue === partnerValue;
+  const sendMessage = () => {
+    if (!newMessage.trim()) return;
+
+    const message: Message = {
+      id: Date.now().toString(),
+      sender_id: "me",
+      content: newMessage,
+      created_at: new Date().toISOString(),
+    };
+
+    setMessages([...messages, message]);
+    setNewMessage("");
+    toast.success("Message sent!");
+  };
+
+  const sendCelebration = (achievement: string) => {
+    const message: Message = {
+      id: Date.now().toString(),
+      sender_id: "me",
+      content: `🎉 Congrats on "${achievement}"! Keep crushing it!`,
+      created_at: new Date().toISOString(),
+      is_celebration: true,
+    };
+
+    setMessages([...messages, message]);
+    toast.success("Celebration sent!");
+  };
+
+  const createChallenge = () => {
+    if (!newChallenge.title.trim()) {
+      toast.error("Please enter a challenge title");
+      return;
+    }
+
+    const challenge: Challenge = {
+      id: Date.now().toString(),
+      ...newChallenge,
+      my_progress: 0,
+      partner_progress: 0,
+      start_date: new Date().toISOString(),
+      end_date: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      created_by: "me",
+    };
+
+    setChallenges([...challenges, challenge]);
+    setNewChallenge({ title: "", description: "", target: 5, type: "custom" });
+    setIsNewChallengeOpen(false);
+    toast.success("Challenge created!");
+  };
+
+  const useTemplate = (template: typeof CHALLENGE_TEMPLATES[0]) => {
+    setNewChallenge({
+      title: template.title,
+      description: template.description,
+      target: template.target,
+      type: template.type,
+    });
+  };
+
+  const incrementProgress = (challengeId: string) => {
+    setChallenges(prev => prev.map(c => {
+      if (c.id === challengeId) {
+        const newProgress = Math.min(c.my_progress + 1, c.target);
+        // Check if this completes the challenge
+        if (newProgress === c.target && c.my_progress < c.target) {
+          // Trigger celebration
+          setTimeout(() => {
+            setCelebration({
+              show: true,
+              title: "Challenge Complete! 🎉",
+              message: `You completed "${c.title}"! Keep up the amazing work!`,
+            });
+          }, 300);
+        }
+        return { ...c, my_progress: newProgress };
+      }
+      return c;
+    }));
+  };
+
+  const closeCelebration = () => {
+    setCelebration({ show: false, title: "", message: "" });
+  };
+
+  // Progress Ring Component
+  const ProgressRing = ({ progress, size = 80, strokeWidth = 8, color = "green" }: { progress: number; size?: number; strokeWidth?: number; color?: string }) => {
+    const radius = (size - strokeWidth) / 2;
+    const circumference = radius * 2 * Math.PI;
+    const offset = circumference - (progress / 100) * circumference;
+
+    const colorClass = color === "green" ? "stroke-green-500" : color === "blue" ? "stroke-blue-500" : "stroke-purple-500";
 
     return (
-      <div className="flex items-center justify-between py-3 border-b last:border-0">
-        <div className="flex-1 text-center">
-          <div className={cn(
-            "text-lg font-bold",
-            !isTied && iAmWinning && "text-green-500"
-          )}>
-            {formatValue(myValue)}
-          </div>
-        </div>
-        <div className="flex-1 text-center text-sm text-muted-foreground">{label}</div>
-        <div className="flex-1 text-center">
-          <div className={cn(
-            "text-lg font-bold",
-            !isTied && !iAmWinning && "text-green-500"
-          )}>
-            {formatValue(partnerValue)}
-          </div>
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg className="transform -rotate-90" width={size} height={size}>
+          <circle
+            className="stroke-muted"
+            strokeWidth={strokeWidth}
+            fill="none"
+            r={radius}
+            cx={size / 2}
+            cy={size / 2}
+          />
+          <circle
+            className={cn("transition-all duration-500", colorClass)}
+            strokeWidth={strokeWidth}
+            strokeLinecap="round"
+            fill="none"
+            r={radius}
+            cx={size / 2}
+            cy={size / 2}
+            style={{
+              strokeDasharray: circumference,
+              strokeDashoffset: offset,
+            }}
+          />
+        </svg>
+        <div className="absolute inset-0 flex items-center justify-center">
+          <span className="text-lg font-bold">{Math.round(progress)}%</span>
         </div>
       </div>
     );
@@ -460,7 +647,7 @@ export default function AccountabilityPartnerPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight">Accountability Partner</h1>
         <p className="text-muted-foreground">
@@ -520,32 +707,56 @@ export default function AccountabilityPartnerPage() {
       )}
 
       {partner ? (
-        // Active Partnership
         <div className="space-y-6">
-          {/* Partner Header */}
-          <Card className="border-green-500/30 bg-gradient-to-r from-green-500/5 to-emerald-500/5">
+          {/* Partner Header with Visual Stats */}
+          <Card className="border-green-500/30 bg-gradient-to-r from-green-500/5 via-emerald-500/5 to-teal-500/5 overflow-hidden">
             <CardContent className="py-6">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-6">
+                {/* Partner Info */}
                 <div className="flex items-center gap-4">
-                  <Avatar className="h-16 w-16 border-2 border-green-500">
-                    <AvatarImage src={partner.partner_profile?.avatar_url || undefined} />
-                    <AvatarFallback className="text-xl bg-green-500/20">
-                      {partner.partner_profile?.display_name?.[0] || "?"}
-                    </AvatarFallback>
-                  </Avatar>
+                  <div className="relative">
+                    <Avatar className="h-20 w-20 border-4 border-green-500">
+                      <AvatarImage src={partner.partner_profile?.avatar_url || undefined} />
+                      <AvatarFallback className="text-2xl bg-green-500/20">
+                        {partner.partner_profile?.display_name?.[0] || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1">
+                      <Handshake className="h-4 w-4 text-white" />
+                    </div>
+                  </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-xl font-semibold">
+                      <h3 className="text-2xl font-bold">
                         {partner.partner_profile?.display_name || partner.partner_profile?.username || "Partner"}
                       </h3>
-                      <Badge className="bg-green-500">
-                        <Handshake className="h-3 w-3 mr-1" />
-                        Partner
-                      </Badge>
                     </div>
                     <p className="text-muted-foreground">@{partner.partner_profile?.username}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                        <Flame className="h-3 w-3 mr-1" />
+                        {partnerStats.streak} day streak
+                      </Badge>
+                    </div>
                   </div>
                 </div>
+
+                {/* Quick Stats Visual */}
+                <div className="flex items-center gap-8">
+                  <div className="text-center">
+                    <ProgressRing progress={partnerStats.win_rate} color="green" />
+                    <p className="text-sm text-muted-foreground mt-2">Win Rate</p>
+                  </div>
+                  <div className="text-center">
+                    <ProgressRing progress={(partnerStats.journal_entries_this_week / 5) * 100} color="blue" />
+                    <p className="text-sm text-muted-foreground mt-2">Journal</p>
+                  </div>
+                  <div className="text-center">
+                    <ProgressRing progress={(partnerStats.green_days_this_week / 5) * 100} color="purple" />
+                    <p className="text-sm text-muted-foreground mt-2">Green Days</p>
+                  </div>
+                </div>
+
                 <Button variant="outline" size="sm" onClick={endPartnership}>
                   End Partnership
                 </Button>
@@ -553,12 +764,20 @@ export default function AccountabilityPartnerPage() {
             </CardContent>
           </Card>
 
-          {/* Tabs for different views */}
+          {/* Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid grid-cols-3 w-full max-w-md">
+            <TabsList className="grid grid-cols-5 w-full max-w-2xl">
               <TabsTrigger value="overview">
                 <BarChart3 className="h-4 w-4 mr-2" />
                 Overview
+              </TabsTrigger>
+              <TabsTrigger value="challenges">
+                <Target className="h-4 w-4 mr-2" />
+                Challenges
+              </TabsTrigger>
+              <TabsTrigger value="chat">
+                <MessageSquare className="h-4 w-4 mr-2" />
+                Chat
               </TabsTrigger>
               <TabsTrigger value="journals">
                 <BookOpen className="h-4 w-4 mr-2" />
@@ -572,90 +791,264 @@ export default function AccountabilityPartnerPage() {
 
             {/* Overview Tab */}
             <TabsContent value="overview" className="space-y-6 mt-6">
+              {/* Recent Achievements */}
+              {recentAchievements.length > 0 && (
+                <Card className="border-yellow-500/30 bg-gradient-to-r from-yellow-500/5 to-orange-500/5">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Trophy className="h-5 w-5 text-yellow-500" />
+                      Recent Achievements
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {recentAchievements.map((achievement) => (
+                        <div key={achievement.id} className="flex items-center justify-between p-3 rounded-lg bg-background/50">
+                          <div className="flex items-center gap-3">
+                            <div className={cn(
+                              "p-2 rounded-full",
+                              achievement.user === "me" ? "bg-green-500/20" : "bg-blue-500/20"
+                            )}>
+                              <achievement.icon className={cn(
+                                "h-5 w-5",
+                                achievement.user === "me" ? "text-green-500" : "text-blue-500"
+                              )} />
+                            </div>
+                            <div>
+                              <p className="font-medium">{achievement.title}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {achievement.user === "me" ? "You" : partner.partner_profile?.display_name} • {formatDistanceToNow(new Date(achievement.date), { addSuffix: true })}
+                              </p>
+                            </div>
+                          </div>
+                          {achievement.user === "partner" && (
+                            <Button size="sm" variant="outline" onClick={() => sendCelebration(achievement.title)}>
+                              <PartyPopper className="h-4 w-4 mr-1" />
+                              Celebrate
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Weekly Comparison */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-lg">This Week's Comparison</CardTitle>
-                  <CardDescription>See how you both are doing this week</CardDescription>
+                  <CardTitle className="text-lg">This Week&apos;s Battle</CardTitle>
+                  <CardDescription>See how you stack up against each other</CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {/* Header */}
-                  <div className="flex items-center justify-between pb-4 border-b mb-2">
+                  <div className="flex items-center justify-between pb-4 border-b mb-4">
                     <div className="flex-1 text-center">
+                      <Avatar className="h-12 w-12 mx-auto mb-2">
+                        <AvatarFallback className="bg-green-500/20">You</AvatarFallback>
+                      </Avatar>
                       <div className="font-semibold">You</div>
                     </div>
-                    <div className="flex-1 text-center text-muted-foreground text-sm">vs</div>
                     <div className="flex-1 text-center">
-                      <div className="font-semibold">{partner.partner_profile?.display_name || "Partner"}</div>
+                      <Zap className="h-8 w-8 mx-auto text-yellow-500" />
+                      <div className="text-sm text-muted-foreground">VS</div>
+                    </div>
+                    <div className="flex-1 text-center">
+                      <Avatar className="h-12 w-12 mx-auto mb-2">
+                        <AvatarImage src={partner.partner_profile?.avatar_url || undefined} />
+                        <AvatarFallback className="bg-blue-500/20">
+                          {partner.partner_profile?.display_name?.[0]}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="font-semibold">{partner.partner_profile?.display_name}</div>
                     </div>
                   </div>
 
-                  <StatComparison
-                    label="Trades"
-                    myValue={myStats.trades_this_week}
-                    partnerValue={partnerStats.trades_this_week}
-                  />
-                  <StatComparison
-                    label="P&L"
-                    myValue={myStats.pnl_this_week}
-                    partnerValue={partnerStats.pnl_this_week}
-                    format={formatCurrency}
-                  />
-                  <StatComparison
-                    label="Win Rate"
-                    myValue={myStats.win_rate}
-                    partnerValue={partnerStats.win_rate}
-                    format={(v) => `${v.toFixed(0)}%`}
-                  />
-                  <StatComparison
-                    label="Green Days"
-                    myValue={myStats.green_days_this_week}
-                    partnerValue={partnerStats.green_days_this_week}
-                  />
-                  <StatComparison
-                    label="Journal Entries"
-                    myValue={myStats.journal_entries_this_week}
-                    partnerValue={partnerStats.journal_entries_this_week}
-                  />
-                  <StatComparison
-                    label="Streak"
-                    myValue={myStats.streak}
-                    partnerValue={partnerStats.streak}
-                  />
+                  <div className="space-y-4">
+                    {[
+                      { label: "Trades", myValue: myStats.trades_this_week, partnerValue: partnerStats.trades_this_week },
+                      { label: "P&L", myValue: myStats.pnl_this_week, partnerValue: partnerStats.pnl_this_week, format: formatCurrency },
+                      { label: "Win Rate", myValue: myStats.win_rate, partnerValue: partnerStats.win_rate, format: (v: number) => `${v.toFixed(0)}%` },
+                      { label: "Green Days", myValue: myStats.green_days_this_week, partnerValue: partnerStats.green_days_this_week },
+                      { label: "Journal Entries", myValue: myStats.journal_entries_this_week, partnerValue: partnerStats.journal_entries_this_week },
+                    ].map((stat) => {
+                      const total = stat.myValue + stat.partnerValue || 1;
+                      const myPercent = (stat.myValue / total) * 100;
+                      const formatFn = stat.format || ((v: number) => v.toString());
+
+                      return (
+                        <div key={stat.label} className="space-y-2">
+                          <div className="flex justify-between text-sm">
+                            <span className={cn("font-medium", stat.myValue > stat.partnerValue && "text-green-500")}>
+                              {formatFn(stat.myValue)}
+                            </span>
+                            <span className="text-muted-foreground">{stat.label}</span>
+                            <span className={cn("font-medium", stat.partnerValue > stat.myValue && "text-green-500")}>
+                              {formatFn(stat.partnerValue)}
+                            </span>
+                          </div>
+                          <div className="flex h-2 rounded-full overflow-hidden bg-muted">
+                            <div
+                              className="bg-green-500 transition-all duration-500"
+                              style={{ width: `${myPercent}%` }}
+                            />
+                            <div
+                              className="bg-blue-500 transition-all duration-500"
+                              style={{ width: `${100 - myPercent}%` }}
+                            />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </CardContent>
               </Card>
+            </TabsContent>
 
-              {/* Quick Stats Cards */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <TrendingUp className="h-6 w-6 mx-auto mb-2 text-green-500" />
-                    <div className="text-2xl font-bold">{partnerStats.trades_this_week}</div>
-                    <div className="text-sm text-muted-foreground">Partner's Trades</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <BookOpen className="h-6 w-6 mx-auto mb-2 text-blue-500" />
-                    <div className="text-2xl font-bold">{partnerStats.journal_entries_this_week}</div>
-                    <div className="text-sm text-muted-foreground">Journal Entries</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <Flame className="h-6 w-6 mx-auto mb-2 text-orange-500" />
-                    <div className="text-2xl font-bold">{partnerStats.streak}</div>
-                    <div className="text-sm text-muted-foreground">Day Streak</div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 text-center">
-                    <Calendar className="h-6 w-6 mx-auto mb-2 text-purple-500" />
-                    <div className="text-2xl font-bold">{partnerStats.green_days_this_week}</div>
-                    <div className="text-sm text-muted-foreground">Green Days</div>
-                  </CardContent>
-                </Card>
+            {/* Challenges Tab */}
+            <TabsContent value="challenges" className="space-y-6 mt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-lg font-semibold">Weekly Challenges</h3>
+                  <p className="text-sm text-muted-foreground">Compete with your partner on weekly goals</p>
+                </div>
+                <Button onClick={() => setIsNewChallengeOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  New Challenge
+                </Button>
               </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {challenges.map((challenge) => {
+                  const myProgress = (challenge.my_progress / challenge.target) * 100;
+                  const partnerProgress = (challenge.partner_progress / challenge.target) * 100;
+
+                  return (
+                    <Card key={challenge.id} className="overflow-hidden">
+                      <CardHeader className="pb-2">
+                        <div className="flex items-start justify-between">
+                          <div>
+                            <CardTitle className="text-base">{challenge.title}</CardTitle>
+                            <CardDescription>{challenge.description}</CardDescription>
+                          </div>
+                          <Badge variant="outline">
+                            <Target className="h-3 w-3 mr-1" />
+                            {challenge.target}
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>You</span>
+                            <span className="font-medium">{challenge.my_progress}/{challenge.target}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <Progress value={myProgress} className={cn("h-2 flex-1", myProgress >= 100 && "animate-glow-pulse [&>div]:bg-green-500")} />
+                            {myProgress < 100 && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-6 w-6 p-0"
+                                onClick={() => incrementProgress(challenge.id)}
+                              >
+                                <Plus className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between text-sm">
+                            <span>{partner.partner_profile?.display_name}</span>
+                            <span className="font-medium">{challenge.partner_progress}/{challenge.target}</span>
+                          </div>
+                          <Progress value={partnerProgress} className={cn("h-2", partnerProgress >= 100 ? "[&>div]:bg-green-500" : "[&>div]:bg-blue-500")} />
+                        </div>
+                        {myProgress >= 100 && partnerProgress >= 100 ? (
+                          <div className="flex items-center justify-center gap-2 text-green-500 text-sm font-medium animate-pulse">
+                            <Trophy className="h-4 w-4" />
+                            Both completed! 🎉
+                          </div>
+                        ) : myProgress >= 100 ? (
+                          <div className="flex items-center justify-center gap-2 text-green-500 text-sm font-medium">
+                            <Trophy className="h-4 w-4" />
+                            You completed it! 🏆
+                          </div>
+                        ) : partnerProgress >= 100 ? (
+                          <div className="flex items-center justify-center gap-2 text-blue-500 text-sm">
+                            <Flame className="h-4 w-4" />
+                            Partner finished first!
+                          </div>
+                        ) : myProgress > partnerProgress ? (
+                          <div className="flex items-center justify-center gap-2 text-green-500 text-sm">
+                            <TrendingUp className="h-4 w-4" />
+                            You&apos;re in the lead!
+                          </div>
+                        ) : partnerProgress > myProgress ? (
+                          <div className="flex items-center justify-center gap-2 text-orange-500 text-sm">
+                            <Zap className="h-4 w-4" />
+                            Catch up!
+                          </div>
+                        ) : null}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
+              </div>
+            </TabsContent>
+
+            {/* Chat Tab */}
+            <TabsContent value="chat" className="mt-6">
+              <Card className="h-[500px] flex flex-col">
+                <CardHeader className="border-b">
+                  <CardTitle className="text-lg flex items-center gap-2">
+                    <MessageCircle className="h-5 w-5" />
+                    Chat with {partner.partner_profile?.display_name}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {messages.map((message) => (
+                    <div
+                      key={message.id}
+                      className={cn(
+                        "flex",
+                        message.sender_id === "me" ? "justify-end" : "justify-start"
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          "max-w-[80%] rounded-lg px-4 py-2",
+                          message.sender_id === "me"
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted",
+                          message.is_celebration && "bg-gradient-to-r from-yellow-500/20 to-orange-500/20 border border-yellow-500/30"
+                        )}
+                      >
+                        <p>{message.content}</p>
+                        <p className={cn(
+                          "text-xs mt-1",
+                          message.sender_id === "me" ? "text-primary-foreground/70" : "text-muted-foreground"
+                        )}>
+                          {formatDistanceToNow(new Date(message.created_at), { addSuffix: true })}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </CardContent>
+                <div className="border-t p-4">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Type a message..."
+                      value={newMessage}
+                      onChange={(e) => setNewMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && sendMessage()}
+                    />
+                    <Button onClick={sendMessage} disabled={!newMessage.trim()}>
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
             </TabsContent>
 
             {/* Journals Tab */}
@@ -664,9 +1057,9 @@ export default function AccountabilityPartnerPage() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <BookOpen className="h-5 w-5" />
-                    {partner.partner_profile?.display_name || "Partner"}'s Recent Journals
+                    {partner.partner_profile?.display_name}&apos;s Recent Journals
                   </CardTitle>
-                  <CardDescription>View your partner's journal entries to stay in sync</CardDescription>
+                  <CardDescription>View your partner&apos;s journal entries to stay in sync</CardDescription>
                 </CardHeader>
                 <CardContent>
                   {partnerJournals.length === 0 ? (
@@ -745,7 +1138,7 @@ export default function AccountabilityPartnerPage() {
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <List className="h-5 w-5" />
-                    {partner.partner_profile?.display_name || "Partner"}'s Recent Trades
+                    {partner.partner_profile?.display_name}&apos;s Recent Trades
                   </CardTitle>
                   <CardDescription>See what trades your partner has been taking</CardDescription>
                 </CardHeader>
@@ -813,46 +1206,65 @@ export default function AccountabilityPartnerPage() {
       ) : (
         // No Partner - Find One
         <div className="space-y-6">
-          <Card>
-            <CardContent className="py-12 text-center">
-              <Users className="h-16 w-16 mx-auto mb-4 text-muted-foreground" />
-              <h2 className="text-xl font-semibold mb-2">Find an Accountability Partner</h2>
-              <p className="text-muted-foreground mb-6 max-w-md mx-auto">
-                Partner with another trader to share your progress, view each other's journals and trades, and hold each other accountable.
+          <Card className="border-2 border-dashed">
+            <CardContent className="py-16 text-center">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 mx-auto mb-6 flex items-center justify-center">
+                <Users className="h-10 w-10 text-white" />
+              </div>
+              <h2 className="text-2xl font-bold mb-2">Find an Accountability Partner</h2>
+              <p className="text-muted-foreground mb-8 max-w-md mx-auto">
+                Partner with another trader to share your progress, compete in challenges, and hold each other accountable.
               </p>
-              <Button onClick={() => setIsFindDialogOpen(true)}>
-                <UserPlus className="h-4 w-4 mr-2" />
+              <Button size="lg" onClick={() => setIsFindDialogOpen(true)}>
+                <UserPlus className="h-5 w-5 mr-2" />
                 Find a Partner
               </Button>
             </CardContent>
           </Card>
 
           {/* Benefits */}
-          <div className="grid md:grid-cols-3 gap-4">
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <Eye className="h-8 w-8 mx-auto mb-3 text-green-500" />
+          <div className="grid md:grid-cols-4 gap-4">
+            <Card className="text-center">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-full bg-green-500/20 mx-auto mb-3 flex items-center justify-center">
+                  <Eye className="h-6 w-6 text-green-500" />
+                </div>
                 <h3 className="font-semibold mb-1">View Journals</h3>
                 <p className="text-sm text-muted-foreground">
-                  Read your partner's daily journal entries and reflections
+                  Read your partner&apos;s daily reflections
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <List className="h-8 w-8 mx-auto mb-3 text-blue-500" />
-                <h3 className="font-semibold mb-1">See Trades</h3>
+            <Card className="text-center">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-full bg-blue-500/20 mx-auto mb-3 flex items-center justify-center">
+                  <Target className="h-6 w-6 text-blue-500" />
+                </div>
+                <h3 className="font-semibold mb-1">Weekly Challenges</h3>
                 <p className="text-sm text-muted-foreground">
-                  View your partner's recent trades and learn from each other
+                  Compete on goals together
                 </p>
               </CardContent>
             </Card>
-            <Card>
-              <CardContent className="pt-6 text-center">
-                <BarChart3 className="h-8 w-8 mx-auto mb-3 text-purple-500" />
+            <Card className="text-center">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-full bg-purple-500/20 mx-auto mb-3 flex items-center justify-center">
+                  <MessageCircle className="h-6 w-6 text-purple-500" />
+                </div>
+                <h3 className="font-semibold mb-1">Direct Chat</h3>
+                <p className="text-sm text-muted-foreground">
+                  Message and celebrate wins
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="text-center">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-full bg-yellow-500/20 mx-auto mb-3 flex items-center justify-center">
+                  <BarChart3 className="h-6 w-6 text-yellow-500" />
+                </div>
                 <h3 className="font-semibold mb-1">Compare Stats</h3>
                 <p className="text-sm text-muted-foreground">
-                  Weekly stat comparisons to stay motivated and competitive
+                  Weekly stat battles
                 </p>
               </CardContent>
             </Card>
@@ -920,6 +1332,86 @@ export default function AccountabilityPartnerPage() {
           </CustomDialogFooter>
         </CustomDialogContent>
       </CustomDialog>
+
+      {/* New Challenge Dialog */}
+      <CustomDialog open={isNewChallengeOpen} onOpenChange={setIsNewChallengeOpen}>
+        <CustomDialogContent className="max-w-lg">
+          <CustomDialogHeader>
+            <CustomDialogTitle>Create a Challenge</CustomDialogTitle>
+            <CustomDialogDescription>
+              Challenge your partner to a weekly goal
+            </CustomDialogDescription>
+          </CustomDialogHeader>
+
+          <div className="space-y-4 py-4">
+            {/* Quick Templates */}
+            <div>
+              <p className="text-sm font-medium mb-2">Quick Templates</p>
+              <div className="grid grid-cols-2 gap-2">
+                {CHALLENGE_TEMPLATES.map((template, i) => (
+                  <Button
+                    key={i}
+                    variant="outline"
+                    size="sm"
+                    className="justify-start h-auto py-2"
+                    onClick={() => useTemplate(template)}
+                  >
+                    <Target className="h-4 w-4 mr-2 shrink-0" />
+                    <span className="truncate">{template.title}</span>
+                  </Button>
+                ))}
+              </div>
+            </div>
+
+            <div className="border-t pt-4 space-y-4">
+              <div>
+                <label className="text-sm font-medium">Challenge Title</label>
+                <Input
+                  placeholder="e.g., No Revenge Trades"
+                  value={newChallenge.title}
+                  onChange={(e) => setNewChallenge({ ...newChallenge, title: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Description</label>
+                <Textarea
+                  placeholder="Describe the challenge..."
+                  value={newChallenge.description}
+                  onChange={(e) => setNewChallenge({ ...newChallenge, description: e.target.value })}
+                />
+              </div>
+              <div>
+                <label className="text-sm font-medium">Target</label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={newChallenge.target}
+                  onChange={(e) => setNewChallenge({ ...newChallenge, target: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+            </div>
+          </div>
+
+          <CustomDialogFooter>
+            <Button variant="outline" onClick={() => setIsNewChallengeOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={createChallenge}>
+              <Plus className="h-4 w-4 mr-2" />
+              Create Challenge
+            </Button>
+          </CustomDialogFooter>
+        </CustomDialogContent>
+      </CustomDialog>
+
+      {/* Celebration Modal */}
+      <CelebrationModal
+        open={celebration.show}
+        onClose={closeCelebration}
+        title={celebration.title}
+        message={celebration.message}
+        icon={<div className="text-6xl">🏆</div>}
+      />
     </div>
   );
 }

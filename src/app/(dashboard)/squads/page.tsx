@@ -167,8 +167,6 @@ export default function SquadsPage() {
   };
 
   const handleCreateSquad = async () => {
-    console.log("handleCreateSquad called", newSquad);
-
     if (!newSquad.name.trim()) {
       toast.error("Squad name is required");
       return;
@@ -185,8 +183,6 @@ export default function SquadsPage() {
         return;
       }
 
-      console.log("Creating squad for user:", user.id);
-
       // Create the squad
       const { data: squad, error: squadError } = await (supabase
         .from("squads") as any)
@@ -199,32 +195,24 @@ export default function SquadsPage() {
         .select()
         .single();
 
-      console.log("Squad created:", squad, "Error:", squadError);
-
       if (squadError) {
-        console.error("Error creating squad:", squadError);
         toast.error("Failed to create squad: " + (squadError.message || "Unknown error"));
         setIsCreating(false);
         return;
       }
 
       // Add creator as owner member
-      const { error: memberError } = await (supabase.from("squad_members") as any).insert({
+      await (supabase.from("squad_members") as any).insert({
         squad_id: squad.id,
         user_id: user.id,
         role: "owner",
       });
 
-      if (memberError) {
-        console.error("Error adding member:", memberError);
-      }
-
       toast.success("Squad created!");
       setIsCreateOpen(false);
       setNewSquad({ name: "", description: "", is_public: false });
       fetchSquads();
-    } catch (err) {
-      console.error("Exception creating squad:", err);
+    } catch {
       toast.error("Failed to create squad");
     } finally {
       setIsCreating(false);

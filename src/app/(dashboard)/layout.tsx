@@ -22,7 +22,6 @@ import {
   LogOut,
   ChevronDown,
   UserCircle,
-  FileText,
 } from "lucide-react";
 import { Button, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -31,9 +30,8 @@ import { createClient } from "@/lib/supabase/client";
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
-  { title: "Trades", url: "/trades", icon: List },
   { title: "Journal", url: "/journal", icon: BookOpen },
-  { title: "Templates", url: "/templates", icon: FileText },
+  { title: "Trades", url: "/trades", icon: List },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Calendar", url: "/calendar", icon: Calendar },
   { title: "Setups", url: "/setups", icon: Layers },
@@ -88,8 +86,8 @@ export default function DashboardLayout({
             name: profileData?.display_name || user.email?.split("@")[0] || "User",
           });
         }
-      } catch (error) {
-        console.log("Could not fetch user:", error);
+      } catch {
+        // Silent fail - user will see default greeting
       }
     };
 
@@ -125,48 +123,6 @@ export default function DashboardLayout({
   };
 
   const greeting = user?.name ? `Welcome back, ${user.name}!` : "Welcome back!";
-
-  const renderNavSection = (
-    items: typeof navigationItems,
-    label: string,
-    showLabel: boolean,
-    onItemClick?: () => void
-  ) => (
-    <>
-      {showLabel && (
-        <div className="mt-6 mb-2 px-3">
-          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-            {label}
-          </span>
-        </div>
-      )}
-      {!showLabel && sidebarOpen && <div className="my-4 border-t border-border" />}
-      <ul className="space-y-1">
-        {items.map((item) => {
-          const isActive =
-            pathname === item.url ||
-            (item.url !== "/dashboard" && pathname.startsWith(item.url));
-          return (
-            <li key={item.title}>
-              <Link
-                href={item.url}
-                onClick={onItemClick}
-                className={cn(
-                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
-                  isActive
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                )}
-              >
-                <item.icon className="h-4 w-4 shrink-0" />
-                {(sidebarOpen || onItemClick) && <span>{item.title}</span>}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-    </>
-  );
 
   return (
     <div className="flex h-screen overflow-hidden">

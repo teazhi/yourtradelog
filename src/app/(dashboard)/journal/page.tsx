@@ -4,7 +4,7 @@ import * as React from "react";
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { format, startOfDay, addDays, subDays, startOfWeek, endOfWeek, isSaturday, getDay, parseISO } from "date-fns";
+import { format, startOfDay, addDays, subDays, startOfWeek, getDay, parseISO } from "date-fns";
 import {
   Calendar,
   CalendarDays,
@@ -27,7 +27,6 @@ import {
   Clock,
   Zap,
   Brain,
-  FileText,
   ExternalLink,
   ImageIcon,
   Trophy,
@@ -60,7 +59,6 @@ import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { JournalScreenshots } from "@/components/journal/journal-screenshots";
 import { TradeTable } from "@/components/trades/trade-table";
-import { TradeCardList } from "@/components/trades/trade-card";
 
 // Common mistakes for futures day traders
 const COMMON_MISTAKES = [
@@ -309,9 +307,6 @@ function JournalPageContent() {
     async function fetchData() {
       // Capture current values at start of effect to avoid stale closures
       const currentDateKey = format(selectedDate, "yyyy-MM-dd");
-      const currentIsSaturday = isSaturday(selectedDate);
-
-      console.log("Fetching data for:", currentDateKey, "isSaturday:", currentIsSaturday);
 
       setIsLoading(true);
       try {
@@ -371,8 +366,6 @@ function JournalPageContent() {
             : addDays(selectedDate, 1); // Saturday - add 1 to get Sunday
           const weekEndStr = format(weekEnd, "yyyy-MM-dd");
 
-          console.log("Weekly query range:", weekStartStr, "to", weekEndStr);
-
           const { data: weeklyTradesData, error: weeklyError } = await supabase
             .from("trades")
             .select("*")
@@ -381,13 +374,8 @@ function JournalPageContent() {
             .lt("entry_date", weekEndStr)
             .order("entry_date", { ascending: true });
 
-          if (weeklyError) {
-            console.error("Error fetching weekly trades:", weeklyError);
-          }
-          console.log("Weekly trades found:", weeklyTradesData?.length, "for weekend", currentDateKey);
           setWeeklyTrades(weeklyTradesData || []);
         } else {
-          console.log("Not Saturday, clearing weekly trades");
           setWeeklyTrades([]);
         }
 
@@ -1125,12 +1113,6 @@ function JournalPageContent() {
           </TabsList>
 
           <div className="flex items-center gap-2">
-            <Link href="/templates">
-              <Button variant="ghost" size="sm">
-                <FileText className="h-4 w-4 mr-2" />
-                Templates
-              </Button>
-            </Link>
             <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
               {isSaving ? (
                 <>

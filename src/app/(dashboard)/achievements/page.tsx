@@ -5,7 +5,6 @@ import {
   Trophy,
   Flame,
   Target,
-  TrendingUp,
   Calendar,
   Star,
   Award,
@@ -16,6 +15,15 @@ import {
   Rocket,
   CheckCircle2,
   Lock,
+  BookOpen,
+  Repeat,
+  Sunrise,
+  Moon,
+  Brain,
+  GraduationCap,
+  Lightbulb,
+  Camera,
+  PenTool,
 } from "lucide-react";
 import {
   Card,
@@ -27,6 +35,7 @@ import {
   Spinner,
   cn,
   Progress,
+  CelebrationModal,
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 
@@ -37,7 +46,7 @@ interface Achievement {
   icon: React.ElementType;
   color: string;
   requirement: number;
-  type: "trades" | "streak" | "winrate" | "pnl" | "journal" | "special";
+  type: "trades" | "streak" | "pnl" | "journal" | "consistency" | "learning" | "special";
   tier: "bronze" | "silver" | "gold" | "platinum";
 }
 
@@ -45,43 +54,61 @@ interface UserStats {
   totalTrades: number;
   currentStreak: number;
   longestStreak: number;
-  winRate: number;
   totalPnl: number;
   journalEntries: number;
   greenDays: number;
   perfectWeeks: number;
+  weeklyReviews: number;
+  setups: number;
+  tradesWithScreenshots: number;
+  hasPreMarketNote: boolean;
+  hasPostMarketReview: boolean;
+  analyticsViews: number;
 }
 
 const ACHIEVEMENTS: Achievement[] = [
-  // Trade Count Achievements
+  // Trade Logging Achievements - reward consistent logging behavior
   { id: "first_trade", name: "First Steps", description: "Log your first trade", icon: Rocket, color: "text-blue-500", requirement: 1, type: "trades", tier: "bronze" },
-  { id: "trades_10", name: "Getting Started", description: "Log 10 trades", icon: Target, color: "text-blue-500", requirement: 10, type: "trades", tier: "bronze" },
-  { id: "trades_50", name: "Committed Trader", description: "Log 50 trades", icon: Target, color: "text-gray-400", requirement: 50, type: "trades", tier: "silver" },
+  { id: "trades_10", name: "Building Habits", description: "Log 10 trades", icon: Target, color: "text-blue-500", requirement: 10, type: "trades", tier: "bronze" },
+  { id: "trades_50", name: "Committed Logger", description: "Log 50 trades", icon: Target, color: "text-gray-400", requirement: 50, type: "trades", tier: "silver" },
   { id: "trades_100", name: "Century Club", description: "Log 100 trades", icon: Trophy, color: "text-yellow-500", requirement: 100, type: "trades", tier: "gold" },
-  { id: "trades_500", name: "Trading Veteran", description: "Log 500 trades", icon: Crown, color: "text-purple-500", requirement: 500, type: "trades", tier: "platinum" },
+  { id: "trades_500", name: "Trading Historian", description: "Log 500 trades", icon: Crown, color: "text-purple-500", requirement: 500, type: "trades", tier: "platinum" },
 
-  // Streak Achievements
+  // Streak Achievements - reward consistency
   { id: "streak_3", name: "Momentum", description: "Log trades 3 days in a row", icon: Flame, color: "text-orange-500", requirement: 3, type: "streak", tier: "bronze" },
   { id: "streak_7", name: "Week Warrior", description: "Log trades 7 days in a row", icon: Flame, color: "text-orange-500", requirement: 7, type: "streak", tier: "silver" },
-  { id: "streak_30", name: "Monthly Master", description: "Log trades 30 days in a row", icon: Flame, color: "text-red-500", requirement: 30, type: "streak", tier: "gold" },
+  { id: "streak_30", name: "Monthly Dedication", description: "Log trades 30 days in a row", icon: Flame, color: "text-red-500", requirement: 30, type: "streak", tier: "gold" },
   { id: "streak_100", name: "Unstoppable", description: "Log trades 100 days in a row", icon: Zap, color: "text-yellow-400", requirement: 100, type: "streak", tier: "platinum" },
 
-  // Win Rate Achievements
-  { id: "winrate_50", name: "Break Even Beater", description: "Achieve 50% win rate (min 20 trades)", icon: TrendingUp, color: "text-green-500", requirement: 50, type: "winrate", tier: "bronze" },
-  { id: "winrate_60", name: "Consistent Winner", description: "Achieve 60% win rate (min 20 trades)", icon: TrendingUp, color: "text-green-500", requirement: 60, type: "winrate", tier: "silver" },
-  { id: "winrate_70", name: "Sharp Shooter", description: "Achieve 70% win rate (min 20 trades)", icon: Star, color: "text-yellow-500", requirement: 70, type: "winrate", tier: "gold" },
+  // Journal Achievements - reward self-reflection
+  { id: "journal_1", name: "Self-Reflection", description: "Write your first journal entry", icon: BookOpen, color: "text-indigo-500", requirement: 1, type: "journal", tier: "bronze" },
+  { id: "journal_7", name: "Reflective Trader", description: "Write 7 journal entries", icon: BookOpen, color: "text-indigo-500", requirement: 7, type: "journal", tier: "bronze" },
+  { id: "journal_30", name: "Thoughtful Analyst", description: "Write 30 journal entries", icon: PenTool, color: "text-indigo-500", requirement: 30, type: "journal", tier: "silver" },
+  { id: "journal_100", name: "Master Journaler", description: "Write 100 journal entries", icon: Brain, color: "text-purple-500", requirement: 100, type: "journal", tier: "gold" },
 
-  // Green Day Achievements
-  { id: "green_5", name: "Green Week", description: "Have 5 profitable days", icon: Calendar, color: "text-green-500", requirement: 5, type: "pnl", tier: "bronze" },
-  { id: "green_20", name: "Green Month", description: "Have 20 profitable days", icon: Calendar, color: "text-green-500", requirement: 20, type: "pnl", tier: "silver" },
-  { id: "green_50", name: "Profit Machine", description: "Have 50 profitable days", icon: Award, color: "text-yellow-500", requirement: 50, type: "pnl", tier: "gold" },
+  // Green Day Achievements - celebrate profitable days without judging strategy
+  { id: "green_1", name: "First Green Day", description: "Have your first profitable day", icon: Calendar, color: "text-green-500", requirement: 1, type: "pnl", tier: "bronze" },
+  { id: "green_10", name: "Double Digits", description: "Have 10 profitable days", icon: Calendar, color: "text-green-500", requirement: 10, type: "pnl", tier: "bronze" },
+  { id: "green_25", name: "Quarter Century", description: "Have 25 profitable days", icon: Calendar, color: "text-green-500", requirement: 25, type: "pnl", tier: "silver" },
+  { id: "green_50", name: "Half Century", description: "Have 50 profitable days", icon: Award, color: "text-yellow-500", requirement: 50, type: "pnl", tier: "gold" },
+  { id: "green_100", name: "Triple Digits", description: "Have 100 profitable days", icon: Crown, color: "text-purple-500", requirement: 100, type: "pnl", tier: "platinum" },
 
-  // Journal Achievements
-  { id: "journal_7", name: "Reflective Trader", description: "Write 7 journal entries", icon: Shield, color: "text-indigo-500", requirement: 7, type: "journal", tier: "bronze" },
-  { id: "journal_30", name: "Thoughtful Analyst", description: "Write 30 journal entries", icon: Shield, color: "text-indigo-500", requirement: 30, type: "journal", tier: "silver" },
+  // Consistency Achievements - reward showing up regardless of outcome
+  { id: "weekly_review_1", name: "Week in Review", description: "Complete your first weekly review", icon: Repeat, color: "text-cyan-500", requirement: 1, type: "consistency", tier: "bronze" },
+  { id: "weekly_review_4", name: "Monthly Reviewer", description: "Complete 4 weekly reviews", icon: Repeat, color: "text-cyan-500", requirement: 4, type: "consistency", tier: "silver" },
+  { id: "weekly_review_12", name: "Quarterly Commitment", description: "Complete 12 weekly reviews", icon: Shield, color: "text-cyan-500", requirement: 12, type: "consistency", tier: "gold" },
+
+  // Learning Achievements - reward analysis and improvement behavior
+  { id: "setup_1", name: "Setup Student", description: "Create your first setup", icon: Lightbulb, color: "text-amber-500", requirement: 1, type: "learning", tier: "bronze" },
+  { id: "setup_5", name: "Strategy Builder", description: "Create 5 different setups", icon: Lightbulb, color: "text-amber-500", requirement: 5, type: "learning", tier: "silver" },
+  { id: "screenshot_10", name: "Visual Learner", description: "Add screenshots to 10 trades", icon: Camera, color: "text-pink-500", requirement: 10, type: "learning", tier: "bronze" },
+  { id: "screenshot_50", name: "Chart Archivist", description: "Add screenshots to 50 trades", icon: Camera, color: "text-pink-500", requirement: 50, type: "learning", tier: "silver" },
 
   // Special Achievements
-  { id: "perfect_week", name: "Perfect Week", description: "5 green days in a single week", icon: Medal, color: "text-yellow-500", requirement: 1, type: "special", tier: "gold" },
+  { id: "early_bird", name: "Early Bird", description: "Log a pre-market journal note", icon: Sunrise, color: "text-orange-400", requirement: 1, type: "special", tier: "bronze" },
+  { id: "night_owl", name: "Night Owl", description: "Complete a post-market review", icon: Moon, color: "text-indigo-400", requirement: 1, type: "special", tier: "bronze" },
+  { id: "perfect_week", name: "Perfect Week", description: "Journal and log trades every trading day for a week", icon: Medal, color: "text-yellow-500", requirement: 1, type: "special", tier: "gold" },
+  { id: "data_driven", name: "Data Driven", description: "Use the analytics page 10 times", icon: GraduationCap, color: "text-emerald-500", requirement: 10, type: "special", tier: "silver" },
 ];
 
 const TIER_COLORS = {
@@ -98,11 +125,16 @@ export default function AchievementsPage() {
     totalTrades: 0,
     currentStreak: 0,
     longestStreak: 0,
-    winRate: 0,
     totalPnl: 0,
     journalEntries: 0,
     greenDays: 0,
     perfectWeeks: 0,
+    weeklyReviews: 0,
+    setups: 0,
+    tradesWithScreenshots: 0,
+    hasPreMarketNote: false,
+    hasPostMarketReview: false,
+    analyticsViews: 0,
   });
 
   React.useEffect(() => {
@@ -122,33 +154,51 @@ export default function AchievementsPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch all trades
+      // Fetch all trades with screenshots info
       const { data: trades } = await supabase
         .from("trades")
-        .select("entry_date, net_pnl, status")
+        .select("id, entry_date, net_pnl, status")
         .eq("user_id", user.id)
         .eq("status", "closed")
         .order("entry_date", { ascending: true });
 
-      // Fetch journal entries
-      const { count: journalCount } = await supabase
+      // Fetch journal entries with pre/post market notes
+      const { data: journals } = await supabase
         .from("daily_journals")
+        .select("id, pre_market_notes, post_market_notes, is_weekly_review")
+        .eq("user_id", user.id);
+
+      // Fetch setups count
+      const { count: setupsCount } = await supabase
+        .from("setups")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
 
+      // Fetch trades with screenshots
+      const { count: screenshotCount } = await supabase
+        .from("trade_screenshots")
+        .select("trade_id", { count: "exact", head: true });
+
+      const journalCount = journals?.length || 0;
+      const weeklyReviewCount = journals?.filter((j: any) => j.is_weekly_review).length || 0;
+      const hasPreMarketNote = journals?.some((j: any) => j.pre_market_notes && j.pre_market_notes.trim().length > 0) || false;
+      const hasPostMarketReview = journals?.some((j: any) => j.post_market_notes && j.post_market_notes.trim().length > 0) || false;
+
+      let totalTrades = 0;
+      let currentStreak = 0;
+      let longestStreak = 0;
+      let totalPnl = 0;
+      let greenDays = 0;
+
       if (trades && trades.length > 0) {
-        const totalTrades = trades.length;
-        const wins = trades.filter((t: any) => (t.net_pnl || 0) > 0).length;
-        const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
-        const totalPnl = trades.reduce((sum: number, t: any) => sum + (t.net_pnl || 0), 0);
+        totalTrades = trades.length;
+        totalPnl = trades.reduce((sum: number, t: any) => sum + (t.net_pnl || 0), 0);
 
         // Calculate streaks based on trading days
         const tradeDates = [...new Set(trades.map((t: any) =>
           new Date(t.entry_date).toISOString().split('T')[0]
         ))].sort();
 
-        let currentStreak = 0;
-        let longestStreak = 0;
         let tempStreak = 1;
 
         // Calculate consecutive trading days
@@ -181,25 +231,29 @@ export default function AchievementsPage() {
           const date = new Date(t.entry_date).toISOString().split('T')[0];
           dailyPnl[date] = (dailyPnl[date] || 0) + (t.net_pnl || 0);
         });
-        const greenDays = Object.values(dailyPnl).filter(pnl => pnl > 0).length;
-
-        // Calculate perfect weeks (5 green days in a week)
-        // Simplified: just count if we have enough green days for at least one perfect week
-        const perfectWeeks = greenDays >= 5 ? Math.floor(greenDays / 5) : 0;
-
-        setStats({
-          totalTrades,
-          currentStreak,
-          longestStreak,
-          winRate,
-          totalPnl,
-          journalEntries: journalCount || 0,
-          greenDays,
-          perfectWeeks,
-        });
+        greenDays = Object.values(dailyPnl).filter(pnl => pnl > 0).length;
       }
+
+      // Calculate perfect weeks (simplified - 5 green days counts as 1 perfect week)
+      const perfectWeeks = greenDays >= 5 ? Math.floor(greenDays / 5) : 0;
+
+      setStats({
+        totalTrades,
+        currentStreak,
+        longestStreak,
+        totalPnl,
+        journalEntries: journalCount,
+        greenDays,
+        perfectWeeks,
+        weeklyReviews: weeklyReviewCount,
+        setups: setupsCount || 0,
+        tradesWithScreenshots: screenshotCount || 0,
+        hasPreMarketNote,
+        hasPostMarketReview,
+        analyticsViews: 0, // Would need to track this separately
+      });
     } catch (err) {
-      console.error("Error fetching stats:", err);
+      // Silently handle errors
     } finally {
       setIsLoading(false);
     }
@@ -211,14 +265,36 @@ export default function AchievementsPage() {
         return Math.min(100, (stats.totalTrades / achievement.requirement) * 100);
       case "streak":
         return Math.min(100, (stats.longestStreak / achievement.requirement) * 100);
-      case "winrate":
-        return stats.totalTrades >= 20 ? Math.min(100, (stats.winRate / achievement.requirement) * 100) : 0;
       case "pnl":
         return Math.min(100, (stats.greenDays / achievement.requirement) * 100);
       case "journal":
         return Math.min(100, (stats.journalEntries / achievement.requirement) * 100);
+      case "consistency":
+        return Math.min(100, (stats.weeklyReviews / achievement.requirement) * 100);
+      case "learning":
+        // Handle different learning achievements
+        if (achievement.id.startsWith("setup_")) {
+          return Math.min(100, (stats.setups / achievement.requirement) * 100);
+        }
+        if (achievement.id.startsWith("screenshot_")) {
+          return Math.min(100, (stats.tradesWithScreenshots / achievement.requirement) * 100);
+        }
+        return 0;
       case "special":
-        return stats.perfectWeeks >= achievement.requirement ? 100 : 0;
+        // Handle individual special achievements
+        if (achievement.id === "early_bird") {
+          return stats.hasPreMarketNote ? 100 : 0;
+        }
+        if (achievement.id === "night_owl") {
+          return stats.hasPostMarketReview ? 100 : 0;
+        }
+        if (achievement.id === "perfect_week") {
+          return stats.perfectWeeks >= achievement.requirement ? 100 : 0;
+        }
+        if (achievement.id === "data_driven") {
+          return Math.min(100, (stats.analyticsViews / achievement.requirement) * 100);
+        }
+        return 0;
       default:
         return 0;
     }
@@ -228,20 +304,40 @@ export default function AchievementsPage() {
     return getProgress(achievement) >= 100;
   };
 
-  const getCurrentValue = (achievement: Achievement): number => {
+  const getCurrentValue = (achievement: Achievement): number | string => {
     switch (achievement.type) {
       case "trades":
         return stats.totalTrades;
       case "streak":
         return stats.longestStreak;
-      case "winrate":
-        return Math.round(stats.winRate);
       case "pnl":
         return stats.greenDays;
       case "journal":
         return stats.journalEntries;
+      case "consistency":
+        return stats.weeklyReviews;
+      case "learning":
+        if (achievement.id.startsWith("setup_")) {
+          return stats.setups;
+        }
+        if (achievement.id.startsWith("screenshot_")) {
+          return stats.tradesWithScreenshots;
+        }
+        return 0;
       case "special":
-        return stats.perfectWeeks;
+        if (achievement.id === "early_bird") {
+          return stats.hasPreMarketNote ? "✓" : "—";
+        }
+        if (achievement.id === "night_owl") {
+          return stats.hasPostMarketReview ? "✓" : "—";
+        }
+        if (achievement.id === "perfect_week") {
+          return stats.perfectWeeks;
+        }
+        if (achievement.id === "data_driven") {
+          return stats.analyticsViews;
+        }
+        return 0;
       default:
         return 0;
     }
@@ -267,7 +363,7 @@ export default function AchievementsPage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
         <Card>
           <CardContent className="pt-6 text-center">
             <Trophy className="h-6 w-6 mx-auto mb-2 text-yellow-500" />
@@ -286,7 +382,14 @@ export default function AchievementsPage() {
           <CardContent className="pt-6 text-center">
             <Target className="h-6 w-6 mx-auto mb-2 text-blue-500" />
             <div className="text-2xl font-bold">{stats.totalTrades}</div>
-            <div className="text-sm text-muted-foreground">Total Trades</div>
+            <div className="text-sm text-muted-foreground">Trades Logged</div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <BookOpen className="h-6 w-6 mx-auto mb-2 text-indigo-500" />
+            <div className="text-2xl font-bold">{stats.journalEntries}</div>
+            <div className="text-sm text-muted-foreground">Journal Entries</div>
           </CardContent>
         </Card>
         <Card>
@@ -372,7 +475,11 @@ export default function AchievementsPage() {
                             {!unlocked && (
                               <div className="mt-2">
                                 <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
-                                  <span>{currentValue} / {achievement.requirement}</span>
+                                  <span>
+                                    {typeof currentValue === "string"
+                                      ? currentValue
+                                      : `${currentValue} / ${achievement.requirement}`}
+                                  </span>
                                   <span>{Math.round(progress)}%</span>
                                 </div>
                                 <Progress value={progress} className="h-1.5" />

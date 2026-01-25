@@ -56,3 +56,6 @@ export { cn } from "shadcn-packaged/lib/utils";
 
 // Re-export toast from sonner for convenience
 export { toast } from "sonner";
+
+// Custom components
+export { Confetti, CelebrationModal, CelebrationBurst } from "./confetti";
