@@ -339,27 +339,43 @@ function JournalPageContent() {
 
         // If it's Saturday, also fetch the whole week's trades (Mon-Fri)
         if (isSaturday(new Date(dateKey))) {
-          // Get the Monday of this week (week starts on Monday for trading)
-          const weekStart = startOfWeek(new Date(dateKey), { weekStartsOn: 1 });
-          const weekEnd = endOfWeek(new Date(dateKey), { weekStartsOn: 1 });
-          // Adjust to Friday (day 5) since we don't trade weekends
+          // Get the Monday of THIS week (Saturday's week, so Mon-Fri just ended)
+          const saturdayDate = new Date(dateKey);
+          const weekStart = startOfWeek(saturdayDate, { weekStartsOn: 1 });
+          // Friday is 4 days after Monday
           const fridayEnd = new Date(weekStart);
           fridayEnd.setDate(weekStart.getDate() + 4); // Monday + 4 = Friday
 
-          const weekStartStr = `${format(weekStart, "yyyy-MM-dd")}T00:00:00.000Z`;
-          const weekEndStr = `${format(fridayEnd, "yyyy-MM-dd")}T23:59:59.999Z`;
+          // Use date range that includes the full day
+          const weekStartStr = format(weekStart, "yyyy-MM-dd");
+          // Use Saturday as end date to capture all Friday trades regardless of time
+          const weekEndStr = format(saturdayDate, "yyyy-MM-dd");
+
+          console.log("Fetching weekly trades from:", weekStartStr, "to (exclusive):", weekEndStr);
+
+          // Debug: fetch all trades first to see what dates exist
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          const { data: allTrades } = await (supabase
+            .from("trades") as any)
+            .select("id, entry_date, symbol, net_pnl")
+            .eq("user_id", user.id)
+            .order("entry_date", { ascending: false })
+            .limit(20);
+          console.log("Recent trades (for debugging):", allTrades?.map((t: any) => ({ date: t.entry_date, symbol: t.symbol, pnl: t.net_pnl })));
 
           const { data: weeklyTradesData, error: weeklyError } = await supabase
             .from("trades")
             .select("*")
             .eq("user_id", user.id)
             .gte("entry_date", weekStartStr)
-            .lte("entry_date", weekEndStr)
+            .lt("entry_date", weekEndStr)
             .order("entry_date", { ascending: true });
 
           if (weeklyError) {
             console.error("Error fetching weekly trades:", weeklyError);
           }
+          console.log("Weekly trades fetched:", weeklyTradesData?.length || 0, "trades");
+          console.log("Weekly trades data:", weeklyTradesData);
           setWeeklyTrades(weeklyTradesData || []);
         } else {
           setWeeklyTrades([]);
@@ -534,7 +550,8 @@ function JournalPageContent() {
   const largestLoss = closedTrades.length > 0 ? Math.min(...closedTrades.map(t => t.net_pnl || 0), 0) : 0;
 
   // Weekly stats (for Saturday review)
-  const weeklyClosedTrades = weeklyTrades.filter((t) => t.status === "closed");
+  // Include trades that are closed OR have a net_pnl (in case status isn't set)
+  const weeklyClosedTrades = weeklyTrades.filter((t) => t.status === "closed" || t.net_pnl !== null);
   const weeklyPnL = weeklyClosedTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
   const weeklyWinCount = weeklyClosedTrades.filter((t) => (t.net_pnl || 0) > 0).length;
   const weeklyLossCount = weeklyClosedTrades.filter((t) => (t.net_pnl || 0) < 0).length;
@@ -548,6 +565,16 @@ function JournalPageContent() {
     ? Math.abs(weeklyClosedTrades.filter((t) => (t.net_pnl || 0) < 0).reduce((sum, t) => sum + (t.net_pnl || 0), 0) / weeklyLossCount)
     : 0;
   const weeklyProfitFactor = weeklyAvgLoss > 0 ? (weeklyAvgWin * weeklyWinCount) / (weeklyAvgLoss * weeklyLossCount) : 0;
+
+  // Debug logging
+  console.log("Weekly stats:", {
+    totalTrades: weeklyTrades.length,
+    closedTrades: weeklyClosedTrades.length,
+    weeklyPnL,
+    weeklyWinCount,
+    weeklyLossCount,
+    weeklyWinRate,
+  });
 
   // Group weekly trades by day
   const tradesByDay = weeklyTrades.reduce((acc, trade) => {
