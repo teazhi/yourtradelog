@@ -279,8 +279,9 @@ export default function JournalPage() {
         }
 
         // Fetch journal entry for this date
-        const { data: journalData, error: journalError } = await supabase
-          .from("daily_journals")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data: journalData, error: journalError } = await (supabase
+          .from("daily_journals") as any)
           .select("*")
           .eq("user_id", user.id)
           .eq("date", dateKey)
@@ -394,16 +395,18 @@ export default function JournalPage() {
 
       if (journal?.id) {
         // Update existing journal
-        const { error } = await supabase
-          .from("daily_journals")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error } = await (supabase
+          .from("daily_journals") as any)
           .update(journalPayload)
           .eq("id", journal.id);
 
         if (error) throw error;
       } else {
         // Create new journal
-        const { data, error } = await supabase
-          .from("daily_journals")
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { data, error } = await (supabase
+          .from("daily_journals") as any)
           .insert(journalPayload)
           .select()
           .single();
