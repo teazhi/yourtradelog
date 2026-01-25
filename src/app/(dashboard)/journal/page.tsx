@@ -297,9 +297,10 @@ function JournalPageContent() {
   // Format date for database query (YYYY-MM-DD)
   const dateKey = format(selectedDate, "yyyy-MM-dd");
 
-  // Check if selected date is Saturday (review day)
+  // Check if selected date is Saturday or Sunday (review days)
   // Use selectedDate directly since it's already a proper Date object
-  const isSaturdayReview = isSaturday(selectedDate);
+  const dayOfWeek = getDay(selectedDate);
+  const isWeekendReview = dayOfWeek === 6 || dayOfWeek === 0; // Saturday = 6, Sunday = 0
 
   // Fetch journal and trades for selected date
   React.useEffect(() => {
@@ -352,16 +353,21 @@ function JournalPageContent() {
           console.error("Error fetching trades:", tradesError);
         }
 
-        // If it's Saturday, also fetch the whole week's trades (Mon-Fri)
-        if (currentIsSaturday) {
-          // Get the Monday of THIS week (Saturday's week, so Mon-Fri just ended)
+        // If it's Saturday or Sunday, also fetch the whole week's trades (Mon-Fri)
+        const currentDayOfWeek = getDay(selectedDate);
+        const isWeekend = currentDayOfWeek === 6 || currentDayOfWeek === 0;
+        if (isWeekend) {
+          // Get the Monday of THIS week (weekend's week, so Mon-Fri just ended)
           // Use selectedDate directly - it's already a proper local Date object
           const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
 
-          // Use date range that includes the full day - Monday 00:00 to Saturday 00:00
+          // Use date range that includes Mon-Fri (up to but not including Saturday)
           const weekStartStr = format(weekStart, "yyyy-MM-dd");
-          // Add one day to Saturday to make sure we get all Friday trades
-          const weekEndStr = format(addDays(selectedDate, 1), "yyyy-MM-dd");
+          // For both Saturday and Sunday, we want Mon-Fri trades, so end at Saturday
+          const weekEnd = currentDayOfWeek === 0
+            ? selectedDate // Sunday - selectedDate IS Sunday, so < Sunday excludes Sat
+            : addDays(selectedDate, 1); // Saturday - add 1 to get Sunday
+          const weekEndStr = format(weekEnd, "yyyy-MM-dd");
 
           console.log("Weekly query range:", weekStartStr, "to", weekEndStr);
 
@@ -376,7 +382,7 @@ function JournalPageContent() {
           if (weeklyError) {
             console.error("Error fetching weekly trades:", weeklyError);
           }
-          console.log("Weekly trades found:", weeklyTradesData?.length, "for Saturday", currentDateKey);
+          console.log("Weekly trades found:", weeklyTradesData?.length, "for weekend", currentDateKey);
           setWeeklyTrades(weeklyTradesData || []);
         } else {
           console.log("Not Saturday, clearing weekly trades");
@@ -616,9 +622,9 @@ function JournalPageContent() {
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
             <h1 className="text-3xl font-bold tracking-tight">
-              {isSaturdayReview ? "Weekly Review" : "Trading Journal"}
+              {isWeekendReview ? "Weekly Review" : "Trading Journal"}
             </h1>
-            {isSaturdayReview && (
+            {isWeekendReview && (
               <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
                 <CalendarDays className="h-3 w-3 mr-1" />
                 Review Day
@@ -626,7 +632,7 @@ function JournalPageContent() {
             )}
           </div>
           <p className="text-muted-foreground">
-            {isSaturdayReview
+            {isWeekendReview
               ? "Reflect on your week, celebrate wins, and plan for improvement."
               : "Document your trading day, track mistakes, and build consistency."}
           </p>
@@ -679,7 +685,7 @@ function JournalPageContent() {
       </div>
 
       {/* Conditional: Saturday Weekly Review vs Regular Daily Journal */}
-      {isSaturdayReview ? (
+      {isWeekendReview ? (
         <>
           {/* Weekly Performance Summary */}
           <Card className={cn(
@@ -749,7 +755,111 @@ function JournalPageContent() {
 
           {/* Weekly Review Content */}
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Left Column - Stats & Trades */}
+            {/* Left Column - Reflection (Journal) */}
+            <div className="space-y-6">
+              {/* Weekly Wins */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <CardTitle>What Went Well This Week</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="Celebrate your wins! What did you do well? What habits served you? What patterns worked?"
+                    className="min-h-[120px]"
+                    value={weeklyWins}
+                    onChange={(e) => setWeeklyWins(e.target.value)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Areas for Improvement */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-amber-500" />
+                    <CardTitle>Areas for Improvement</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="What mistakes did you repeat? What rules did you break? What could you do better next week?"
+                    className="min-h-[120px]"
+                    value={weeklyImprovements}
+                    onChange={(e) => setWeeklyImprovements(e.target.value)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Next Week Goals */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-blue-500" />
+                    <CardTitle>Goals for Next Week</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add a specific goal for next week..."
+                      value={newWeeklyGoal}
+                      onChange={(e) => setNewWeeklyGoal(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddWeeklyGoal()}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleAddWeeklyGoal}
+                      disabled={!newWeeklyGoal.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {nextWeekGoals.length > 0 && (
+                    <div className="space-y-2">
+                      {nextWeekGoals.map((goal, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                        >
+                          <Target className="h-4 w-4 text-blue-500" />
+                          <span className="flex-1 text-sm">{goal}</span>
+                          <button
+                            onClick={() => handleRemoveWeeklyGoal(index)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Weekly Rating */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Star className="h-5 w-5 text-yellow-500" />
+                    <CardTitle>Rate Your Week</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <StarRating
+                    label="Overall Weekly Performance"
+                    value={weeklyRating}
+                    onChange={setWeeklyRating}
+                    icon={Trophy}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column - Stats & Trades */}
             <div className="space-y-6">
               {/* Daily Breakdown */}
               <Card>
@@ -864,110 +974,6 @@ function JournalPageContent() {
                   ) : (
                     <p className="text-muted-foreground text-center py-4">No closed trades this week</p>
                   )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Right Column - Reflection */}
-            <div className="space-y-6">
-              {/* Weekly Wins */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <CheckCircle2 className="h-5 w-5 text-green-500" />
-                    <CardTitle>What Went Well This Week</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    placeholder="Celebrate your wins! What did you do well? What habits served you? What patterns worked?"
-                    className="min-h-[120px]"
-                    value={weeklyWins}
-                    onChange={(e) => setWeeklyWins(e.target.value)}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Areas for Improvement */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Lightbulb className="h-5 w-5 text-amber-500" />
-                    <CardTitle>Areas for Improvement</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <Textarea
-                    placeholder="What mistakes did you repeat? What rules did you break? What could you do better next week?"
-                    className="min-h-[120px]"
-                    value={weeklyImprovements}
-                    onChange={(e) => setWeeklyImprovements(e.target.value)}
-                  />
-                </CardContent>
-              </Card>
-
-              {/* Next Week Goals */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Target className="h-5 w-5 text-blue-500" />
-                    <CardTitle>Goals for Next Week</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Add a specific goal for next week..."
-                      value={newWeeklyGoal}
-                      onChange={(e) => setNewWeeklyGoal(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleAddWeeklyGoal()}
-                    />
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={handleAddWeeklyGoal}
-                      disabled={!newWeeklyGoal.trim()}
-                    >
-                      <Plus className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {nextWeekGoals.length > 0 && (
-                    <div className="space-y-2">
-                      {nextWeekGoals.map((goal, index) => (
-                        <div
-                          key={index}
-                          className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
-                        >
-                          <Target className="h-4 w-4 text-blue-500" />
-                          <span className="flex-1 text-sm">{goal}</span>
-                          <button
-                            onClick={() => handleRemoveWeeklyGoal(index)}
-                            className="text-muted-foreground hover:text-destructive"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Weekly Rating */}
-              <Card>
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <Star className="h-5 w-5 text-yellow-500" />
-                    <CardTitle>Rate Your Week</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <StarRating
-                    label="Overall Weekly Performance"
-                    value={weeklyRating}
-                    onChange={setWeeklyRating}
-                    icon={Trophy}
-                  />
                 </CardContent>
               </Card>
             </div>
