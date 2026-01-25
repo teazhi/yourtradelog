@@ -298,11 +298,18 @@ function JournalPageContent() {
   const dateKey = format(selectedDate, "yyyy-MM-dd");
 
   // Check if selected date is Saturday (review day)
+  // Use selectedDate directly since it's already a proper Date object
   const isSaturdayReview = isSaturday(selectedDate);
 
   // Fetch journal and trades for selected date
   React.useEffect(() => {
     async function fetchData() {
+      // Capture current values at start of effect to avoid stale closures
+      const currentDateKey = format(selectedDate, "yyyy-MM-dd");
+      const currentIsSaturday = isSaturday(selectedDate);
+
+      console.log("Fetching data for:", currentDateKey, "isSaturday:", currentIsSaturday);
+
       setIsLoading(true);
       try {
         const supabase = createClient();
@@ -311,6 +318,7 @@ function JournalPageContent() {
         if (!user) {
           setJournal(null);
           setTrades([]);
+          setWeeklyTrades([]);
           setIsLoading(false);
           return;
         }
@@ -321,7 +329,7 @@ function JournalPageContent() {
           .from("daily_journals") as any)
           .select("*")
           .eq("user_id", user.id)
-          .eq("date", dateKey)
+          .eq("date", currentDateKey)
           .single();
 
         if (journalError && journalError.code !== "PGRST116") {
@@ -329,8 +337,8 @@ function JournalPageContent() {
         }
 
         // Fetch trades for this date
-        const startOfDayStr = `${dateKey}T00:00:00.000Z`;
-        const endOfDayStr = `${dateKey}T23:59:59.999Z`;
+        const startOfDayStr = `${currentDateKey}T00:00:00.000Z`;
+        const endOfDayStr = `${currentDateKey}T23:59:59.999Z`;
 
         const { data: tradesData, error: tradesError } = await supabase
           .from("trades")
@@ -345,18 +353,17 @@ function JournalPageContent() {
         }
 
         // If it's Saturday, also fetch the whole week's trades (Mon-Fri)
-        if (isSaturday(new Date(dateKey))) {
+        if (currentIsSaturday) {
           // Get the Monday of THIS week (Saturday's week, so Mon-Fri just ended)
-          const saturdayDate = new Date(dateKey);
-          const weekStart = startOfWeek(saturdayDate, { weekStartsOn: 1 });
-          // Friday is 4 days after Monday
-          const fridayEnd = new Date(weekStart);
-          fridayEnd.setDate(weekStart.getDate() + 4); // Monday + 4 = Friday
+          // Use selectedDate directly - it's already a proper local Date object
+          const weekStart = startOfWeek(selectedDate, { weekStartsOn: 1 });
 
-          // Use date range that includes the full day
+          // Use date range that includes the full day - Monday 00:00 to Saturday 00:00
           const weekStartStr = format(weekStart, "yyyy-MM-dd");
-          // Use Saturday as end date to capture all Friday trades regardless of time
-          const weekEndStr = format(saturdayDate, "yyyy-MM-dd");
+          // Add one day to Saturday to make sure we get all Friday trades
+          const weekEndStr = format(addDays(selectedDate, 1), "yyyy-MM-dd");
+
+          console.log("Weekly query range:", weekStartStr, "to", weekEndStr);
 
           const { data: weeklyTradesData, error: weeklyError } = await supabase
             .from("trades")
@@ -369,8 +376,10 @@ function JournalPageContent() {
           if (weeklyError) {
             console.error("Error fetching weekly trades:", weeklyError);
           }
+          console.log("Weekly trades found:", weeklyTradesData?.length, "for Saturday", currentDateKey);
           setWeeklyTrades(weeklyTradesData || []);
         } else {
+          console.log("Not Saturday, clearing weekly trades");
           setWeeklyTrades([]);
         }
 
@@ -407,7 +416,7 @@ function JournalPageContent() {
     }
 
     fetchData();
-  }, [dateKey]);
+  }, [selectedDate]);
 
   const resetForm = () => {
     setPreMarketNotes("");
