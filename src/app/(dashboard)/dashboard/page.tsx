@@ -1,13 +1,16 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
+import { Upload, Plus } from "lucide-react";
 import { StatsCards } from "@/components/dashboard/stats-cards";
 import { RecentTrades } from "@/components/dashboard/recent-trades";
 import { EquityChart } from "@/components/dashboard/equity-chart";
 import { DailyPnL } from "@/components/dashboard/daily-pnl";
+import { PositionSizer } from "@/components/dashboard/position-sizer";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
-import { Spinner } from "@/components/ui";
+import { Spinner, Button } from "@/components/ui";
 
 export default function DashboardPage() {
   const [trades, setTrades] = React.useState<Trade[]>([]);
@@ -140,11 +143,29 @@ export default function DashboardPage() {
   return (
     <div className="flex flex-1 flex-col gap-6">
       {/* Page Header */}
-      <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-        <p className="text-muted-foreground">
-          Welcome back! Here&apos;s an overview of your trading performance.
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex flex-col gap-1">
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-muted-foreground">
+            Welcome back! Here&apos;s an overview of your trading performance.
+          </p>
+        </div>
+
+        {/* Quick Actions */}
+        <div className="flex items-center gap-2">
+          <Link href="/trades/new">
+            <Button variant="outline" size="sm">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Trade
+            </Button>
+          </Link>
+          <Link href="/import">
+            <Button size="sm">
+              <Upload className="h-4 w-4 mr-2" />
+              Import Trades
+            </Button>
+          </Link>
+        </div>
       </div>
 
       {/* Stats Cards */}
@@ -161,6 +182,9 @@ export default function DashboardPage() {
         {/* Recent Trades */}
         <RecentTrades trades={recentTrades} />
       </div>
+
+      {/* Position Sizer Tool */}
+      <PositionSizer />
     </div>
   );
 }

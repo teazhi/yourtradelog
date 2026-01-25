@@ -11,8 +11,6 @@ import {
   Layers,
   List,
   Settings,
-  Shield,
-  Upload,
   Menu,
   X,
   Users,
@@ -38,9 +36,7 @@ const navigationItems = [
   { title: "Templates", url: "/templates", icon: FileText },
   { title: "Analytics", url: "/analytics", icon: BarChart3 },
   { title: "Calendar", url: "/calendar", icon: Calendar },
-  { title: "Risk Management", url: "/risk", icon: Shield },
   { title: "Setups", url: "/setups", icon: Layers },
-  { title: "Import", url: "/import", icon: Upload },
 ];
 
 const progressItems = [
