@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
-import { format } from "date-fns";
+import { format, nextSaturday, isSaturday } from "date-fns";
 import {
   Sun,
   Moon,
@@ -243,8 +243,22 @@ function TemplateCard({
   template: Template;
   onUse: (template: Template) => void;
 }) {
+  const router = useRouter();
+  const isWeeklyOrMonthly = template.category === "weekly" || template.category === "monthly";
+
+  const handleClick = () => {
+    if (isWeeklyOrMonthly) {
+      // For weekly/monthly templates, redirect to Saturday journal
+      const today = new Date();
+      const saturday = isSaturday(today) ? today : nextSaturday(today);
+      router.push(`/journal?date=${format(saturday, "yyyy-MM-dd")}`);
+    } else {
+      onUse(template);
+    }
+  };
+
   return (
-    <Card className="group hover:shadow-md transition-all cursor-pointer" onClick={() => onUse(template)}>
+    <Card className="group hover:shadow-md transition-all cursor-pointer" onClick={handleClick}>
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between">
           <div className={cn("p-2 rounded-lg w-fit", template.bgColor)}>
@@ -258,14 +272,21 @@ function TemplateCard({
         <CardDescription>{template.description}</CardDescription>
       </CardHeader>
       <CardContent>
-        <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
-            {template.prompts.length} prompts
-          </span>
-          <Button variant="ghost" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground">
-            Use Template
-            <ChevronRight className="ml-1 h-4 w-4" />
-          </Button>
+        <div className="flex flex-col gap-2">
+          {isWeeklyOrMonthly && (
+            <p className="text-xs text-purple-600 dark:text-purple-400">
+              Opens Saturday Review Journal
+            </p>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-sm text-muted-foreground">
+              {isWeeklyOrMonthly ? "Go to Review" : `${template.prompts.length} prompts`}
+            </span>
+            <Button variant="ghost" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground">
+              {isWeeklyOrMonthly ? "Open Review" : "Use Template"}
+              <ChevronRight className="ml-1 h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

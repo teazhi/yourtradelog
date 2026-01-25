@@ -1,10 +1,13 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import Link from "next/link";
-import { format, startOfDay, addDays, subDays } from "date-fns";
+import { useSearchParams } from "next/navigation";
+import { format, startOfDay, addDays, subDays, startOfWeek, endOfWeek, isSaturday, getDay, parseISO } from "date-fns";
 import {
   Calendar,
+  CalendarDays,
   ChevronLeft,
   ChevronRight,
   Save,
@@ -27,6 +30,9 @@ import {
   FileText,
   ExternalLink,
   ImageIcon,
+  Trophy,
+  Flame,
+  BookOpen,
 } from "lucide-react";
 import {
   Button,
@@ -232,10 +238,20 @@ interface JournalData {
   updated_at?: string;
 }
 
-export default function JournalPage() {
-  const [selectedDate, setSelectedDate] = React.useState<Date>(
-    startOfDay(new Date())
-  );
+function JournalPageContent() {
+  const searchParams = useSearchParams();
+  const dateParam = searchParams.get("date");
+
+  const [selectedDate, setSelectedDate] = React.useState<Date>(() => {
+    if (dateParam) {
+      try {
+        return startOfDay(parseISO(dateParam));
+      } catch {
+        return startOfDay(new Date());
+      }
+    }
+    return startOfDay(new Date());
+  });
   const [journal, setJournal] = React.useState<JournalData | null>(null);
   const [trades, setTrades] = React.useState<Trade[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -262,8 +278,20 @@ export default function JournalPage() {
   const [disciplineRating, setDisciplineRating] = React.useState<number | null>(null);
   const [executionRating, setExecutionRating] = React.useState<number | null>(null);
 
+  // Weekly review state (for Saturdays)
+  const [weeklyTrades, setWeeklyTrades] = React.useState<Trade[]>([]);
+  const [weeklyReviewNotes, setWeeklyReviewNotes] = React.useState("");
+  const [weeklyWins, setWeeklyWins] = React.useState("");
+  const [weeklyImprovements, setWeeklyImprovements] = React.useState("");
+  const [nextWeekGoals, setNextWeekGoals] = React.useState<string[]>([]);
+  const [newWeeklyGoal, setNewWeeklyGoal] = React.useState("");
+  const [weeklyRating, setWeeklyRating] = React.useState<number | null>(null);
+
   // Format date for database query (YYYY-MM-DD)
   const dateKey = format(selectedDate, "yyyy-MM-dd");
+
+  // Check if selected date is Saturday (review day)
+  const isSaturdayReview = isSaturday(selectedDate);
 
   // Fetch journal and trades for selected date
   React.useEffect(() => {
@@ -307,6 +335,34 @@ export default function JournalPage() {
 
         if (tradesError) {
           console.error("Error fetching trades:", tradesError);
+        }
+
+        // If it's Saturday, also fetch the whole week's trades (Mon-Fri)
+        if (isSaturday(new Date(dateKey))) {
+          // Get the Monday of this week (week starts on Monday for trading)
+          const weekStart = startOfWeek(new Date(dateKey), { weekStartsOn: 1 });
+          const weekEnd = endOfWeek(new Date(dateKey), { weekStartsOn: 1 });
+          // Adjust to Friday (day 5) since we don't trade weekends
+          const fridayEnd = new Date(weekStart);
+          fridayEnd.setDate(weekStart.getDate() + 4); // Monday + 4 = Friday
+
+          const weekStartStr = `${format(weekStart, "yyyy-MM-dd")}T00:00:00.000Z`;
+          const weekEndStr = `${format(fridayEnd, "yyyy-MM-dd")}T23:59:59.999Z`;
+
+          const { data: weeklyTradesData, error: weeklyError } = await supabase
+            .from("trades")
+            .select("*")
+            .eq("user_id", user.id)
+            .gte("entry_date", weekStartStr)
+            .lte("entry_date", weekEndStr)
+            .order("entry_date", { ascending: true });
+
+          if (weeklyError) {
+            console.error("Error fetching weekly trades:", weeklyError);
+          }
+          setWeeklyTrades(weeklyTradesData || []);
+        } else {
+          setWeeklyTrades([]);
         }
 
         // Set journal data
@@ -359,6 +415,12 @@ export default function JournalPage() {
     setFocusRating(null);
     setDisciplineRating(null);
     setExecutionRating(null);
+    // Weekly review fields
+    setWeeklyReviewNotes("");
+    setWeeklyWins("");
+    setWeeklyImprovements("");
+    setNextWeekGoals([]);
+    setWeeklyRating(null);
   };
 
   // Track changes
@@ -369,7 +431,9 @@ export default function JournalPage() {
   }, [
     preMarketNotes, marketBias, keyLevels, dailyGoals, maxLossLimit, maxTradesLimit,
     postMarketNotes, whatWentWell, mistakesMade, lessonsLearned,
-    moodRating, focusRating, disciplineRating, executionRating, isLoading
+    moodRating, focusRating, disciplineRating, executionRating,
+    weeklyReviewNotes, weeklyWins, weeklyImprovements, nextWeekGoals, weeklyRating,
+    isLoading
   ]);
 
   // Save journal entry
@@ -441,6 +505,19 @@ export default function JournalPage() {
     setDailyGoals(dailyGoals.filter((_, i) => i !== index));
   };
 
+  // Add weekly goal
+  const handleAddWeeklyGoal = () => {
+    if (newWeeklyGoal.trim()) {
+      setNextWeekGoals([...nextWeekGoals, newWeeklyGoal.trim()]);
+      setNewWeeklyGoal("");
+    }
+  };
+
+  // Remove weekly goal
+  const handleRemoveWeeklyGoal = (index: number) => {
+    setNextWeekGoals(nextWeekGoals.filter((_, i) => i !== index));
+  };
+
   // Calculate daily stats
   const closedTrades = trades.filter((t) => t.status === "closed");
   const dailyPnL = closedTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
@@ -455,6 +532,30 @@ export default function JournalPage() {
     : 0;
   const largestWin = closedTrades.length > 0 ? Math.max(...closedTrades.map(t => t.net_pnl || 0), 0) : 0;
   const largestLoss = closedTrades.length > 0 ? Math.min(...closedTrades.map(t => t.net_pnl || 0), 0) : 0;
+
+  // Weekly stats (for Saturday review)
+  const weeklyClosedTrades = weeklyTrades.filter((t) => t.status === "closed");
+  const weeklyPnL = weeklyClosedTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
+  const weeklyWinCount = weeklyClosedTrades.filter((t) => (t.net_pnl || 0) > 0).length;
+  const weeklyLossCount = weeklyClosedTrades.filter((t) => (t.net_pnl || 0) < 0).length;
+  const weeklyWinRate = weeklyClosedTrades.length > 0 ? (weeklyWinCount / weeklyClosedTrades.length) * 100 : 0;
+  const weeklyLargestWin = weeklyClosedTrades.length > 0 ? Math.max(...weeklyClosedTrades.map(t => t.net_pnl || 0), 0) : 0;
+  const weeklyLargestLoss = weeklyClosedTrades.length > 0 ? Math.min(...weeklyClosedTrades.map(t => t.net_pnl || 0), 0) : 0;
+  const weeklyAvgWin = weeklyWinCount > 0
+    ? weeklyClosedTrades.filter((t) => (t.net_pnl || 0) > 0).reduce((sum, t) => sum + (t.net_pnl || 0), 0) / weeklyWinCount
+    : 0;
+  const weeklyAvgLoss = weeklyLossCount > 0
+    ? Math.abs(weeklyClosedTrades.filter((t) => (t.net_pnl || 0) < 0).reduce((sum, t) => sum + (t.net_pnl || 0), 0) / weeklyLossCount)
+    : 0;
+  const weeklyProfitFactor = weeklyAvgLoss > 0 ? (weeklyAvgWin * weeklyWinCount) / (weeklyAvgLoss * weeklyLossCount) : 0;
+
+  // Group weekly trades by day
+  const tradesByDay = weeklyTrades.reduce((acc, trade) => {
+    const day = format(new Date(trade.entry_date), "EEEE");
+    if (!acc[day]) acc[day] = [];
+    acc[day].push(trade);
+    return acc;
+  }, {} as Record<string, Trade[]>);
 
   // Navigate dates
   const goToPreviousDay = () => setSelectedDate(subDays(selectedDate, 1));
@@ -494,9 +595,21 @@ export default function JournalPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">Trading Journal</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-3xl font-bold tracking-tight">
+              {isSaturdayReview ? "Weekly Review" : "Trading Journal"}
+            </h1>
+            {isSaturdayReview && (
+              <Badge variant="secondary" className="bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300">
+                <CalendarDays className="h-3 w-3 mr-1" />
+                Review Day
+              </Badge>
+            )}
+          </div>
           <p className="text-muted-foreground">
-            Document your trading day, track mistakes, and build consistency.
+            {isSaturdayReview
+              ? "Reflect on your week, celebrate wins, and plan for improvement."
+              : "Document your trading day, track mistakes, and build consistency."}
           </p>
         </div>
 
@@ -546,28 +659,363 @@ export default function JournalPage() {
         </div>
       </div>
 
-      {/* Daily Performance Summary */}
-      <Card className={cn(
-        "border-l-4",
-        dailyPnL > 0 ? "border-l-green-500" : dailyPnL < 0 ? "border-l-red-500" : "border-l-gray-300"
-      )}>
-        <CardContent className="pt-6">
-          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
-            <div className="col-span-2 sm:col-span-1">
-              <p className="text-sm text-muted-foreground mb-1">Net P&L</p>
-              <p className={cn(
-                "text-2xl font-bold",
-                dailyPnL >= 0 ? "text-green-600" : "text-red-600"
-              )}>
-                {dailyPnL >= 0 ? "+" : ""}{dailyPnL.toLocaleString("en-US", { style: "currency", currency: "USD" })}
-              </p>
+      {/* Conditional: Saturday Weekly Review vs Regular Daily Journal */}
+      {isSaturdayReview ? (
+        <>
+          {/* Weekly Performance Summary */}
+          <Card className={cn(
+            "border-l-4",
+            weeklyPnL > 0 ? "border-l-green-500" : weeklyPnL < 0 ? "border-l-red-500" : "border-l-gray-300"
+          )}>
+            <CardHeader className="pb-2">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-5 w-5 text-amber-500" />
+                <CardTitle>Weekly Performance</CardTitle>
+              </div>
+              <CardDescription>
+                {format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "MMM d")} - {format(subDays(selectedDate, 1), "MMM d, yyyy")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+                <div className="col-span-2">
+                  <p className="text-sm text-muted-foreground mb-1">Weekly P&L</p>
+                  <p className={cn(
+                    "text-3xl font-bold",
+                    weeklyPnL >= 0 ? "text-green-600" : "text-red-600"
+                  )}>
+                    {weeklyPnL >= 0 ? "+" : ""}{weeklyPnL.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Total Trades</p>
+                  <p className="text-xl font-semibold">{weeklyTrades.length}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Win Rate</p>
+                  <p className="text-xl font-semibold">{weeklyWinRate.toFixed(0)}%</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                    <TrendingUp className="h-3 w-3 text-green-600" /> Wins
+                  </p>
+                  <p className="text-xl font-semibold text-green-600">{weeklyWinCount}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                    <TrendingDown className="h-3 w-3 text-red-600" /> Losses
+                  </p>
+                  <p className="text-xl font-semibold text-red-600">{weeklyLossCount}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Profit Factor</p>
+                  <p className={cn(
+                    "text-xl font-semibold",
+                    weeklyProfitFactor >= 1 ? "text-green-600" : "text-red-600"
+                  )}>
+                    {weeklyProfitFactor > 0 ? weeklyProfitFactor.toFixed(2) : "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Avg Win/Loss</p>
+                  <p className="text-lg font-medium">
+                    <span className="text-green-600">${weeklyAvgWin.toFixed(0)}</span>
+                    {" / "}
+                    <span className="text-red-600">${weeklyAvgLoss.toFixed(0)}</span>
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Weekly Review Content */}
+          <div className="grid gap-6 lg:grid-cols-2">
+            {/* Left Column - Stats & Trades */}
+            <div className="space-y-6">
+              {/* Daily Breakdown */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <BarChart3 className="h-5 w-5 text-blue-500" />
+                    <CardTitle>Daily Breakdown</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  {weeklyTrades.length === 0 ? (
+                    <p className="text-muted-foreground text-center py-4">No trades this week</p>
+                  ) : (
+                    <div className="space-y-3">
+                      {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((day) => {
+                        const dayTrades = tradesByDay[day] || [];
+                        const dayPnL = dayTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
+                        const dayWins = dayTrades.filter(t => (t.net_pnl || 0) > 0).length;
+                        const dayLosses = dayTrades.filter(t => (t.net_pnl || 0) < 0).length;
+
+                        return (
+                          <div
+                            key={day}
+                            className={cn(
+                              "flex items-center justify-between p-3 rounded-lg",
+                              dayTrades.length > 0 ? "bg-muted/50" : "bg-muted/20"
+                            )}
+                          >
+                            <div className="flex items-center gap-3">
+                              <span className="font-medium w-24">{day}</span>
+                              <span className="text-sm text-muted-foreground">
+                                {dayTrades.length} trade{dayTrades.length !== 1 ? "s" : ""}
+                              </span>
+                              {dayTrades.length > 0 && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({dayWins}W / {dayLosses}L)
+                                </span>
+                              )}
+                            </div>
+                            <span className={cn(
+                              "font-semibold",
+                              dayPnL > 0 ? "text-green-600" : dayPnL < 0 ? "text-red-600" : "text-muted-foreground"
+                            )}>
+                              {dayPnL !== 0 ? (dayPnL > 0 ? "+" : "") + dayPnL.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "-"}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Best & Worst Trades */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Flame className="h-5 w-5 text-orange-500" />
+                    <CardTitle>Notable Trades</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {weeklyClosedTrades.length > 0 ? (
+                    <>
+                      <div>
+                        <p className="text-sm font-medium text-green-600 mb-2">Best Trade</p>
+                        {(() => {
+                          const bestTrade = weeklyClosedTrades.reduce((best, t) =>
+                            (t.net_pnl || 0) > (best.net_pnl || 0) ? t : best
+                          );
+                          return (
+                            <Link href={`/trades/${bestTrade.id}`} className="block">
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors">
+                                <div>
+                                  <span className="font-medium">{bestTrade.symbol}</span>
+                                  <span className="text-sm text-muted-foreground ml-2">
+                                    {format(new Date(bestTrade.entry_date), "EEEE")}
+                                  </span>
+                                </div>
+                                <span className="font-bold text-green-600">
+                                  +${(bestTrade.net_pnl || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </Link>
+                          );
+                        })()}
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-red-600 mb-2">Worst Trade</p>
+                        {(() => {
+                          const worstTrade = weeklyClosedTrades.reduce((worst, t) =>
+                            (t.net_pnl || 0) < (worst.net_pnl || 0) ? t : worst
+                          );
+                          return (
+                            <Link href={`/trades/${worstTrade.id}`} className="block">
+                              <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900 transition-colors">
+                                <div>
+                                  <span className="font-medium">{worstTrade.symbol}</span>
+                                  <span className="text-sm text-muted-foreground ml-2">
+                                    {format(new Date(worstTrade.entry_date), "EEEE")}
+                                  </span>
+                                </div>
+                                <span className="font-bold text-red-600">
+                                  ${(worstTrade.net_pnl || 0).toFixed(2)}
+                                </span>
+                              </div>
+                            </Link>
+                          );
+                        })()}
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-muted-foreground text-center py-4">No closed trades this week</p>
+                  )}
+                </CardContent>
+              </Card>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Trades</p>
-              <p className="text-xl font-semibold">{trades.length}</p>
+
+            {/* Right Column - Reflection */}
+            <div className="space-y-6">
+              {/* Weekly Wins */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <CardTitle>What Went Well This Week</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="Celebrate your wins! What did you do well? What habits served you? What patterns worked?"
+                    className="min-h-[120px]"
+                    value={weeklyWins}
+                    onChange={(e) => setWeeklyWins(e.target.value)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Areas for Improvement */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Lightbulb className="h-5 w-5 text-amber-500" />
+                    <CardTitle>Areas for Improvement</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <Textarea
+                    placeholder="What mistakes did you repeat? What rules did you break? What could you do better next week?"
+                    className="min-h-[120px]"
+                    value={weeklyImprovements}
+                    onChange={(e) => setWeeklyImprovements(e.target.value)}
+                  />
+                </CardContent>
+              </Card>
+
+              {/* Next Week Goals */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Target className="h-5 w-5 text-blue-500" />
+                    <CardTitle>Goals for Next Week</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Add a specific goal for next week..."
+                      value={newWeeklyGoal}
+                      onChange={(e) => setNewWeeklyGoal(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddWeeklyGoal()}
+                    />
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={handleAddWeeklyGoal}
+                      disabled={!newWeeklyGoal.trim()}
+                    >
+                      <Plus className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  {nextWeekGoals.length > 0 && (
+                    <div className="space-y-2">
+                      {nextWeekGoals.map((goal, index) => (
+                        <div
+                          key={index}
+                          className="flex items-center gap-2 p-2 rounded-lg bg-muted/50"
+                        >
+                          <Target className="h-4 w-4 text-blue-500" />
+                          <span className="flex-1 text-sm">{goal}</span>
+                          <button
+                            onClick={() => handleRemoveWeeklyGoal(index)}
+                            className="text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Weekly Rating */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center gap-2">
+                    <Star className="h-5 w-5 text-yellow-500" />
+                    <CardTitle>Rate Your Week</CardTitle>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <StarRating
+                    label="Overall Weekly Performance"
+                    value={weeklyRating}
+                    onChange={setWeeklyRating}
+                    icon={Trophy}
+                  />
+                </CardContent>
+              </Card>
             </div>
-            <div>
-              <p className="text-sm text-muted-foreground mb-1">Win Rate</p>
+          </div>
+
+          {/* Weekly Notes */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-5 w-5 text-purple-500" />
+                <CardTitle>Additional Notes & Insights</CardTitle>
+              </div>
+              <CardDescription>
+                Any other thoughts, observations, or plans for your trading journey
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Textarea
+                placeholder="Market observations, strategy ideas, personal notes..."
+                className="min-h-[150px]"
+                value={weeklyReviewNotes}
+                onChange={(e) => setWeeklyReviewNotes(e.target.value)}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Save Button */}
+          <div className="flex justify-end">
+            <Button onClick={handleSave} disabled={isSaving || !hasChanges} size="lg">
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Weekly Review
+                </>
+              )}
+            </Button>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Daily Performance Summary */}
+          <Card className={cn(
+            "border-l-4",
+            dailyPnL > 0 ? "border-l-green-500" : dailyPnL < 0 ? "border-l-red-500" : "border-l-gray-300"
+          )}>
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+                <div className="col-span-2 sm:col-span-1">
+                  <p className="text-sm text-muted-foreground mb-1">Net P&L</p>
+                  <p className={cn(
+                    "text-2xl font-bold",
+                    dailyPnL >= 0 ? "text-green-600" : "text-red-600"
+                  )}>
+                    {dailyPnL >= 0 ? "+" : ""}{dailyPnL.toLocaleString("en-US", { style: "currency", currency: "USD" })}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Trades</p>
+                  <p className="text-xl font-semibold">{trades.length}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground mb-1">Win Rate</p>
               <p className="text-xl font-semibold">{winRate.toFixed(0)}%</p>
             </div>
             <div>
@@ -1005,6 +1453,23 @@ export default function JournalPage() {
           <JournalScreenshots date={dateKey} />
         </TabsContent>
       </Tabs>
+        </>
+      )}
     </div>
+  );
+}
+
+export default function JournalPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-64">
+        <div className="text-center space-y-4">
+          <Spinner className="h-8 w-8 mx-auto" />
+          <p className="text-muted-foreground">Loading journal...</p>
+        </div>
+      </div>
+    }>
+      <JournalPageContent />
+    </Suspense>
   );
 }
