@@ -296,6 +296,7 @@ function JournalPageContent() {
   // Fetch journal and trades for selected date
   React.useEffect(() => {
     async function fetchData() {
+      console.log("Fetching data for dateKey:", dateKey, "isSaturday:", isSaturday(new Date(dateKey)));
       setIsLoading(true);
       try {
         const supabase = createClient();
@@ -351,18 +352,6 @@ function JournalPageContent() {
           // Use Saturday as end date to capture all Friday trades regardless of time
           const weekEndStr = format(saturdayDate, "yyyy-MM-dd");
 
-          console.log("Fetching weekly trades from:", weekStartStr, "to (exclusive):", weekEndStr);
-
-          // Debug: fetch all trades first to see what dates exist
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const { data: allTrades } = await (supabase
-            .from("trades") as any)
-            .select("id, entry_date, symbol, net_pnl")
-            .eq("user_id", user.id)
-            .order("entry_date", { ascending: false })
-            .limit(20);
-          console.log("Recent trades (for debugging):", allTrades?.map((t: any) => ({ date: t.entry_date, symbol: t.symbol, pnl: t.net_pnl })));
-
           const { data: weeklyTradesData, error: weeklyError } = await supabase
             .from("trades")
             .select("*")
@@ -374,8 +363,6 @@ function JournalPageContent() {
           if (weeklyError) {
             console.error("Error fetching weekly trades:", weeklyError);
           }
-          console.log("Weekly trades fetched:", weeklyTradesData?.length || 0, "trades");
-          console.log("Weekly trades data:", weeklyTradesData);
           setWeeklyTrades(weeklyTradesData || []);
         } else {
           setWeeklyTrades([]);
@@ -565,16 +552,6 @@ function JournalPageContent() {
     ? Math.abs(weeklyClosedTrades.filter((t) => (t.net_pnl || 0) < 0).reduce((sum, t) => sum + (t.net_pnl || 0), 0) / weeklyLossCount)
     : 0;
   const weeklyProfitFactor = weeklyAvgLoss > 0 ? (weeklyAvgWin * weeklyWinCount) / (weeklyAvgLoss * weeklyLossCount) : 0;
-
-  // Debug logging
-  console.log("Weekly stats:", {
-    totalTrades: weeklyTrades.length,
-    closedTrades: weeklyClosedTrades.length,
-    weeklyPnL,
-    weeklyWinCount,
-    weeklyLossCount,
-    weeklyWinRate,
-  });
 
   // Group weekly trades by day
   const tradesByDay = weeklyTrades.reduce((acc, trade) => {
