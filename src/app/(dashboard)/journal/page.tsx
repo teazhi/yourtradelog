@@ -59,6 +59,8 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { JournalScreenshots } from "@/components/journal/journal-screenshots";
+import { TradeTable } from "@/components/trades/trade-table";
+import { TradeCardList } from "@/components/trades/trade-card";
 
 // Common mistakes for futures day traders
 const COMMON_MISTAKES = [
@@ -542,6 +544,29 @@ function JournalPageContent() {
     setNextWeekGoals(nextWeekGoals.filter((_, i) => i !== index));
   };
 
+  // Delete a trade
+  const handleDeleteTrade = async (tradeId: string) => {
+    try {
+      const supabase = createClient();
+      const { error } = await supabase
+        .from("trades")
+        .delete()
+        .eq("id", tradeId);
+
+      if (error) {
+        console.error("Error deleting trade:", error);
+        toast.error("Failed to delete trade");
+      } else {
+        // Remove from local state
+        setTrades(prev => prev.filter(t => t.id !== tradeId));
+        toast.success("Trade deleted successfully");
+      }
+    } catch (err) {
+      console.error("Exception deleting trade:", err);
+      toast.error("An error occurred while deleting");
+    }
+  };
+
   // Calculate daily stats
   const closedTrades = trades.filter((t) => t.status === "closed");
   const dailyPnL = closedTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
@@ -1000,8 +1025,14 @@ function JournalPageContent() {
             </CardContent>
           </Card>
 
-          {/* Save Button */}
-          <div className="flex justify-end">
+          {/* Save Button and View Trades */}
+          <div className="flex items-center justify-between">
+            <Link href="/trades">
+              <Button variant="outline" size="lg" className="px-6 py-3">
+                <BarChart3 className="mr-2 h-5 w-5" />
+                View All Trades
+              </Button>
+            </Link>
             <Button onClick={handleSave} disabled={isSaving || !hasChanges} size="lg" className="px-6 py-3">
               {isSaving ? (
                 <>
@@ -1408,67 +1439,28 @@ function JournalPageContent() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-3">
-              {trades.map((trade) => (
-                <Card key={trade.id} className="hover:bg-muted/50 transition-colors">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <Badge
-                          variant={trade.side === "long" ? "default" : "secondary"}
-                          className={cn(
-                            "w-16 justify-center",
-                            trade.side === "long"
-                              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300"
-                              : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300"
-                          )}
-                        >
-                          {trade.side.toUpperCase()}
-                        </Badge>
-                        <div>
-                          <p className="font-semibold">{trade.symbol}</p>
-                          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                            <Clock className="h-3 w-3" />
-                            {format(new Date(trade.entry_date), "h:mm a")}
-                            {trade.exit_date && (
-                              <span>→ {format(new Date(trade.exit_date), "h:mm a")}</span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="text-sm text-muted-foreground">
-                            {trade.entry_contracts} contracts @ ${trade.entry_price}
-                          </p>
-                          {trade.status === "closed" && trade.net_pnl !== null && (
-                            <p className={cn(
-                              "font-bold text-lg",
-                              trade.net_pnl >= 0 ? "text-green-600" : "text-red-600"
-                            )}>
-                              {trade.net_pnl >= 0 ? "+" : ""}
-                              {trade.net_pnl.toLocaleString("en-US", { style: "currency", currency: "USD" })}
-                            </p>
-                          )}
-                          {trade.status === "open" && (
-                            <Badge variant="outline">Open</Badge>
-                          )}
-                        </div>
-                        <Link href={`/trades/${trade.id}`}>
-                          <Button variant="ghost" size="icon">
-                            <ExternalLink className="h-4 w-4" />
-                          </Button>
-                        </Link>
-                      </div>
-                    </div>
-                    {trade.notes && (
-                      <p className="mt-3 text-sm text-muted-foreground border-t pt-3">
-                        {trade.notes}
-                      </p>
-                    )}
-                  </CardContent>
-                </Card>
-              ))}
+            <div className="space-y-4">
+              {/* Header with Add Trade button */}
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-muted-foreground">
+                  {trades.length} trade{trades.length !== 1 ? "s" : ""} on {format(selectedDate, "MMMM d, yyyy")}
+                </p>
+                <Link href="/trades/new">
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Trade
+                  </Button>
+                </Link>
+              </div>
+
+              {/* Full Trade Table */}
+              <TradeTable
+                trades={trades}
+                onDelete={handleDeleteTrade}
+                pageSize={trades.length}
+                currentPage={1}
+                totalCount={trades.length}
+              />
             </div>
           )}
         </TabsContent>

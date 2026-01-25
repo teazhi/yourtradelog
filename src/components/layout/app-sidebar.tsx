@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
+  BookOpen,
   Calendar,
   Home,
   Layers,
@@ -42,6 +43,11 @@ const mainNavItems = [
     title: "Dashboard",
     url: "/dashboard",
     icon: Home,
+  },
+  {
+    title: "Journal",
+    url: "/journal",
+    icon: BookOpen,
   },
   {
     title: "Trades",
