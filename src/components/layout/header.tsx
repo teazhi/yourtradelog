@@ -84,7 +84,7 @@ export function Header() {
         <div className="flex items-center gap-2">
           <div className="h-8 w-8" />
           <Separator orientation="vertical" className="mr-2 h-4" />
-          <h1 className="text-lg font-semibold">Trading Journal</h1>
+          <h1 className="text-lg font-semibold">Welcome back!</h1>
         </div>
         <div className="flex items-center gap-2">
           <div className="h-8 w-8" />
@@ -94,12 +94,14 @@ export function Header() {
     );
   }
 
+  const greeting = user?.name ? `Welcome back, ${user.name}!` : "Welcome back!";
+
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <Separator orientation="vertical" className="mr-2 h-4" />
-        <h1 className="text-lg font-semibold">Trading Journal</h1>
+        <h1 className="text-lg font-semibold">{greeting}</h1>
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />

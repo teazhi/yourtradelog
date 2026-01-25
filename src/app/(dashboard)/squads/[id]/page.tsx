@@ -27,8 +27,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  Input,
-  Label,
   Avatar,
   AvatarFallback,
   AvatarImage,
@@ -36,19 +34,16 @@ import {
   Spinner,
   toast,
   cn,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   Separator,
 } from "@/components/ui";
+import {
+  CustomDialog,
+  CustomDialogContent,
+  CustomDialogDescription,
+  CustomDialogFooter,
+  CustomDialogHeader,
+  CustomDialogTitle,
+} from "@/components/ui/custom-dialog";
 import { createClient } from "@/lib/supabase/client";
 import { formatCurrency } from "@/lib/calculations/formatters";
 
@@ -78,6 +73,65 @@ interface Squad {
   invite_code: string;
   max_members: number;
   created_at: string;
+}
+
+// Custom Dropdown component to avoid Radix hydration issues
+function CustomDropdown({
+  trigger,
+  children,
+}: {
+  trigger: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const [isOpen, setIsOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <div onClick={() => setIsOpen(!isOpen)}>{trigger}</div>
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-48 rounded-lg border bg-popover p-1 shadow-lg z-50">
+          <div onClick={() => setIsOpen(false)}>{children}</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DropdownItem({
+  onClick,
+  children,
+  className,
+}: {
+  onClick?: () => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={cn(
+        "flex w-full items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer text-left",
+        className
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function DropdownSeparator() {
+  return <div className="border-t my-1" />;
 }
 
 export default function SquadDetailPage() {
@@ -214,11 +268,17 @@ export default function SquadDetailPage() {
     try {
       const supabase = createClient();
 
-      await supabase
+      const { error } = await supabase
         .from("squad_members")
         .delete()
         .eq("squad_id", squad.id)
         .eq("user_id", currentUserId);
+
+      if (error) {
+        console.error("Error leaving squad:", error);
+        toast.error("Failed to leave squad");
+        return;
+      }
 
       toast.success("You have left the squad");
       router.push("/squads");
@@ -346,36 +406,41 @@ export default function SquadDetailPage() {
         </div>
 
         {currentUserRole && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
+          <CustomDropdown
+            trigger={
               <Button variant="outline" size="icon">
                 <MoreVertical className="h-4 w-4" />
               </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {currentUserRole === "owner" && (
-                <>
-                  <DropdownMenuItem>
-                    <Settings className="h-4 w-4 mr-2" />
-                    Squad Settings
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                </>
-              )}
-              {currentUserRole !== "owner" && (
-                <DropdownMenuItem onClick={() => setIsLeaveDialogOpen(true)} className="text-red-600">
-                  <LogOut className="h-4 w-4 mr-2" />
-                  Leave Squad
-                </DropdownMenuItem>
-              )}
-              {currentUserRole === "owner" && (
-                <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-red-600">
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete Squad
-                </DropdownMenuItem>
-              )}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            }
+          >
+            {currentUserRole === "owner" && (
+              <>
+                <DropdownItem>
+                  <Settings className="h-4 w-4" />
+                  Squad Settings
+                </DropdownItem>
+                <DropdownSeparator />
+              </>
+            )}
+            {currentUserRole !== "owner" && (
+              <DropdownItem
+                onClick={() => setIsLeaveDialogOpen(true)}
+                className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+              >
+                <LogOut className="h-4 w-4" />
+                Leave Squad
+              </DropdownItem>
+            )}
+            {currentUserRole === "owner" && (
+              <DropdownItem
+                onClick={() => setIsDeleteDialogOpen(true)}
+                className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+              >
+                <Trash2 className="h-4 w-4" />
+                Delete Squad
+              </DropdownItem>
+            )}
+          </CustomDropdown>
         )}
       </div>
 
@@ -487,28 +552,27 @@ export default function SquadDetailPage() {
                       {formatCurrency(member.stats?.total_pnl || 0)}
                     </span>
                     {isOwnerOrAdmin && member.user_id !== currentUserId && member.role !== "owner" && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      <CustomDropdown
+                        trigger={
                           <Button variant="ghost" size="icon">
                             <MoreVertical className="h-4 w-4" />
                           </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          {currentUserRole === "owner" && member.role === "member" && (
-                            <DropdownMenuItem onClick={() => handlePromoteToAdmin(member.id)}>
-                              <Shield className="h-4 w-4 mr-2" />
-                              Promote to Admin
-                            </DropdownMenuItem>
-                          )}
-                          <DropdownMenuItem
-                            onClick={() => handleRemoveMember(member.id, member.user_id)}
-                            className="text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Remove from Squad
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        }
+                      >
+                        {currentUserRole === "owner" && member.role === "member" && (
+                          <DropdownItem onClick={() => handlePromoteToAdmin(member.id)}>
+                            <Shield className="h-4 w-4" />
+                            Promote to Admin
+                          </DropdownItem>
+                        )}
+                        <DropdownItem
+                          onClick={() => handleRemoveMember(member.id, member.user_id)}
+                          className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                          Remove from Squad
+                        </DropdownItem>
+                      </CustomDropdown>
                     )}
                   </div>
                 </div>
@@ -519,44 +583,44 @@ export default function SquadDetailPage() {
       </Card>
 
       {/* Leave Squad Dialog */}
-      <Dialog open={isLeaveDialogOpen} onOpenChange={setIsLeaveDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Leave Squad</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to leave {squad.name}? You'll need an invite code to rejoin.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+      <CustomDialog open={isLeaveDialogOpen} onOpenChange={setIsLeaveDialogOpen}>
+        <CustomDialogContent>
+          <CustomDialogHeader>
+            <CustomDialogTitle>Leave Squad</CustomDialogTitle>
+            <CustomDialogDescription>
+              Are you sure you want to leave {squad.name}? You&apos;ll need an invite code to rejoin.
+            </CustomDialogDescription>
+          </CustomDialogHeader>
+          <CustomDialogFooter>
             <Button variant="outline" onClick={() => setIsLeaveDialogOpen(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleLeaveSquad}>
               Leave Squad
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CustomDialogFooter>
+        </CustomDialogContent>
+      </CustomDialog>
 
       {/* Delete Squad Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Squad</DialogTitle>
-            <DialogDescription>
+      <CustomDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <CustomDialogContent>
+          <CustomDialogHeader>
+            <CustomDialogTitle>Delete Squad</CustomDialogTitle>
+            <CustomDialogDescription>
               Are you sure you want to delete {squad.name}? This action cannot be undone and all members will be removed.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
+            </CustomDialogDescription>
+          </CustomDialogHeader>
+          <CustomDialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
             <Button variant="destructive" onClick={handleDeleteSquad}>
               Delete Squad
             </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </CustomDialogFooter>
+        </CustomDialogContent>
+      </CustomDialog>
     </div>
   );
 }

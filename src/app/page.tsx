@@ -120,7 +120,7 @@ export default function LandingPage() {
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
             </span>
-            <span>Now with Squad Challenges & Leaderboards</span>
+            <span>Now with Squad Challenges & Social Feed</span>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl">
@@ -236,7 +236,7 @@ export default function LandingPage() {
                 <div className="absolute -right-4 top-1/3 rounded-xl border bg-card p-3 shadow-lg">
                   <div className="flex items-center gap-2">
                     <Trophy className="h-5 w-5 text-yellow-500" />
-                    <span className="font-medium text-sm">#3 on Leaderboard</span>
+                    <span className="font-medium text-sm">5 Day Win Streak!</span>
                   </div>
                 </div>
               </FloatingCard>
@@ -351,8 +351,8 @@ export default function LandingPage() {
               },
               {
                 icon: Trophy,
-                title: "Leaderboards",
-                description: "Compete on global leaderboards. See how you rank against traders worldwide.",
+                title: "Achievements",
+                description: "Earn badges and track milestones. Celebrate your trading wins and streaks.",
                 color: "yellow",
               },
               {
@@ -481,7 +481,7 @@ export default function LandingPage() {
                   "Advanced analytics",
                   "Risk management tools",
                   "Squad access",
-                  "Leaderboard access",
+                  "Social feed",
                   "Priority support",
                 ].map((feature) => (
                   <li key={feature} className="flex items-center gap-2 text-sm">

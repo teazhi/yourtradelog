@@ -13,10 +13,12 @@ import {
   Shield,
   Upload,
   Users,
-  Trophy,
   Rss,
   UserCircle,
   LogOut,
+  Trophy,
+  Target,
+  Handshake,
 } from "lucide-react";
 import { Logo } from "@/components/ui/logo";
 import {
@@ -80,14 +82,27 @@ const socialNavItems = [
     icon: Rss,
   },
   {
-    title: "Leaderboard",
-    url: "/leaderboard",
-    icon: Trophy,
-  },
-  {
     title: "Squads",
     url: "/squads",
     icon: Users,
+  },
+];
+
+const progressNavItems = [
+  {
+    title: "Achievements",
+    url: "/achievements",
+    icon: Trophy,
+  },
+  {
+    title: "Challenges",
+    url: "/challenges",
+    icon: Target,
+  },
+  {
+    title: "Partner",
+    url: "/partner",
+    icon: Handshake,
   },
 ];
 
@@ -138,6 +153,30 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {mainNavItems.map((item) => {
+                const isActive =
+                  pathname === item.url ||
+                  (item.url !== "/" && pathname.startsWith(item.url));
+                return (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild isActive={isActive}>
+                      <Link href={item.url}>
+                        <item.icon className="h-4 w-4" />
+                        <span>{item.title}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        {/* Progress & Gamification */}
+        <SidebarGroup>
+          <SidebarGroupLabel>Progress</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {progressNavItems.map((item) => {
                 const isActive =
                   pathname === item.url ||
                   (item.url !== "/" && pathname.startsWith(item.url));
