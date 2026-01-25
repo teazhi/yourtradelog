@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   BarChart3,
   BookOpen,
@@ -19,9 +19,16 @@ import {
   Trophy,
   Rss,
   User,
+  Target,
+  Handshake,
+  LogOut,
+  ChevronDown,
+  UserCircle,
 } from "lucide-react";
 import { Button, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
+import { Logo } from "@/components/ui/logo";
+import { createClient } from "@/lib/supabase/client";
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
@@ -34,14 +41,19 @@ const navigationItems = [
   { title: "Import", url: "/import", icon: Upload },
 ];
 
+const progressItems = [
+  { title: "Achievements", url: "/achievements", icon: Trophy },
+  { title: "Challenges", url: "/challenges", icon: Target },
+  { title: "Partner", url: "/partner", icon: Handshake },
+];
+
 const socialItems = [
   { title: "Feed", url: "/feed", icon: Rss },
   { title: "Squads", url: "/squads", icon: Users },
-  { title: "Leaderboard", url: "/leaderboard", icon: Trophy },
-  { title: "Profile", url: "/profile", icon: User },
 ];
 
-const settingsItems = [
+const accountItems = [
+  { title: "Profile", url: "/profile", icon: User },
   { title: "Settings", url: "/settings", icon: Settings },
 ];
 
@@ -51,8 +63,112 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [mobileOpen, setMobileOpen] = React.useState(false);
+  const [user, setUser] = React.useState<{ email?: string; name?: string } | null>(null);
+  const [isLoading, setIsLoading] = React.useState(false);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Fetch user data
+  React.useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from("profiles")
+            .select("display_name, avatar_url")
+            .eq("id", user.id)
+            .single();
+
+          const profileData = profile as { display_name?: string; avatar_url?: string } | null;
+          setUser({
+            email: user.email,
+            name: profileData?.display_name || user.email?.split("@")[0] || "User",
+          });
+        }
+      } catch (error) {
+        console.log("Could not fetch user:", error);
+      }
+    };
+
+    fetchUser();
+  }, []);
+
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSignOut = async () => {
+    setIsLoading(true);
+    setDropdownOpen(false);
+    try {
+      const supabase = createClient();
+      await supabase.auth.signOut();
+      router.push("/login");
+      router.refresh();
+    } catch (error) {
+      console.error("Error signing out:", error);
+      router.push("/login");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const greeting = user?.name ? `Welcome back, ${user.name}!` : "Welcome back!";
+
+  const renderNavSection = (
+    items: typeof navigationItems,
+    label: string,
+    showLabel: boolean,
+    onItemClick?: () => void
+  ) => (
+    <>
+      {showLabel && (
+        <div className="mt-6 mb-2 px-3">
+          <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+            {label}
+          </span>
+        </div>
+      )}
+      {!showLabel && sidebarOpen && <div className="my-4 border-t border-border" />}
+      <ul className="space-y-1">
+        {items.map((item) => {
+          const isActive =
+            pathname === item.url ||
+            (item.url !== "/dashboard" && pathname.startsWith(item.url));
+          return (
+            <li key={item.title}>
+              <Link
+                href={item.url}
+                onClick={onItemClick}
+                className={cn(
+                  "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                  isActive
+                    ? "bg-primary text-primary-foreground"
+                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                )}
+              >
+                <item.icon className="h-4 w-4 shrink-0" />
+                {(sidebarOpen || onItemClick) && <span>{item.title}</span>}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </>
+  );
 
   return (
     <div className="flex h-screen overflow-hidden">
@@ -66,11 +182,8 @@ export default function DashboardLayout({
         {/* Sidebar Header */}
         <div className="flex h-16 items-center justify-between border-b border-border px-4">
           {sidebarOpen && (
-            <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <BarChart3 className="h-4 w-4" />
-              </div>
-              <span className="font-semibold">TradingLog</span>
+            <Link href="/dashboard">
+              <Logo size="sm" />
             </Link>
           )}
           <Button
@@ -91,6 +204,38 @@ export default function DashboardLayout({
               const isActive =
                 pathname === item.url ||
                 (item.url !== "/dashboard" && pathname.startsWith(item.url));
+              return (
+                <li key={item.title}>
+                  <Link
+                    href={item.url}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    {sidebarOpen && <span>{item.title}</span>}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Progress Section */}
+          {sidebarOpen && (
+            <div className="mt-6 mb-2 px-3">
+              <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Progress
+              </span>
+            </div>
+          )}
+          {!sidebarOpen && <div className="my-4 border-t border-border" />}
+          <ul className="space-y-1">
+            {progressItems.map((item) => {
+              const isActive =
+                pathname === item.url || pathname.startsWith(item.url);
               return (
                 <li key={item.title}>
                   <Link
@@ -142,17 +287,17 @@ export default function DashboardLayout({
             })}
           </ul>
 
-          {/* Settings */}
+          {/* Account Section */}
           {sidebarOpen && (
             <div className="mt-6 mb-2 px-3">
               <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                Settings
+                Account
               </span>
             </div>
           )}
           {!sidebarOpen && <div className="my-4 border-t border-border" />}
           <ul className="space-y-1">
-            {settingsItems.map((item) => {
+            {accountItems.map((item) => {
               const isActive = pathname === item.url;
               return (
                 <li key={item.title}>
@@ -174,12 +319,20 @@ export default function DashboardLayout({
           </ul>
         </nav>
 
-        {/* Sidebar Footer */}
-        {sidebarOpen && (
-          <div className="border-t border-border p-4">
-            <p className="text-xs text-muted-foreground">TradingLog v0.1.0</p>
-          </div>
-        )}
+        {/* Sidebar Footer with Logout */}
+        <div className="border-t border-border p-4">
+          <button
+            onClick={handleSignOut}
+            disabled={isLoading}
+            className={cn(
+              "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full",
+              "text-red-600 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-50"
+            )}
+          >
+            <LogOut className="h-4 w-4 shrink-0" />
+            {sidebarOpen && <span>{isLoading ? "Signing out..." : "Sign out"}</span>}
+          </button>
+        </div>
       </aside>
 
       {/* Mobile Sidebar Overlay */}
@@ -199,11 +352,8 @@ export default function DashboardLayout({
       >
         {/* Mobile Sidebar Header */}
         <div className="flex h-16 items-center justify-between border-b border-border px-4">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <BarChart3 className="h-4 w-4" />
-            </div>
-            <span className="font-semibold">TradingLog</span>
+          <Link href="/dashboard">
+            <Logo size="sm" />
           </Link>
           <Button
             variant="ghost"
@@ -222,6 +372,36 @@ export default function DashboardLayout({
               const isActive =
                 pathname === item.url ||
                 (item.url !== "/dashboard" && pathname.startsWith(item.url));
+              return (
+                <li key={item.title}>
+                  <Link
+                    href={item.url}
+                    onClick={() => setMobileOpen(false)}
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      isActive
+                        ? "bg-primary text-primary-foreground"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <item.icon className="h-4 w-4" />
+                    <span>{item.title}</span>
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+
+          {/* Progress Section */}
+          <div className="mt-6 mb-2 px-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+              Progress
+            </span>
+          </div>
+          <ul className="space-y-1">
+            {progressItems.map((item) => {
+              const isActive =
+                pathname === item.url || pathname.startsWith(item.url);
               return (
                 <li key={item.title}>
                   <Link
@@ -272,14 +452,14 @@ export default function DashboardLayout({
             })}
           </ul>
 
-          {/* Settings */}
+          {/* Account Section */}
           <div className="mt-6 mb-2 px-3">
             <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-              Settings
+              Account
             </span>
           </div>
           <ul className="space-y-1">
-            {settingsItems.map((item) => {
+            {accountItems.map((item) => {
               const isActive = pathname === item.url;
               return (
                 <li key={item.title}>
@@ -301,6 +481,18 @@ export default function DashboardLayout({
             })}
           </ul>
         </nav>
+
+        {/* Mobile Sidebar Footer with Logout */}
+        <div className="border-t border-border p-4">
+          <button
+            onClick={handleSignOut}
+            disabled={isLoading}
+            className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors w-full text-red-600 hover:bg-red-50 dark:hover:bg-red-950 disabled:opacity-50"
+          >
+            <LogOut className="h-4 w-4" />
+            <span>{isLoading ? "Signing out..." : "Sign out"}</span>
+          </button>
+        </div>
       </aside>
 
       {/* Main Content */}
@@ -316,10 +508,64 @@ export default function DashboardLayout({
             >
               <Menu className="h-4 w-4" />
             </Button>
-            <h1 className="text-lg font-semibold">Trading Journal</h1>
+            <h1 className="text-lg font-semibold">{greeting}</h1>
           </div>
           <div className="flex items-center gap-2">
             <ThemeToggle />
+
+            {/* User Dropdown */}
+            <div className="relative" ref={dropdownRef}>
+              <Button
+                variant="ghost"
+                className="relative h-9 flex items-center gap-2 rounded-full px-2"
+                onClick={() => setDropdownOpen(!dropdownOpen)}
+              >
+                <div className="h-7 w-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
+                  <User className="h-4 w-4 text-white" />
+                </div>
+                <ChevronDown className={`h-4 w-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+              </Button>
+
+              {dropdownOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border bg-popover p-1 shadow-lg z-50">
+                  {/* User Info */}
+                  <div className="px-3 py-2 border-b mb-1">
+                    <p className="text-sm font-medium">{user?.name || "User"}</p>
+                    <p className="text-xs text-muted-foreground">{user?.email || "user@example.com"}</p>
+                  </div>
+
+                  {/* Menu Items */}
+                  <Link
+                    href="/profile"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer"
+                  >
+                    <UserCircle className="h-4 w-4" />
+                    Profile
+                  </Link>
+                  <Link
+                    href="/settings"
+                    onClick={() => setDropdownOpen(false)}
+                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Settings
+                  </Link>
+
+                  <div className="border-t my-1" />
+
+                  {/* Sign Out */}
+                  <button
+                    onClick={handleSignOut}
+                    disabled={isLoading}
+                    className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-red-50 dark:hover:bg-red-950 text-red-600 w-full cursor-pointer disabled:opacity-50"
+                  >
+                    <LogOut className="h-4 w-4" />
+                    {isLoading ? "Signing out..." : "Sign out"}
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </header>
 
