@@ -1002,15 +1002,15 @@ function JournalPageContent() {
 
           {/* Save Button */}
           <div className="flex justify-end">
-            <Button onClick={handleSave} disabled={isSaving || !hasChanges} size="lg">
+            <Button onClick={handleSave} disabled={isSaving || !hasChanges} size="lg" className="px-8 py-6 text-lg">
               {isSaving ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                   Saving...
                 </>
               ) : (
                 <>
-                  <Save className="mr-2 h-4 w-4" />
+                  <Save className="mr-2 h-5 w-5" />
                   Save Weekly Review
                 </>
               )}
