@@ -242,16 +242,23 @@ function JournalPageContent() {
   const searchParams = useSearchParams();
   const dateParam = searchParams.get("date");
 
-  const [selectedDate, setSelectedDate] = React.useState<Date>(() => {
+  // Initialize with today's date
+  const [selectedDate, setSelectedDate] = React.useState<Date>(() => startOfDay(new Date()));
+
+  // Update selectedDate when URL param changes
+  React.useEffect(() => {
     if (dateParam) {
       try {
-        return startOfDay(parseISO(dateParam));
+        const parsedDate = startOfDay(parseISO(dateParam));
+        setSelectedDate(parsedDate);
       } catch {
-        return startOfDay(new Date());
+        // Invalid date, keep current
       }
+    } else {
+      // No date param, use today
+      setSelectedDate(startOfDay(new Date()));
     }
-    return startOfDay(new Date());
-  });
+  }, [dateParam]);
   const [journal, setJournal] = React.useState<JournalData | null>(null);
   const [trades, setTrades] = React.useState<Trade[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
@@ -296,7 +303,6 @@ function JournalPageContent() {
   // Fetch journal and trades for selected date
   React.useEffect(() => {
     async function fetchData() {
-      console.log("Fetching data for dateKey:", dateKey, "isSaturday:", isSaturday(new Date(dateKey)));
       setIsLoading(true);
       try {
         const supabase = createClient();
