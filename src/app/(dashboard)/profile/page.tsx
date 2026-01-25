@@ -212,8 +212,32 @@ export default function ProfilePage() {
     }
   };
 
-  const updateProfile = (field: keyof SocialProfile, value: unknown) => {
+  const updateProfile = async (field: keyof SocialProfile, value: unknown) => {
     setProfile(prev => ({ ...prev, [field]: value }));
+
+    // Auto-save privacy settings immediately
+    const privacyFields = ['is_public', 'show_pnl', 'show_stats', 'anonymous_mode', 'is_mentor'];
+    if (privacyFields.includes(field)) {
+      try {
+        const supabase = createClient();
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { error } = await (supabase
+            .from("profiles") as any)
+            .update({ [field]: value, updated_at: new Date().toISOString() })
+            .eq("id", user.id);
+
+          if (error) {
+            console.error("Error auto-saving:", error);
+            toast.error("Failed to save setting");
+          } else {
+            toast.success("Setting saved");
+          }
+        }
+      } catch (err) {
+        console.error("Exception auto-saving:", err);
+      }
+    }
   };
 
   const toggleInstrument = (symbol: string) => {

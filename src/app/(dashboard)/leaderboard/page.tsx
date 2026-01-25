@@ -176,8 +176,15 @@ export default function LeaderboardPage() {
       for (const trade of (trades || []) as any[]) {
         const profile = profileMap[trade.user_id];
 
-        // Only include users with public profiles or show_stats enabled
-        if (!profile?.is_public && !profile?.show_stats) continue;
+        // Include users who have:
+        // 1. is_public = true (they want to be visible), OR
+        // 2. show_stats = true (they want stats shown, default is true), OR
+        // 3. show_stats is null/undefined (default behavior - show on leaderboard)
+        // Only exclude if explicitly set is_public=false AND show_stats=false
+        const isPublic = profile?.is_public === true;
+        const showStats = profile?.show_stats !== false; // true if true, null, or undefined
+
+        if (!isPublic && !showStats) continue;
 
         if (!userStats[trade.user_id]) {
           userStats[trade.user_id] = {

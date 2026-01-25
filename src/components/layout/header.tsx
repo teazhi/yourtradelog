@@ -3,18 +3,9 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { LogOut, User, Settings, UserCircle } from "lucide-react";
+import { LogOut, User, Settings, UserCircle, ChevronDown } from "lucide-react";
 import {
-  Avatar,
-  AvatarFallback,
-  AvatarImage,
   Button,
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
   SidebarTrigger,
   Separator,
 } from "@/components/ui";
@@ -25,6 +16,13 @@ export function Header() {
   const router = useRouter();
   const [user, setUser] = React.useState<{ email?: string; name?: string } | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [isOpen, setIsOpen] = React.useState(false);
+  const [mounted, setMounted] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    setMounted(true);
+  }, []);
 
   React.useEffect(() => {
     const fetchUser = async () => {
@@ -32,7 +30,6 @@ export function Header() {
         const supabase = createClient();
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          // Try to get profile data
           const { data: profile } = await supabase
             .from("profiles")
             .select("display_name, avatar_url")
@@ -46,7 +43,6 @@ export function Header() {
           });
         }
       } catch (error) {
-        // Supabase not configured or error fetching user
         console.log("Could not fetch user:", error);
       }
     };
@@ -54,8 +50,21 @@ export function Header() {
     fetchUser();
   }, []);
 
+  // Close dropdown when clicking outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const handleSignOut = async () => {
     setIsLoading(true);
+    setIsOpen(false);
     try {
       const supabase = createClient();
       await supabase.auth.signOut();
@@ -63,12 +72,27 @@ export function Header() {
       router.refresh();
     } catch (error) {
       console.error("Error signing out:", error);
-      // Fallback: just redirect to login
       router.push("/login");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (!mounted) {
+    return (
+      <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4">
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <h1 className="text-lg font-semibold">Trading Journal</h1>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="h-8 w-8" />
+          <div className="h-8 w-8 rounded-full bg-muted" />
+        </div>
+      </header>
+    );
+  }
 
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4">
@@ -79,52 +103,60 @@ export function Header() {
       </div>
       <div className="flex items-center gap-2">
         <ThemeToggle />
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-              <Avatar className="h-8 w-8">
-                <AvatarImage src="" alt="User" />
-                <AvatarFallback>
-                  <User className="h-4 w-4" />
-                </AvatarFallback>
-              </Avatar>
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">
-                  {user?.name || "User"}
-                </p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {user?.email || "user@example.com"}
-                </p>
+
+        {/* Custom Dropdown */}
+        <div className="relative" ref={dropdownRef}>
+          <Button
+            variant="ghost"
+            className="relative h-9 flex items-center gap-2 rounded-full px-2"
+            onClick={() => setIsOpen(!isOpen)}
+          >
+            <div className="h-7 w-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
+              <User className="h-4 w-4 text-white" />
+            </div>
+            <ChevronDown className={`h-4 w-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
+          </Button>
+
+          {isOpen && (
+            <div className="absolute right-0 top-full mt-2 w-56 rounded-lg border bg-popover p-1 shadow-lg z-50">
+              {/* User Info */}
+              <div className="px-3 py-2 border-b mb-1">
+                <p className="text-sm font-medium">{user?.name || "User"}</p>
+                <p className="text-xs text-muted-foreground">{user?.email || "user@example.com"}</p>
               </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem asChild>
-              <Link href="/profile" className="cursor-pointer">
-                <UserCircle className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+
+              {/* Menu Items */}
+              <Link
+                href="/profile"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer"
+              >
+                <UserCircle className="h-4 w-4" />
+                Profile
               </Link>
-            </DropdownMenuItem>
-            <DropdownMenuItem asChild>
-              <Link href="/settings" className="cursor-pointer">
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+              <Link
+                href="/settings"
+                onClick={() => setIsOpen(false)}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-accent cursor-pointer"
+              >
+                <Settings className="h-4 w-4" />
+                Settings
               </Link>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={handleSignOut}
-              disabled={isLoading}
-              className="cursor-pointer text-red-600 focus:text-red-600"
-            >
-              <LogOut className="mr-2 h-4 w-4" />
-              <span>{isLoading ? "Signing out..." : "Sign out"}</span>
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+
+              <div className="border-t my-1" />
+
+              {/* Sign Out */}
+              <button
+                onClick={handleSignOut}
+                disabled={isLoading}
+                className="flex items-center gap-2 px-3 py-2 text-sm rounded-md hover:bg-red-50 dark:hover:bg-red-950 text-red-600 w-full cursor-pointer disabled:opacity-50"
+              >
+                <LogOut className="h-4 w-4" />
+                {isLoading ? "Signing out..." : "Sign out"}
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

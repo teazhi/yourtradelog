@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useState, useEffect } from "react";
 import {
-  TrendingUp,
   BarChart3,
   Target,
   Shield,
@@ -21,6 +20,7 @@ import {
   Activity,
 } from "lucide-react";
 import { Button } from "@/components/ui";
+import { Logo, LogoIcon } from "@/components/ui/logo";
 
 // Animated counter component
 function AnimatedCounter({ end, duration = 2000, suffix = "" }: { end: number; duration?: number; suffix?: string }) {
@@ -86,12 +86,7 @@ export default function LandingPage() {
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/80 backdrop-blur-lg">
         <div className="container px-4 sm:px-6 lg:px-8 mx-auto flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
-              <TrendingUp className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-bold">YourTradeLog</span>
-          </div>
+          <Logo size="md" />
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it Works</a>
@@ -227,7 +222,7 @@ export default function LandingPage() {
                 <div className="absolute -left-8 top-1/4 rounded-xl border bg-card p-3 shadow-lg">
                   <div className="flex items-center gap-2">
                     <div className="h-8 w-8 rounded-full bg-green-500/10 flex items-center justify-center">
-                      <TrendingUp className="h-4 w-4 text-green-500" />
+                      <LogoIcon size={16} />
                     </div>
                     <div>
                       <div className="text-xs text-muted-foreground">Today&apos;s P&L</div>
@@ -627,11 +622,8 @@ export default function LandingPage() {
         <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-green-500 to-emerald-600">
-                  <TrendingUp className="h-4 w-4 text-white" />
-                </div>
-                <span className="text-lg font-bold">YourTradeLog</span>
+              <div className="mb-4">
+                <Logo size="sm" />
               </div>
               <p className="text-sm text-muted-foreground">
                 The professional trading journal for serious traders.
