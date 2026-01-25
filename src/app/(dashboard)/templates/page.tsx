@@ -307,7 +307,8 @@ function TemplateEditor({
       const { data: { user } } = await supabase.auth.getUser();
 
       if (!user) {
-        toast("You must be logged in to save");
+        toast.error("You must be logged in to save");
+        setIsSaving(false);
         return;
       }
 
@@ -315,18 +316,25 @@ function TemplateEditor({
       const content = buildFormattedContent();
 
       if (!content) {
-        toast("Please fill out at least one section");
+        toast.error("Please fill out at least one section");
+        setIsSaving(false);
         return;
       }
 
       // Check if journal entry exists for today
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { data: existing } = await (supabase
+      const { data: existing, error: fetchError } = await (supabase
         .from("daily_journals") as any)
         .select("id, pre_market_notes, post_market_notes")
         .eq("user_id", user.id)
         .eq("date", today)
         .single();
+
+      // Ignore "no rows" error as that's expected for new entries
+      if (fetchError && fetchError.code !== "PGRST116") {
+        console.error("Error fetching existing journal:", fetchError);
+        throw fetchError;
+      }
 
       const updateField = template.targetField;
       const existingContent = existing?.[updateField] || "";
@@ -342,23 +350,32 @@ function TemplateEditor({
           .update({ [updateField]: newContent })
           .eq("id", existing.id);
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error updating journal:", error);
+          throw error;
+        }
       } else {
         // Create new journal
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { error } = await (supabase
+        const { data: newJournal, error } = await (supabase
           .from("daily_journals") as any)
           .insert({
             user_id: user.id,
             date: today,
             [updateField]: newContent,
-          });
+          })
+          .select()
+          .single();
 
-        if (error) throw error;
+        if (error) {
+          console.error("Error creating journal:", error);
+          throw error;
+        }
+        console.log("Created new journal:", newJournal);
       }
 
       setSaved(true);
-      toast("Saved to today's journal!");
+      toast.success("Saved to today's journal!");
 
       // Redirect to journal after short delay
       setTimeout(() => {
@@ -367,7 +384,7 @@ function TemplateEditor({
 
     } catch (error) {
       console.error("Error saving to journal:", error);
-      toast("Failed to save. Please try again.");
+      toast.error("Failed to save. Please try again.");
     } finally {
       setIsSaving(false);
     }
