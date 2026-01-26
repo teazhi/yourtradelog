@@ -175,16 +175,16 @@ export default function DashboardPage() {
       <DailyPnL data={dailyPnL} />
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Equity Chart */}
-        <EquityChart data={equityCurve} />
+      <div className="grid gap-6 lg:grid-cols-2 items-start">
+        {/* Left Column: Equity Chart + Position Sizer */}
+        <div className="flex flex-col gap-6">
+          <EquityChart data={equityCurve} />
+          <PositionSizer />
+        </div>
 
         {/* Recent Trades */}
         <RecentTrades trades={recentTrades} />
       </div>
-
-      {/* Position Sizer Tool */}
-      <PositionSizer />
     </div>
   );
 }

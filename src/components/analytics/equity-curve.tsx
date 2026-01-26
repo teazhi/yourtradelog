@@ -35,18 +35,22 @@ interface CustomTooltipProps {
 }
 
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
-  if (active && payload && payload.length) {
-    const date = new Date(label || "");
+  if (active && payload && payload.length && label) {
+    // Parse YYYY-MM-DD format correctly without timezone issues
+    const [year, month, day] = label.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     const formattedDate = date.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
     });
+    const value = payload[0].value;
+    const isPositive = value >= 0;
     return (
-      <div className="rounded-lg border bg-background p-3 shadow-md">
+      <div className="rounded-lg border bg-popover text-popover-foreground p-3 shadow-md">
         <p className="text-sm font-medium">{formattedDate}</p>
-        <p className="text-lg font-bold text-primary">
-          {formatCurrency(payload[0].value)}
+        <p className={`text-lg font-bold ${isPositive ? "text-green-500" : "text-red-500"}`}>
+          {isPositive ? "+" : ""}{formatCurrency(value)}
         </p>
       </div>
     );
@@ -94,8 +98,8 @@ export function EquityCurve({ data = [] }: EquityCurveProps) {
           <span>cumulative P&L</span>
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="h-[300px] w-full">
+      <CardContent className="pb-4">
+        <div className="h-[250px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart
               data={data}
@@ -128,8 +132,9 @@ export function EquityCurve({ data = [] }: EquityCurveProps) {
               <XAxis
                 dataKey="date"
                 tickFormatter={(value) => {
-                  const date = new Date(value);
-                  return `${date.getMonth() + 1}/${date.getDate()}`;
+                  // Parse YYYY-MM-DD format correctly without timezone issues
+                  const [year, month, day] = value.split('-').map(Number);
+                  return `${month}/${day}`;
                 }}
                 tickLine={false}
                 axisLine={false}

@@ -103,8 +103,9 @@ export function DailyPnL({ data = [] }: DailyPnLProps) {
               <XAxis
                 dataKey="date"
                 tickFormatter={(value) => {
-                  const date = new Date(value);
-                  return `${date.getMonth() + 1}/${date.getDate()}`;
+                  // Parse YYYY-MM-DD format correctly without timezone issues
+                  const [year, month, day] = value.split('-').map(Number);
+                  return `${month}/${day}`;
                 }}
                 axisLine={false}
                 tickLine={false}
@@ -120,7 +121,9 @@ export function DailyPnL({ data = [] }: DailyPnLProps) {
               <Tooltip
                 formatter={(value) => [formatCurrency(value as number), "P&L"]}
                 labelFormatter={(label) => {
-                  const date = new Date(label);
+                  // Parse YYYY-MM-DD format correctly without timezone issues
+                  const [year, month, day] = label.split('-').map(Number);
+                  const date = new Date(year, month - 1, day);
                   return date.toLocaleDateString("en-US", {
                     weekday: "short",
                     month: "short",
@@ -128,10 +131,21 @@ export function DailyPnL({ data = [] }: DailyPnLProps) {
                   });
                 }}
                 contentStyle={{
-                  backgroundColor: "hsl(var(--background))",
+                  backgroundColor: "hsl(var(--popover))",
                   border: "1px solid hsl(var(--border))",
-                  borderRadius: "6px",
+                  borderRadius: "8px",
+                  boxShadow: "0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1)",
+                  padding: "8px 12px",
                 }}
+                labelStyle={{
+                  color: "hsl(var(--popover-foreground))",
+                  fontWeight: 600,
+                  marginBottom: "4px",
+                }}
+                itemStyle={{
+                  color: "hsl(var(--popover-foreground))",
+                }}
+                cursor={{ fill: "hsl(var(--muted))", opacity: 0.3 }}
               />
               <ReferenceLine y={0} stroke="hsl(var(--border))" />
               <Bar dataKey="pnl" radius={[4, 4, 0, 0]}>

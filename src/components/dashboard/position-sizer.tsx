@@ -19,7 +19,7 @@ interface PositionSizerProps {
 }
 
 export function PositionSizer({ defaultAccountSize = 10000 }: PositionSizerProps) {
-  const [isExpanded, setIsExpanded] = React.useState(false);
+  const [isExpanded, setIsExpanded] = React.useState(true);
   const [accountSize, setAccountSize] = React.useState(defaultAccountSize);
   const [riskPercent, setRiskPercent] = React.useState(1);
   const [entryPrice, setEntryPrice] = React.useState<number | "">("");
@@ -71,48 +71,46 @@ export function PositionSizer({ defaultAccountSize = 10000 }: PositionSizerProps
       </CardHeader>
 
       {isExpanded && (
-        <CardContent className="pt-0">
-          <div className="grid gap-4 md:grid-cols-2">
+        <CardContent className="pt-0 pb-3">
+          <div className="grid gap-3 md:grid-cols-2">
             {/* Input Section */}
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="account" className="text-xs">Account Size</Label>
-                <div className="relative">
-                  <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="account"
-                    type="number"
-                    value={accountSize}
-                    onChange={(e) => setAccountSize(Number(e.target.value) || 0)}
-                    className="pl-9"
-                    placeholder="10000"
-                  />
+            <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="account" className="text-xs">Account Size</Label>
+                  <div className="relative">
+                    <DollarSign className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                    <Input
+                      id="account"
+                      type="number"
+                      value={accountSize}
+                      onChange={(e) => setAccountSize(Number(e.target.value) || 0)}
+                      className="pl-7 h-8 text-sm"
+                      placeholder="10000"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="risk" className="text-xs">Risk % <span className="text-muted-foreground">(${riskAmount.toFixed(0)})</span></Label>
+                  <div className="relative">
+                    <Percent className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                    <Input
+                      id="risk"
+                      type="number"
+                      value={riskPercent}
+                      onChange={(e) => setRiskPercent(Number(e.target.value) || 0)}
+                      className="pl-7 h-8 text-sm"
+                      placeholder="1"
+                      step="0.5"
+                      min="0.1"
+                      max="10"
+                    />
+                  </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="risk" className="text-xs">Risk Per Trade (%)</Label>
-                <div className="relative">
-                  <Percent className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    id="risk"
-                    type="number"
-                    value={riskPercent}
-                    onChange={(e) => setRiskPercent(Number(e.target.value) || 0)}
-                    className="pl-9"
-                    placeholder="1"
-                    step="0.5"
-                    min="0.1"
-                    max="10"
-                  />
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Risk amount: ${riskAmount.toFixed(2)}
-                </p>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
                   <Label htmlFor="entry" className="text-xs">Entry Price</Label>
                   <Input
                     id="entry"
@@ -121,9 +119,10 @@ export function PositionSizer({ defaultAccountSize = 10000 }: PositionSizerProps
                     onChange={(e) => setEntryPrice(e.target.value ? Number(e.target.value) : "")}
                     placeholder="0.00"
                     step="0.01"
+                    className="h-8 text-sm"
                   />
                 </div>
-                <div className="space-y-2">
+                <div className="space-y-1">
                   <Label htmlFor="stop" className="text-xs">Stop Loss</Label>
                   <Input
                     id="stop"
@@ -132,51 +131,44 @@ export function PositionSizer({ defaultAccountSize = 10000 }: PositionSizerProps
                     onChange={(e) => setStopLoss(e.target.value ? Number(e.target.value) : "")}
                     placeholder="0.00"
                     step="0.01"
+                    className="h-8 text-sm"
                   />
                 </div>
               </div>
             </div>
 
             {/* Results Section */}
-            <div className="bg-muted/50 rounded-lg p-4">
-              <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Position Calculation
+            <div className="bg-muted/50 rounded-lg p-3">
+              <h4 className="font-medium text-xs mb-2 flex items-center gap-1">
+                <Target className="h-3 w-3" />
+                Result
               </h4>
 
               {position ? (
-                <div className="space-y-3">
+                <div className="space-y-1.5 text-sm">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Shares/Units:</span>
-                    <span className="font-semibold text-lg text-green-600">
+                    <span className="text-xs text-muted-foreground">Shares:</span>
+                    <span className="font-semibold text-green-600">
                       {position.shares.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Position Value:</span>
-                    <span className="font-medium">
+                    <span className="text-xs text-muted-foreground">Position:</span>
+                    <span className="font-medium text-sm">
                       ${position.positionValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                     </span>
                   </div>
-                  <div className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground">Risk Per Share:</span>
-                    <span className="font-medium">
-                      ${position.riskPerShare.toFixed(2)}
+                  <div className="flex justify-between items-center border-t pt-1.5">
+                    <span className="text-xs text-muted-foreground">Total Risk:</span>
+                    <span className="font-medium text-red-600">
+                      ${position.totalRisk.toFixed(2)}
                     </span>
-                  </div>
-                  <div className="border-t pt-2 mt-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-sm text-muted-foreground">Total Risk:</span>
-                      <span className="font-medium text-red-600">
-                        ${position.totalRisk.toFixed(2)}
-                      </span>
-                    </div>
                   </div>
                 </div>
               ) : (
-                <div className="text-center py-4 text-muted-foreground text-sm">
-                  <p>Enter entry price and stop loss to calculate</p>
-                </div>
+                <p className="text-center text-muted-foreground text-xs py-2">
+                  Enter entry price and stop loss
+                </p>
               )}
             </div>
           </div>

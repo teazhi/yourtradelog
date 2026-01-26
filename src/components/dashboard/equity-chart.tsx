@@ -35,18 +35,22 @@ interface CustomTooltipProps {
 }
 
 function CustomTooltip({ active, payload, label }: CustomTooltipProps) {
-  if (active && payload && payload.length) {
-    const date = new Date(label || "");
+  if (active && payload && payload.length && label) {
+    // Parse YYYY-MM-DD format correctly without timezone issues
+    const [year, month, day] = label.split('-').map(Number);
+    const date = new Date(year, month - 1, day);
     const formattedDate = date.toLocaleDateString("en-US", {
       weekday: "short",
       month: "short",
       day: "numeric",
     });
+    const value = payload[0].value;
+    const isPositive = value >= 0;
     return (
-      <div className="rounded-lg border bg-background p-3 shadow-md">
+      <div className="rounded-lg border bg-popover text-popover-foreground p-3 shadow-md">
         <p className="text-sm font-medium">{formattedDate}</p>
-        <p className="text-lg font-bold text-primary">
-          {formatCurrency(payload[0].value)}
+        <p className={`text-lg font-bold ${isPositive ? "text-green-500" : "text-red-500"}`}>
+          {isPositive ? "+" : ""}{formatCurrency(value)}
         </p>
       </div>
     );
@@ -81,9 +85,17 @@ export function EquityChart({ data = [] }: EquityChartProps) {
   const changePercent = startEquity !== 0 ? (change / Math.abs(startEquity)) * 100 : (endEquity > 0 ? 100 : 0);
   const isPositive = change >= 0;
 
+  // Calculate tight Y-axis domain
+  const equityValues = data.map(d => d.equity);
+  const minEquity = Math.min(...equityValues);
+  const maxEquity = Math.max(...equityValues);
+  const padding = (maxEquity - minEquity) * 0.1 || 50; // 10% padding or 50 if flat
+  const yMin = minEquity - padding;
+  const yMax = maxEquity + padding;
+
   return (
-    <Card>
-      <CardHeader>
+    <Card className="h-fit">
+      <CardHeader className="pb-2">
         <CardTitle>Equity Curve</CardTitle>
         <CardDescription className="flex items-center gap-2">
           <span
@@ -97,8 +109,8 @@ export function EquityChart({ data = [] }: EquityChartProps) {
           <span>cumulative P&L</span>
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <div className="h-[300px] w-full">
+      <CardContent className="pb-4 pt-0">
+        <div className="h-[180px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={data}
@@ -106,7 +118,7 @@ export function EquityChart({ data = [] }: EquityChartProps) {
                 top: 5,
                 right: 10,
                 left: 10,
-                bottom: 5,
+                bottom: 0,
               }}
             >
               <CartesianGrid
@@ -117,20 +129,23 @@ export function EquityChart({ data = [] }: EquityChartProps) {
               <XAxis
                 dataKey="date"
                 tickFormatter={(value) => {
-                  const date = new Date(value);
-                  return `${date.getMonth() + 1}/${date.getDate()}`;
+                  // Parse YYYY-MM-DD format correctly without timezone issues
+                  const [year, month, day] = value.split('-').map(Number);
+                  return `${month}/${day}`;
                 }}
                 tickLine={false}
                 axisLine={false}
                 className="text-xs fill-muted-foreground"
-                tickMargin={8}
+                tickMargin={4}
               />
               <YAxis
-                tickFormatter={(value) => `$${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : value}`}
+                tickFormatter={(value) => `$${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : Math.round(value)}`}
                 tickLine={false}
                 axisLine={false}
                 className="text-xs fill-muted-foreground"
-                width={50}
+                width={55}
+                domain={[yMin, yMax]}
+                tickCount={4}
               />
               <Tooltip content={<CustomTooltip />} />
               <Line
