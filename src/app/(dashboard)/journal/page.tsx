@@ -32,6 +32,7 @@ import {
   Trophy,
   Flame,
   BookOpen,
+  Upload,
 } from "lucide-react";
 import {
   Button,
@@ -58,6 +59,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { JournalScreenshots } from "@/components/journal/journal-screenshots";
+import { JournalDailyScreenshots } from "@/components/journal/journal-daily-screenshots";
 import { TradeTable } from "@/components/trades/trade-table";
 
 // Common mistakes for futures day traders
@@ -462,16 +464,33 @@ function JournalPageContent() {
         return;
       }
 
-      // Prepare journal data - only include fields that exist in the database
+      // Prepare journal data with all fields
       const journalPayload = {
         user_id: user.id,
         date: dateKey,
+        // Pre-market fields
         pre_market_notes: preMarketNotes || null,
+        market_bias: marketBias || null,
+        key_levels: keyLevels || null,
+        max_loss_limit: maxLossLimit ? parseFloat(maxLossLimit) : null,
+        max_trades_limit: maxTradesLimit ? parseInt(maxTradesLimit) : null,
+        goals: dailyGoals,
+        // Post-market fields
         post_market_notes: postMarketNotes || null,
+        what_went_well: whatWentWell,
+        mistakes_made: mistakesMade,
+        lessons_learned: lessonsLearned || null,
+        // Ratings
         mood_rating: moodRating,
         focus_rating: focusRating,
         discipline_rating: disciplineRating,
-        goals: dailyGoals,
+        execution_rating: executionRating,
+        // Weekly review fields (for weekend entries)
+        weekly_review_notes: weeklyReviewNotes || null,
+        weekly_wins: weeklyWins || null,
+        weekly_improvements: weeklyImprovements || null,
+        next_week_goals: nextWeekGoals,
+        weekly_rating: weeklyRating,
       };
 
       if (journal?.id) {
@@ -1282,6 +1301,22 @@ function JournalPageContent() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Pre-Market Screenshots */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-blue-500" />
+                <CardTitle>Pre-Market Charts</CardTitle>
+              </div>
+              <CardDescription>
+                Upload screenshots of your pre-market analysis, key levels, and market structure
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <JournalDailyScreenshots date={dateKey} type="pre_market" maxScreenshots={5} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Post-Market Tab */}
@@ -1400,6 +1435,22 @@ function JournalPageContent() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Post-Market Screenshots */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-indigo-500" />
+                <CardTitle>Post-Market Charts</CardTitle>
+              </div>
+              <CardDescription>
+                Upload screenshots of your end-of-day review, trade analysis, and market recap
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <JournalDailyScreenshots date={dateKey} type="post_market" maxScreenshots={5} />
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Trades Tab */}
@@ -1412,12 +1463,20 @@ function JournalPageContent() {
                 <p className="text-muted-foreground text-center mb-4">
                   Trades taken on {format(selectedDate, "MMMM d, yyyy")} will appear here.
                 </p>
-                <Link href="/trades/new">
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Trade
-                  </Button>
-                </Link>
+                <div className="flex gap-3">
+                  <Link href="/trades/new">
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Trade
+                    </Button>
+                  </Link>
+                  <Link href={`/import?date=${dateKey}`}>
+                    <Button variant="outline">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import Trades
+                    </Button>
+                  </Link>
+                </div>
               </CardContent>
             </Card>
           ) : (
@@ -1427,12 +1486,20 @@ function JournalPageContent() {
                 <p className="text-sm text-muted-foreground">
                   {trades.length} trade{trades.length !== 1 ? "s" : ""} on {format(selectedDate, "MMMM d, yyyy")}
                 </p>
-                <Link href="/trades/new">
-                  <Button size="sm">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Trade
-                  </Button>
-                </Link>
+                <div className="flex gap-2">
+                  <Link href={`/import?date=${dateKey}`}>
+                    <Button variant="outline" size="sm">
+                      <Upload className="h-4 w-4 mr-2" />
+                      Import
+                    </Button>
+                  </Link>
+                  <Link href="/trades/new">
+                    <Button size="sm">
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Trade
+                    </Button>
+                  </Link>
+                </div>
               </div>
 
               {/* Full Trade Table */}

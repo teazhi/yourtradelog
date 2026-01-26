@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
-import { useRouter } from "next/navigation";
-import { Upload, FileSpreadsheet, ArrowRight, ArrowLeft, Check, AlertCircle, X } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Upload, FileSpreadsheet, ArrowRight, ArrowLeft, Check, AlertCircle, X, CalendarDays } from "lucide-react";
+import { format, parseISO, isSameDay } from "date-fns";
 import {
   Button,
   Card,
@@ -262,6 +263,8 @@ function validateTrade(row: ParsedRow, mappings: ColumnMapping[], rowIndex: numb
 
 export default function ImportPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const dateFilter = searchParams.get("date"); // YYYY-MM-DD format from journal
   const [step, setStep] = React.useState<1 | 2 | 3 | 4>(1);
   const [broker, setBroker] = React.useState<string>("");
   const [file, setFile] = React.useState<File | null>(null);
@@ -273,6 +276,16 @@ export default function ImportPage() {
   const [isImporting, setIsImporting] = React.useState(false);
   const [importProgress, setImportProgress] = React.useState(0);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Parse the date filter for comparison
+  const filterDate = React.useMemo(() => {
+    if (!dateFilter) return null;
+    try {
+      return parseISO(dateFilter);
+    } catch {
+      return null;
+    }
+  }, [dateFilter]);
 
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -345,9 +358,71 @@ export default function ImportPage() {
     );
   };
 
+  // Helper to check if a trade matches the date filter
+  const tradeMatchesDateFilter = (row: ParsedRow): boolean => {
+    if (!filterDate) return true; // No filter, all trades match
+
+    // Get the entry_date mapping
+    const dateMapping = mappings.find(m => m.appField === "entry_date");
+    if (!dateMapping) return false;
+
+    const dateValue = row[dateMapping.csvColumn];
+    if (!dateValue) return false;
+
+    try {
+      // Parse the date from the CSV
+      const trimmed = dateValue.trim();
+      let tradeDate: Date | null = null;
+
+      // Try to parse MM/DD/YYYY HH:mm:ss format (Tradovate Performance)
+      const tradovateMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+      if (tradovateMatch) {
+        const [, month, day, year] = tradovateMatch;
+        tradeDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+      }
+
+      // Try ISO format
+      if (!tradeDate) {
+        const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})/);
+        if (isoMatch) {
+          const [, year, month, day] = isoMatch;
+          tradeDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
+        }
+      }
+
+      // Fallback to native parsing
+      if (!tradeDate) {
+        tradeDate = new Date(trimmed);
+      }
+
+      if (tradeDate && !isNaN(tradeDate.getTime())) {
+        return isSameDay(tradeDate, filterDate);
+      }
+    } catch {
+      return false;
+    }
+
+    return false;
+  };
+
   // Validate all trades
   const validateAllTrades = () => {
-    const validated = parsedData.map((row, index) => validateTrade(row, mappings, index));
+    let validated = parsedData.map((row, index) => validateTrade(row, mappings, index));
+
+    // If there's a date filter, mark trades that don't match as invalid
+    if (filterDate) {
+      validated = validated.map(trade => {
+        if (!tradeMatchesDateFilter(trade.data)) {
+          return {
+            ...trade,
+            isValid: false,
+            errors: [...trade.errors, `Trade date does not match ${format(filterDate, "MMMM d, yyyy")}`],
+          };
+        }
+        return trade;
+      });
+    }
+
     setValidatedTrades(validated);
 
     // Select all valid trades by default
@@ -634,6 +709,24 @@ export default function ImportPage() {
           Import your trading history from a CSV file
         </p>
       </div>
+
+      {/* Date Filter Notice */}
+      {filterDate && (
+        <Alert className="mb-6 border-blue-500/50 bg-blue-500/10">
+          <CalendarDays className="h-4 w-4 text-blue-500" />
+          <AlertTitle>Importing for {format(filterDate, "MMMM d, yyyy")}</AlertTitle>
+          <AlertDescription>
+            Only trades from this date will be available for import. Trades from other dates will be marked as invalid.
+            <Button
+              variant="link"
+              className="p-0 h-auto ml-1 text-blue-500"
+              onClick={() => router.push("/import")}
+            >
+              Remove filter
+            </Button>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Progress Steps */}
       <div className="mb-8">
@@ -998,8 +1091,8 @@ export default function ImportPage() {
                 }}>
                   Import More
                 </Button>
-                <Button onClick={() => router.push("/trades")}>
-                  View Trades
+                <Button onClick={() => router.push(dateFilter ? `/journal?date=${dateFilter}` : "/trades")}>
+                  {dateFilter ? "Back to Journal" : "View Trades"}
                 </Button>
               </div>
             )}
