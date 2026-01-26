@@ -20,7 +20,7 @@ export function StatsCards({ stats }: StatsCardsProps) {
   // Empty state
   if (totalTrades === 0) {
     return (
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
@@ -69,39 +69,39 @@ export function StatsCards({ stats }: StatsCardsProps) {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+    <div className="grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
       {/* Total P&L Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total P&L</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+          <CardTitle className="text-xs sm:text-sm font-medium">Total P&L</CardTitle>
           {isPositivePnL ? (
-            <TrendingUp className="h-4 w-4 text-green-500" />
+            <TrendingUp className="h-3 w-3 sm:h-4 sm:w-4 text-green-500" />
           ) : (
-            <TrendingDown className="h-4 w-4 text-red-500" />
+            <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-red-500" />
           )}
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-0">
           <div
-            className={`text-2xl font-bold ${
+            className={`text-lg sm:text-2xl font-bold ${
               isPositivePnL ? "text-green-500" : "text-red-500"
             }`}
           >
             {isPositivePnL ? "+" : ""}
             {formatCurrency(totalPnL)}
           </div>
-          <p className="text-xs text-muted-foreground">All-time performance</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">All-time performance</p>
         </CardContent>
       </Card>
 
       {/* Win Rate Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Win Rate</CardTitle>
-          <Percent className="h-4 w-4 text-muted-foreground" />
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+          <CardTitle className="text-xs sm:text-sm font-medium">Win Rate</CardTitle>
+          <Percent className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{formatPercentage(winRate)}</div>
-          <p className="text-xs text-muted-foreground">
+        <CardContent className="pt-0">
+          <div className="text-lg sm:text-2xl font-bold">{formatPercentage(winRate)}</div>
+          <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">
             Winning trades percentage
           </p>
         </CardContent>
@@ -109,27 +109,27 @@ export function StatsCards({ stats }: StatsCardsProps) {
 
       {/* Profit Factor Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Profit Factor</CardTitle>
-          <Calculator className="h-4 w-4 text-muted-foreground" />
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+          <CardTitle className="text-xs sm:text-sm font-medium">Profit Factor</CardTitle>
+          <Calculator className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">
+        <CardContent className="pt-0">
+          <div className="text-lg sm:text-2xl font-bold">
             {profitFactor > 0 ? profitFactor.toFixed(2) : "—"}
           </div>
-          <p className="text-xs text-muted-foreground">Gross profit / loss</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Gross profit / loss</p>
         </CardContent>
       </Card>
 
       {/* Total Trades Card */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-          <CardTitle className="text-sm font-medium">Total Trades</CardTitle>
-          <Hash className="h-4 w-4 text-muted-foreground" />
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-1 sm:pb-2">
+          <CardTitle className="text-xs sm:text-sm font-medium">Total Trades</CardTitle>
+          <Hash className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
         </CardHeader>
-        <CardContent>
-          <div className="text-2xl font-bold">{totalTrades}</div>
-          <p className="text-xs text-muted-foreground">Trades executed</p>
+        <CardContent className="pt-0">
+          <div className="text-lg sm:text-2xl font-bold">{totalTrades}</div>
+          <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">Trades executed</p>
         </CardContent>
       </Card>
     </div>

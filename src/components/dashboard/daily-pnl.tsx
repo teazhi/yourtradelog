@@ -96,27 +96,29 @@ export function DailyPnL({ data = [] }: DailyPnLProps) {
           <CardDescription>Last {data.length} trading days</CardDescription>
         </div>
       </CardHeader>
-      <CardContent>
-        <div className="h-[200px] w-full">
+      <CardContent className="px-2 sm:px-6">
+        <div className="h-[180px] sm:h-[200px] w-full">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 0 }}>
+            <BarChart data={data} margin={{ top: 10, right: 5, left: 0, bottom: 0 }}>
               <XAxis
                 dataKey="date"
                 tickFormatter={(value) => {
                   // Parse YYYY-MM-DD format correctly without timezone issues
-                  const [year, month, day] = value.split('-').map(Number);
+                  const [, month, day] = value.split('-').map(Number);
                   return `${month}/${day}`;
                 }}
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                interval="preserveStartEnd"
               />
               <YAxis
-                tickFormatter={(value) => `$${value}`}
+                tickFormatter={(value) => `$${value >= 1000 ? `${(value/1000).toFixed(0)}k` : value}`}
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 12 }}
-                width={60}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                width={45}
+                tickCount={5}
               />
               <Tooltip
                 formatter={(value) => [formatCurrency(value as number), "P&L"]}

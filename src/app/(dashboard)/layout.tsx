@@ -300,7 +300,7 @@ export default function DashboardLayout({
       {/* Mobile Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 transform border-r border-border bg-card transition-transform duration-300 md:hidden",
+          "fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw] transform border-r border-border bg-card transition-transform duration-300 md:hidden",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -452,32 +452,32 @@ export default function DashboardLayout({
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-16 shrink-0 items-center justify-between border-b border-border bg-background px-4">
-          <div className="flex items-center gap-2">
+        <header className="flex h-14 sm:h-16 shrink-0 items-center justify-between border-b border-border bg-background px-3 sm:px-4">
+          <div className="flex items-center gap-2 min-w-0">
             <Button
               variant="ghost"
               size="icon"
               onClick={() => setMobileOpen(true)}
-              className="h-8 w-8 md:hidden"
+              className="h-9 w-9 shrink-0 md:hidden"
             >
-              <Menu className="h-4 w-4" />
+              <Menu className="h-5 w-5" />
             </Button>
-            <h1 className="text-lg font-semibold">{greeting}</h1>
+            <h1 className="text-sm sm:text-lg font-semibold truncate">{greeting}</h1>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <ThemeToggle />
 
             {/* User Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <Button
                 variant="ghost"
-                className="relative h-9 flex items-center gap-2 rounded-full px-2"
+                className="relative h-9 flex items-center gap-1 sm:gap-2 rounded-full px-1.5 sm:px-2"
                 onClick={() => setDropdownOpen(!dropdownOpen)}
               >
                 <div className="h-7 w-7 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
                   <User className="h-4 w-4 text-white" />
                 </div>
-                <ChevronDown className={`h-4 w-4 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
+                <ChevronDown className={`h-4 w-4 hidden sm:block transition-transform ${dropdownOpen ? 'rotate-180' : ''}`} />
               </Button>
 
               {dropdownOpen && (
@@ -485,7 +485,7 @@ export default function DashboardLayout({
                   {/* User Info */}
                   <div className="px-3 py-2 border-b mb-1">
                     <p className="text-sm font-medium">{user?.name || "User"}</p>
-                    <p className="text-xs text-muted-foreground">{user?.email || "user@example.com"}</p>
+                    <p className="text-xs text-muted-foreground truncate">{user?.email || "user@example.com"}</p>
                   </div>
 
                   {/* Menu Items */}

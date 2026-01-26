@@ -109,15 +109,15 @@ export function EquityChart({ data = [] }: EquityChartProps) {
           <span>cumulative P&L</span>
         </CardDescription>
       </CardHeader>
-      <CardContent className="pb-4 pt-0">
-        <div className="h-[180px] w-full">
+      <CardContent className="pb-4 pt-0 px-2 sm:px-6">
+        <div className="h-[160px] sm:h-[180px] w-full">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart
               data={data}
               margin={{
                 top: 5,
-                right: 10,
-                left: 10,
+                right: 5,
+                left: 0,
                 bottom: 0,
               }}
             >
@@ -130,20 +130,23 @@ export function EquityChart({ data = [] }: EquityChartProps) {
                 dataKey="date"
                 tickFormatter={(value) => {
                   // Parse YYYY-MM-DD format correctly without timezone issues
-                  const [year, month, day] = value.split('-').map(Number);
+                  const [, month, day] = value.split('-').map(Number);
                   return `${month}/${day}`;
                 }}
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 10 }}
+                className="fill-muted-foreground"
                 tickMargin={4}
+                interval="preserveStartEnd"
               />
               <YAxis
                 tickFormatter={(value) => `$${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : Math.round(value)}`}
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
-                width={55}
+                tick={{ fontSize: 10 }}
+                className="fill-muted-foreground"
+                width={45}
                 domain={[yMin, yMax]}
                 tickCount={4}
               />

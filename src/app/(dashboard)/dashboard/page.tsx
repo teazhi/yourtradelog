@@ -141,12 +141,12 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-4 sm:gap-6">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Dashboard</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Welcome back! Here&apos;s an overview of your trading performance.
           </p>
         </div>
@@ -154,15 +154,15 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="flex items-center gap-2">
           <Link href="/trades/new">
-            <Button variant="outline" size="sm">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Trade
+            <Button variant="outline" size="sm" className="h-9">
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Trade</span>
             </Button>
           </Link>
           <Link href="/import">
-            <Button size="sm">
-              <Upload className="h-4 w-4 mr-2" />
-              Import Trades
+            <Button size="sm" className="h-9">
+              <Upload className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Import Trades</span>
             </Button>
           </Link>
         </div>
@@ -175,9 +175,9 @@ export default function DashboardPage() {
       <DailyPnL data={dailyPnL} />
 
       {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-2 items-start">
+      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2 items-start">
         {/* Left Column: Equity Chart + Position Sizer */}
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-4 sm:gap-6">
           <EquityChart data={equityCurve} />
           <PositionSizer />
         </div>
