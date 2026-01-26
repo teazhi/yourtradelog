@@ -141,7 +141,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-4 sm:gap-6">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-4 sm:space-y-6">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div className="flex flex-col gap-1">

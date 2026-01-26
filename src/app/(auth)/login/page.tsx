@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
 import {
   Card,
@@ -11,24 +10,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui";
-import { Button, Input, Label, Separator } from "@/components/ui";
-
-// Demo credentials for testing without Supabase
-const DEMO_EMAIL = "demo@tradinglog.com";
-const DEMO_PASSWORD = "demo123";
-
-// Check if Supabase is configured
-const isSupabaseConfigured = () => {
-  return (
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://your-project-id.supabase.co" &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== "your-anon-key-here"
-  );
-};
+import { Button, Input, Label } from "@/components/ui";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LoginPage() {
-  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -54,16 +39,6 @@ export default function LoginPage() {
     return true;
   };
 
-  const handleDemoLogin = () => {
-    setIsLoading(true);
-    // Store demo session in localStorage
-    if (typeof window !== "undefined") {
-      localStorage.setItem("demo_session", "true");
-      // Use window.location for more reliable redirect
-      window.location.href = "/dashboard";
-    }
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -74,22 +49,7 @@ export default function LoginPage() {
 
     setIsLoading(true);
 
-    // Check for demo credentials - always allow these
-    if (email === DEMO_EMAIL && password === DEMO_PASSWORD) {
-      handleDemoLogin();
-      return;
-    }
-
-    // Check if Supabase is configured
-    if (!isSupabaseConfigured()) {
-      setError("Supabase not configured. Please use demo credentials or click 'Try Demo'");
-      setIsLoading(false);
-      return;
-    }
-
     try {
-      // Dynamically import Supabase only when needed
-      const { createClient } = await import("@/lib/supabase/client");
       const supabase = createClient();
 
       const { error: authError } = await supabase.auth.signInWithPassword({
@@ -107,7 +67,7 @@ export default function LoginPage() {
       window.location.href = "/dashboard";
     } catch (err) {
       console.error("Login error:", err);
-      setError("Could not connect to server. Please use demo credentials or click 'Try Demo'");
+      setError("Could not connect to server. Please try again.");
       setIsLoading(false);
     }
   };
@@ -158,33 +118,6 @@ export default function LoginPage() {
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading ? "Signing in..." : "Sign in"}
           </Button>
-
-          <div className="relative w-full">
-            <div className="absolute inset-0 flex items-center">
-              <Separator className="w-full" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">
-                Or
-              </span>
-            </div>
-          </div>
-
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            onClick={handleDemoLogin}
-            disabled={isLoading}
-          >
-            🚀 Try Demo (No Login Required)
-          </Button>
-
-          <div className="text-xs text-center text-muted-foreground bg-muted/50 p-3 rounded-md">
-            <strong>Demo credentials:</strong><br />
-            Email: <code className="bg-muted px-1 rounded">{DEMO_EMAIL}</code><br />
-            Password: <code className="bg-muted px-1 rounded">{DEMO_PASSWORD}</code>
-          </div>
 
           <p className="text-sm text-muted-foreground text-center">
             Don&apos;t have an account?{" "}

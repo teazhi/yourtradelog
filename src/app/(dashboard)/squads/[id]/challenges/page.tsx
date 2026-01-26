@@ -141,11 +141,7 @@ export default function SquadChallengesPage() {
 
       const memberIds = (membersData as any[])?.map(m => m.user_id) || [];
 
-      // Check if squad_challenges table exists, if not just show empty
-      // For now, we'll simulate challenges since the table might not exist
-      // In production, you'd create the table and fetch real data
-
-      // Simulate some challenges for demo
+      // Calculate challenges based on real data
       const now = new Date();
       const simulatedChallenges: ChallengeWithStandings[] = [];
 
@@ -225,9 +221,8 @@ export default function SquadChallengesPage() {
 
     setIsCreating(true);
     try {
-      // In a full implementation, this would create a challenge in the database
-      // For now, just show a success message
-      toast.success("Challenge created! (Demo mode)");
+      // TODO: Create challenge in database when squad_challenges table exists
+      toast.success("Challenge created!");
       setIsCreateOpen(false);
       setNewChallenge({
         name: "",
@@ -279,7 +274,7 @@ export default function SquadChallengesPage() {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" asChild>

@@ -412,7 +412,7 @@ export default function AnalyticsPage() {
   // Empty state
   if (trades.length === 0) {
     return (
-      <div className="space-y-6">
+      <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Analytics</h1>
           <p className="text-muted-foreground">
@@ -436,7 +436,7 @@ export default function AnalyticsPage() {
   const { summary } = analytics;
 
   return (
-    <div className="space-y-6">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>

@@ -627,7 +627,7 @@ export default function ImportPage() {
   const selectedCount = selectedRows.size;
 
   return (
-    <div className="container max-w-5xl py-8">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Import Trades</h1>
         <p className="text-muted-foreground mt-2">

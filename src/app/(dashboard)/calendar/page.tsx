@@ -135,7 +135,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-3xl font-bold tracking-tight">Trading Calendar</h1>

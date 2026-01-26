@@ -374,17 +374,7 @@ export const APP_DEFAULTS = {
 // ============================================================================
 
 export const SUPPORTED_BROKERS = [
-  { value: 'ninjatrader', label: 'NinjaTrader' },
-  { value: 'tradestation', label: 'TradeStation' },
-  { value: 'thinkorswim', label: 'thinkorswim (TD Ameritrade)' },
   { value: 'tradovate', label: 'Tradovate' },
-  { value: 'sierra_chart', label: 'Sierra Chart' },
-  { value: 'interactive_brokers', label: 'Interactive Brokers' },
-  { value: 'amp', label: 'AMP Futures' },
-  { value: 'edge_clear', label: 'EdgeClear' },
-  { value: 'topstep', label: 'Topstep' },
-  { value: 'apex', label: 'Apex Trader Funding' },
-  { value: 'other', label: 'Other' },
 ];
 
 // ============================================================================

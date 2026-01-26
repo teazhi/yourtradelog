@@ -10,26 +10,21 @@ import {
   Lightbulb,
   Target,
   TrendingUp,
-  Filter,
   Users,
   Globe,
   Sparkles,
+  Clock,
+  BarChart3,
 } from "lucide-react";
 import {
   Button,
   Card,
   CardContent,
-  CardHeader,
   Badge,
   Avatar,
   AvatarFallback,
   AvatarImage,
   Spinner,
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
   Tabs,
   TabsList,
   TabsTrigger,
@@ -238,20 +233,10 @@ export default function FeedPage() {
     }
   };
 
-  const getTotalReactions = (trade: FeedTrade) => {
-    return Object.values(trade.reaction_counts).reduce((a, b) => a + b, 0);
-  };
-
   // Prevent hydration issues
   if (!mounted) {
     return (
-      <div className="container max-w-2xl py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold">Trade Feed</h1>
-          <p className="text-muted-foreground mt-2">
-            See what other traders are sharing
-          </p>
-        </div>
+      <div className="container max-w-6xl py-6 px-4 sm:px-6">
         <div className="flex items-center justify-center py-12">
           <Spinner className="h-8 w-8" />
         </div>
@@ -260,31 +245,34 @@ export default function FeedPage() {
   }
 
   return (
-    <div className="container max-w-2xl py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Trade Feed</h1>
-        <p className="text-muted-foreground mt-2">
-          See what other traders are sharing
-        </p>
-      </div>
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl sm:text-3xl font-bold">Trade Feed</h1>
+          <p className="text-muted-foreground text-sm sm:text-base">
+            See what other traders are sharing
+          </p>
+        </div>
 
-      {/* Feed Tabs */}
-      <Tabs value={feedType} onValueChange={(v) => setFeedType(v as any)} className="mb-6">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="public">
-            <Globe className="h-4 w-4 mr-2" />
-            Public
-          </TabsTrigger>
-          <TabsTrigger value="following">
-            <Users className="h-4 w-4 mr-2" />
-            Following
-          </TabsTrigger>
-          <TabsTrigger value="squad">
-            <Users className="h-4 w-4 mr-2" />
-            Squads
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+        {/* Feed Filter Tabs */}
+        <Tabs value={feedType} onValueChange={(v) => setFeedType(v as any)}>
+          <TabsList>
+            <TabsTrigger value="public" className="gap-1.5">
+              <Globe className="h-4 w-4" />
+              <span className="hidden sm:inline">Public</span>
+            </TabsTrigger>
+            <TabsTrigger value="following" className="gap-1.5">
+              <Users className="h-4 w-4" />
+              <span className="hidden sm:inline">Following</span>
+            </TabsTrigger>
+            <TabsTrigger value="squad" className="gap-1.5">
+              <BarChart3 className="h-4 w-4" />
+              <span className="hidden sm:inline">Squads</span>
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       {/* Feed Content */}
       {isLoading ? (
@@ -292,9 +280,13 @@ export default function FeedPage() {
           <Spinner className="h-8 w-8" />
         </div>
       ) : trades.length === 0 ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
+        <Card className="border-dashed">
+          <CardContent className="py-16 text-center">
+            <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
+              <BarChart3 className="h-6 w-6 text-muted-foreground" />
+            </div>
+            <h3 className="font-semibold mb-2">No trades yet</h3>
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto">
               {feedType === "following"
                 ? "No trades from people you follow yet. Try following more traders!"
                 : feedType === "squad"
@@ -304,7 +296,7 @@ export default function FeedPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="grid gap-4 md:grid-cols-2">
           {trades.map((trade) => (
             <TradeCard
               key={trade.id}
@@ -334,65 +326,84 @@ function TradeCard({
     ? "Anonymous Trader"
     : trade.user?.display_name || trade.user?.username || "Trader";
 
+  const totalReactions = Object.values(trade.reaction_counts).reduce((a, b) => a + b, 0);
+
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="overflow-hidden hover:shadow-md transition-shadow">
+      {/* Trade Result Banner */}
+      <div
+        className={cn(
+          "h-1",
+          isWin && "bg-green-500",
+          isLoss && "bg-red-500",
+          !isWin && !isLoss && "bg-muted"
+        )}
+      />
+
+      <CardContent className="p-4 space-y-3">
+        {/* User Info & Trade Badge */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Avatar>
+          <div className="flex items-center gap-2.5">
+            <Avatar className="h-8 w-8">
               {!trade.user?.anonymous_mode && (
                 <AvatarImage src={trade.user?.avatar_url || undefined} />
               )}
-              <AvatarFallback>
+              <AvatarFallback className="text-xs">
                 {trade.user?.anonymous_mode ? "?" : displayName[0]}
               </AvatarFallback>
             </Avatar>
-            <div>
-              <div className="font-medium">{displayName}</div>
-              <div className="text-sm text-muted-foreground">
-                {formatDate(trade.created_at, "medium")}
+            <div className="min-w-0">
+              <div className="font-medium text-sm truncate">{displayName}</div>
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {formatDate(trade.created_at, "short")}
               </div>
             </div>
           </div>
-          <Badge variant={isWin ? "default" : isLoss ? "destructive" : "secondary"}>
+          <Badge
+            variant="outline"
+            className={cn(
+              "text-xs",
+              isWin && "border-green-500/50 text-green-600 bg-green-500/10",
+              isLoss && "border-red-500/50 text-red-600 bg-red-500/10"
+            )}
+          >
             {isWin ? "Win" : isLoss ? "Loss" : "Break Even"}
           </Badge>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {/* Trade Info */}
-        <div className="flex items-center gap-4">
+
+        {/* Trade Details */}
+        <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
           <div
             className={cn(
-              "flex items-center justify-center w-10 h-10 rounded-full",
+              "flex items-center justify-center w-9 h-9 rounded-full shrink-0",
               trade.side === "long"
-                ? "bg-green-100 dark:bg-green-900/30"
-                : "bg-red-100 dark:bg-red-900/30"
+                ? "bg-green-500/20"
+                : "bg-red-500/20"
             )}
           >
             {trade.side === "long" ? (
-              <ArrowUpRight className="h-5 w-5 text-green-600" />
+              <ArrowUpRight className="h-4 w-4 text-green-600" />
             ) : (
-              <ArrowDownRight className="h-5 w-5 text-red-600" />
+              <ArrowDownRight className="h-4 w-4 text-red-600" />
             )}
           </div>
-          <div>
-            <div className="font-semibold text-lg">
+          <div className="flex-1 min-w-0">
+            <div className="font-semibold">
               {trade.symbol}{" "}
-              <span className="text-muted-foreground font-normal capitalize">
+              <span className="text-muted-foreground font-normal text-sm capitalize">
                 {trade.side}
               </span>
             </div>
-            <div className="text-sm text-muted-foreground">
-              Entry: {formatCurrency(trade.entry_price)}
-              {trade.exit_price && ` → Exit: ${formatCurrency(trade.exit_price)}`}
+            <div className="text-xs text-muted-foreground truncate">
+              {formatCurrency(trade.entry_price)} → {trade.exit_price ? formatCurrency(trade.exit_price) : "Open"}
             </div>
           </div>
-          <div className="ml-auto text-right">
+          <div className="text-right shrink-0">
             {trade.net_pnl !== null && (
               <div
                 className={cn(
-                  "text-xl font-bold",
+                  "font-bold",
                   isWin && "text-green-600",
                   isLoss && "text-red-600"
                 )}
@@ -402,7 +413,10 @@ function TradeCard({
               </div>
             )}
             {trade.r_multiple !== null && (
-              <div className="text-sm text-muted-foreground">
+              <div className={cn(
+                "text-xs",
+                trade.r_multiple >= 0 ? "text-green-600" : "text-red-600"
+              )}>
                 {formatRMultiple(trade.r_multiple)}
               </div>
             )}
@@ -411,15 +425,15 @@ function TradeCard({
 
         {/* Analysis */}
         {trade.share_analysis && (
-          <div className="bg-muted/50 rounded-lg p-3">
-            <p className="text-sm">{trade.share_analysis}</p>
-          </div>
+          <p className="text-sm text-muted-foreground line-clamp-2">
+            {trade.share_analysis}
+          </p>
         )}
 
-        {/* Reactions */}
+        {/* Actions */}
         <div className="flex items-center justify-between pt-2 border-t">
-          <div className="flex items-center gap-1">
-            {REACTIONS.map(({ type, icon: Icon, label }) => {
+          <div className="flex items-center gap-0.5">
+            {REACTIONS.slice(0, 3).map(({ type, icon: Icon, label }) => {
               const count = trade.reaction_counts[type];
               const hasReacted = trade.user_reactions.includes(type);
               return (
@@ -428,22 +442,29 @@ function TradeCard({
                   variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-8 px-2",
+                    "h-8 px-2 gap-1",
                     hasReacted && "text-primary bg-primary/10"
                   )}
                   onClick={() => onReaction(trade.id, type)}
                   title={label}
                 >
-                  <Icon className="h-4 w-4" />
-                  {count > 0 && <span className="ml-1 text-xs">{count}</span>}
+                  <Icon className="h-3.5 w-3.5" />
+                  {count > 0 && <span className="text-xs">{count}</span>}
                 </Button>
               );
             })}
+            {totalReactions > 0 && (
+              <span className="text-xs text-muted-foreground ml-1">
+                {totalReactions > 3 ? `+${totalReactions - 3}` : ""}
+              </span>
+            )}
           </div>
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" className="h-8 gap-1.5" asChild>
             <Link href={`/trades/${trade.id}`}>
-              <MessageSquare className="h-4 w-4 mr-1" />
-              {trade.comment_count > 0 ? trade.comment_count : "Comment"}
+              <MessageSquare className="h-3.5 w-3.5" />
+              <span className="text-xs">
+                {trade.comment_count > 0 ? trade.comment_count : "Comment"}
+              </span>
             </Link>
           </Button>
         </div>

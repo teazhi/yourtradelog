@@ -1,19 +1,8 @@
 /**
  * Next.js Middleware for authentication and route protection.
- * Simplified version that allows demo mode without Supabase.
  */
 
 import { NextResponse, type NextRequest } from 'next/server';
-
-// Check if Supabase is configured
-const isSupabaseConfigured = () => {
-  return (
-    process.env.NEXT_PUBLIC_SUPABASE_URL &&
-    process.env.NEXT_PUBLIC_SUPABASE_URL !== "https://your-project-id.supabase.co" &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY &&
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY !== "your-anon-key-here"
-  );
-};
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -28,12 +17,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // If Supabase is not configured, allow all routes (demo mode)
-  if (!isSupabaseConfigured()) {
-    return NextResponse.next();
-  }
-
-  // If Supabase IS configured, handle auth
   try {
     const {
       updateSession,

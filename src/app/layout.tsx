@@ -5,7 +5,7 @@ import { QueryProvider } from "@/components/providers/query-provider";
 import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
-  title: "TradingLog - Futures Trading Journal",
+  title: "YourTradeLog - Futures Trading Journal",
   description: "A comprehensive trading journal for futures traders. Track trades, analyze performance, and improve your trading.",
 };
 

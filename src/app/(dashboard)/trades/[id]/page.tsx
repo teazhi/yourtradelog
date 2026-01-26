@@ -46,13 +46,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
   AlertDialogTrigger,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
   Spinner,
   Input,
   Textarea,
@@ -71,6 +64,14 @@ import {
   toast,
   Label,
 } from "@/components/ui";
+import {
+  CustomDialog,
+  CustomDialogHeader,
+  CustomDialogTitle,
+  CustomDialogDescription,
+  CustomDialogContent,
+  CustomDialogFooter,
+} from "@/components/ui/custom-dialog";
 import { Trade } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
 import { TradeScreenshots } from "@/components/trades/trade-screenshots";
@@ -548,7 +549,7 @@ export default function TradeDetailPage() {
       : null;
 
   return (
-    <div className="space-y-6">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
         <div className="flex items-start gap-4">
@@ -635,21 +636,19 @@ export default function TradeDetailPage() {
                   Shared
                 </Button>
               ) : (
-                <Dialog open={isShareOpen} onOpenChange={setIsShareOpen}>
-                  <DialogTrigger asChild>
-                    <Button variant="outline" size="sm">
-                      <Share2 className="mr-2 h-4 w-4" />
-                      Share
-                    </Button>
-                  </DialogTrigger>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Share to Feed</DialogTitle>
-                      <DialogDescription>
+                <>
+                  <Button variant="outline" size="sm" onClick={() => setIsShareOpen(true)}>
+                    <Share2 className="mr-2 h-4 w-4" />
+                    Share
+                  </Button>
+                  <CustomDialog open={isShareOpen} onOpenChange={setIsShareOpen}>
+                    <CustomDialogHeader>
+                      <CustomDialogTitle>Share to Feed</CustomDialogTitle>
+                      <CustomDialogDescription>
                         Share this trade with the community. Add your analysis to help others learn.
-                      </DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
+                      </CustomDialogDescription>
+                    </CustomDialogHeader>
+                    <CustomDialogContent className="space-y-4">
                       <div className="space-y-2">
                         <Label>Visibility</Label>
                         <div className="flex gap-2">
@@ -691,8 +690,8 @@ export default function TradeDetailPage() {
                           className="min-h-[100px]"
                         />
                       </div>
-                    </div>
-                    <DialogFooter>
+                    </CustomDialogContent>
+                    <CustomDialogFooter>
                       <Button variant="outline" onClick={() => setIsShareOpen(false)}>
                         Cancel
                       </Button>
@@ -704,9 +703,9 @@ export default function TradeDetailPage() {
                         )}
                         Share to Feed
                       </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
+                    </CustomDialogFooter>
+                  </CustomDialog>
+                </>
               )}
 
               <Button variant="outline" size="sm" onClick={() => setIsEditing(true)}>

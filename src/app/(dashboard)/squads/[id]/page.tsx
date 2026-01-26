@@ -365,7 +365,7 @@ export default function SquadDetailPage() {
 
   if (!squad) {
     return (
-      <div className="container max-w-4xl py-8 text-center">
+      <div className="container max-w-6xl py-6 px-4 sm:px-6 text-center">
         <p className="text-muted-foreground">Squad not found</p>
         <Button asChild className="mt-4">
           <Link href="/squads">Back to Squads</Link>
@@ -377,7 +377,7 @@ export default function SquadDetailPage() {
   const isOwnerOrAdmin = ["owner", "admin"].includes(currentUserRole || "");
 
   return (
-    <div className="container max-w-4xl py-8">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6">
       {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Button variant="ghost" size="icon" asChild>

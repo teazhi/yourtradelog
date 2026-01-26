@@ -258,7 +258,7 @@ export default function ProfilePage() {
   }
 
   return (
-    <div className="container max-w-4xl py-8">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6">
       <div className="mb-8">
         <h1 className="text-3xl font-bold">Your Profile</h1>
         <p className="text-muted-foreground mt-2">

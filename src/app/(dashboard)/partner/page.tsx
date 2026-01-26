@@ -410,7 +410,7 @@ export default function PartnerPage() {
   // =====================================================
   if (!partnership) {
     return (
-      <div className="flex flex-1 flex-col gap-6 max-w-xl mx-auto py-8">
+      <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
         <div className="text-center">
           <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 mx-auto mb-4 flex items-center justify-center">
             <Handshake className="h-8 w-8 text-white" />
@@ -597,7 +597,7 @@ export default function PartnerPage() {
   const partnerName = partnerProfile?.display_name?.split(" ")[0] || partnerProfile?.username || "Partner";
 
   return (
-    <div className="flex flex-1 flex-col gap-4 max-w-2xl mx-auto">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-4">
       {/* Partner Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

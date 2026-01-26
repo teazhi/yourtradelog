@@ -10,6 +10,9 @@ import {
   Search,
   Trash2,
   RotateCcw,
+  FileText,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import {
   Card,
@@ -21,12 +24,6 @@ import {
   Input,
   Label,
   Badge,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -41,6 +38,14 @@ import {
   cn,
   toast,
 } from "@/components/ui";
+import {
+  CustomDialog,
+  CustomDialogHeader,
+  CustomDialogTitle,
+  CustomDialogDescription,
+  CustomDialogContent,
+  CustomDialogFooter,
+} from "@/components/ui/custom-dialog";
 import { createClient } from "@/lib/supabase/client";
 
 interface Setup {
@@ -68,9 +73,12 @@ function SetupCard({
   onRestore: () => void;
   onDelete: () => void;
 }) {
+  const [expanded, setExpanded] = React.useState(false);
   const isArchived = !setup.is_active;
   const hasStats = setup.total_trades > 0;
   const avgR = setup.avg_r_multiple || 0;
+  const rulesLines = setup.rules ? setup.rules.split('\n').filter(line => line.trim()) : [];
+  const hasMoreRules = rulesLines.length > 3;
 
   return (
     <Card className={cn(isArchived && "opacity-60")}>
@@ -154,8 +162,36 @@ function SetupCard({
         {/* Rules Preview */}
         {setup.rules && (
           <div className="rounded-lg border p-3 bg-muted/30">
-            <p className="text-xs text-muted-foreground mb-1">Rules</p>
-            <p className="text-sm line-clamp-2">{setup.rules}</p>
+            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+              <FileText className="h-3 w-3" />
+              Rules
+            </p>
+            <div className="text-sm space-y-1">
+              {(expanded ? rulesLines : rulesLines.slice(0, 3)).map((line, i) => (
+                <p key={i} className="flex items-start gap-2">
+                  <span className="text-muted-foreground mt-0.5">•</span>
+                  <span className={expanded ? "" : "line-clamp-1"}>{line.trim()}</span>
+                </p>
+              ))}
+            </div>
+            {hasMoreRules && (
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="mt-2 text-xs text-primary hover:underline flex items-center gap-1"
+              >
+                {expanded ? (
+                  <>
+                    <ChevronUp className="h-3 w-3" />
+                    Show less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3 w-3" />
+                    Show {rulesLines.length - 3} more rules
+                  </>
+                )}
+              </button>
+            )}
           </div>
         )}
       </CardContent>
@@ -189,54 +225,56 @@ function AddSetupDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>Add New Setup</DialogTitle>
-          <DialogDescription>
-            Create a new trading setup template to track your strategies
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-4 py-4">
-          <div className="space-y-2">
-            <Label htmlFor="name">Setup Name</Label>
-            <Input
-              id="name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="e.g., Opening Range Breakout"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="description">Description</Label>
-            <Input
-              id="description"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of the setup"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="rules">Trading Rules</Label>
-            <Textarea
-              id="rules"
-              value={rules}
-              onChange={(e) => setRules(e.target.value)}
-              placeholder="Enter your setup rules and criteria..."
-              rows={4}
-            />
-          </div>
+    <CustomDialog open={open} onOpenChange={onOpenChange}>
+      <CustomDialogHeader>
+        <CustomDialogTitle>Add New Setup</CustomDialogTitle>
+        <CustomDialogDescription>
+          Create a new trading setup template to track your strategies
+        </CustomDialogDescription>
+      </CustomDialogHeader>
+      <CustomDialogContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="setup-name">Setup Name</Label>
+          <Input
+            id="setup-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g., Opening Range Breakout"
+          />
         </div>
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
-          </Button>
-          <Button onClick={handleSubmit} disabled={!name}>
-            Add Setup
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+        <div className="space-y-2">
+          <Label htmlFor="setup-description">Description</Label>
+          <Input
+            id="setup-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Brief description of the setup"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="setup-rules">Trading Rules</Label>
+          <Textarea
+            id="setup-rules"
+            value={rules}
+            onChange={(e) => setRules(e.target.value)}
+            placeholder="Enter each rule on a new line, e.g.:
+Wait for price above VWAP
+Entry on pullback to EMA
+Stop loss below swing low"
+            rows={5}
+          />
+          <p className="text-xs text-muted-foreground">Enter each rule on a separate line</p>
+        </div>
+      </CustomDialogContent>
+      <CustomDialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={handleSubmit} disabled={!name}>
+          Add Setup
+        </Button>
+      </CustomDialogFooter>
+    </CustomDialog>
   );
 }
 
@@ -383,7 +421,7 @@ export default function SetupsPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6 p-6">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold tracking-tight">Setups</h1>

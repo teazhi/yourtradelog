@@ -629,7 +629,7 @@ function JournalPageContent() {
   }
 
   return (
-    <div className="flex flex-1 flex-col gap-6">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
