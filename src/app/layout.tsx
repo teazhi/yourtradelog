@@ -7,6 +7,10 @@ import { Toaster } from "sonner";
 export const metadata: Metadata = {
   title: "YourTradeLog - Futures Trading Journal",
   description: "A comprehensive trading journal for futures traders. Track trades, analyze performance, and improve your trading.",
+  icons: {
+    icon: "/icon.svg",
+    apple: "/apple-icon.svg",
+  },
 };
 
 export default function RootLayout({

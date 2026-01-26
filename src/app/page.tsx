@@ -90,7 +90,6 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it Works</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
           </nav>
           <div className="flex items-center gap-3">
@@ -137,7 +136,7 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center gap-4 justify-center lg:justify-start">
             <Link href="/signup">
               <Button size="lg" className="w-full sm:w-auto bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-lg px-8 h-14">
-                Start Free Trial
+                Get Started — It&apos;s Free
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
@@ -427,102 +426,60 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-24">
+      {/* 100% Free Section */}
+      <section className="py-24">
         <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
-          <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Simple,{" "}
-              <span className="bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent">
-                Transparent Pricing
-              </span>
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              Start free. Upgrade when you&apos;re ready.
-            </p>
-          </div>
+          <div className="mx-auto max-w-4xl">
+            <div className="rounded-3xl border-2 border-green-500 bg-card p-12 md:p-16 text-center relative overflow-hidden">
+              {/* Background decoration */}
+              <div className="absolute inset-0 overflow-hidden">
+                <div className="absolute -top-1/2 -right-1/4 w-96 h-96 bg-green-500/5 rounded-full blur-3xl" />
+                <div className="absolute -bottom-1/2 -left-1/4 w-96 h-96 bg-emerald-500/5 rounded-full blur-3xl" />
+              </div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {/* Free Tier */}
-            <div className="rounded-2xl border bg-card p-8">
-              <h3 className="text-lg font-semibold">Starter</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold">$0</span>
-                <span className="text-muted-foreground">/month</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">Perfect for getting started</p>
-              <ul className="mt-6 space-y-3">
-                {["Up to 50 trades/month", "Basic analytics", "Calendar view", "Mobile access"].map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm">
-                    <Check className="h-4 w-4 text-green-500" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/signup" className="block mt-8">
-                <Button variant="outline" className="w-full">Get Started</Button>
-              </Link>
-            </div>
+              <div className="relative">
+                <div className="inline-flex items-center gap-2 rounded-full bg-green-500/10 border border-green-500/20 px-4 py-2 text-sm font-medium text-green-600 mb-6">
+                  <Zap className="h-4 w-4" />
+                  100% Free Forever
+                </div>
 
-            {/* Pro Tier */}
-            <div className="rounded-2xl border-2 border-green-500 bg-card p-8 relative">
-              <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-medium px-3 py-1 rounded-full">
-                Most Popular
-              </div>
-              <h3 className="text-lg font-semibold">Pro</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold">$19</span>
-                <span className="text-muted-foreground">/month</span>
-              </div>
-              <p className="mt-2 text-sm text-muted-foreground">For serious traders</p>
-              <ul className="mt-6 space-y-3">
-                {[
-                  "Unlimited trades",
-                  "Advanced analytics",
-                  "Risk management tools",
-                  "Squad access",
-                  "Social feed",
-                  "Priority support",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm">
-                    <Check className="h-4 w-4 text-green-500" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/signup" className="block mt-8">
-                <Button className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700">
-                  Start Free Trial
-                </Button>
-              </Link>
-            </div>
+                <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl mb-4">
+                  All Features.{" "}
+                  <span className="bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent">
+                    Zero Cost.
+                  </span>
+                </h2>
 
-            {/* Team Tier */}
-            <div className="rounded-2xl border bg-card p-8">
-              <h3 className="text-lg font-semibold">Team</h3>
-              <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-4xl font-bold">$49</span>
-                <span className="text-muted-foreground">/month</span>
+                <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
+                  YourTradeLog is completely free. No hidden fees, no premium tiers, no credit card required.
+                  Get unlimited access to all features and start improving your trading today.
+                </p>
+
+                <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                  {[
+                    "Unlimited Trades",
+                    "Advanced Analytics",
+                    "Squad System",
+                    "Social Feed",
+                    "Risk Management",
+                    "Calendar View",
+                    "Setup Tracking",
+                    "Trade Journal",
+                  ].map((feature) => (
+                    <div key={feature} className="flex items-center justify-center gap-2 text-sm">
+                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      <span>{feature}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <Link href="/signup">
+                  <Button size="lg" className="bg-gradient-to-r from-green-500 to-emerald-600 hover:from-green-600 hover:to-emerald-700 text-lg px-10 h-14">
+                    Create Free Account
+                    <ArrowRight className="ml-2 h-5 w-5" />
+                  </Button>
+                </Link>
               </div>
-              <p className="mt-2 text-sm text-muted-foreground">For prop firms & teams</p>
-              <ul className="mt-6 space-y-3">
-                {[
-                  "Everything in Pro",
-                  "Team management",
-                  "Shared analytics",
-                  "Custom challenges",
-                  "API access",
-                  "Dedicated support",
-                ].map((feature) => (
-                  <li key={feature} className="flex items-center gap-2 text-sm">
-                    <Check className="h-4 w-4 text-green-500" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              <Link href="/signup" className="block mt-8">
-                <Button variant="outline" className="w-full">Contact Sales</Button>
-              </Link>
             </div>
           </div>
         </div>
@@ -599,18 +556,18 @@ export default function LandingPage() {
                 Ready to Transform Your Trading?
               </h2>
               <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
-                Join thousands of traders who are already improving their performance with YourTradeLog. Start your free trial today.
+                Join thousands of traders who are already improving their performance with YourTradeLog. It&apos;s completely free.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/signup">
                   <Button size="lg" variant="secondary" className="w-full sm:w-auto text-lg px-8 h-14">
-                    Start Free Trial
+                    Get Started Free
                     <ArrowRight className="ml-2 h-5 w-5" />
                   </Button>
                 </Link>
               </div>
               <p className="mt-4 text-sm text-white/60">
-                No credit card required • 14-day free trial • Cancel anytime
+                No credit card required • Free forever • All features included
               </p>
             </div>
           </div>
@@ -633,7 +590,7 @@ export default function LandingPage() {
               <h4 className="font-semibold mb-4">Product</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
-                <li><a href="#pricing" className="hover:text-foreground transition-colors">Pricing</a></li>
+                <li><a href="#how-it-works" className="hover:text-foreground transition-colors">How it Works</a></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Changelog</a></li>
               </ul>
             </div>
