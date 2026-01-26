@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { Plus, LayoutGrid, List, RefreshCw } from "lucide-react";
+import { Plus, LayoutGrid, List, RefreshCw, Upload } from "lucide-react";
 import { Button, ToggleGroup, ToggleGroupItem, useIsMobile, Spinner, toast } from "@/components/ui";
 import { TradeFilters, TradeFiltersState } from "@/components/trades/trade-filters";
 import { TradeTable } from "@/components/trades/trade-table";
@@ -247,14 +247,20 @@ export default function TradesPage() {
           </p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchTrades}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Refresh
+          <Button variant="outline" size="icon" onClick={fetchTrades} className="h-9 w-9 sm:w-auto sm:px-3">
+            <RefreshCw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Refresh</span>
           </Button>
-          <Button asChild>
+          <Button variant="outline" size="icon" asChild className="h-9 w-9 sm:w-auto sm:px-3">
             <Link href="/trades/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Trade
+              <Plus className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Add Trade</span>
+            </Link>
+          </Button>
+          <Button size="icon" asChild className="h-9 w-9 sm:w-auto sm:px-3">
+            <Link href="/import">
+              <Upload className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Import</span>
             </Link>
           </Button>
         </div>

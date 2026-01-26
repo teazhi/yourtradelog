@@ -154,13 +154,13 @@ export default function DashboardPage() {
         {/* Quick Actions */}
         <div className="flex items-center gap-2">
           <Link href="/trades/new">
-            <Button variant="outline" size="sm" className="h-9">
+            <Button variant="outline" size="icon" className="h-9 w-9 sm:w-auto sm:px-3">
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Add Trade</span>
             </Button>
           </Link>
           <Link href="/import">
-            <Button size="sm" className="h-9">
+            <Button size="icon" className="h-9 w-9 sm:w-auto sm:px-3">
               <Upload className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Import Trades</span>
             </Button>

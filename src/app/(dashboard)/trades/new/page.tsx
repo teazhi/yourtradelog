@@ -42,7 +42,9 @@ export default function NewTradePage() {
           .order("name");
 
         if (error) {
-          console.error("Error fetching setups:", error);
+          // Silently handle - setups table may not exist or user has none
+          // This is not critical - the form will just not show setup options
+          setSetups([]);
         } else {
           setSetups(data || []);
         }
