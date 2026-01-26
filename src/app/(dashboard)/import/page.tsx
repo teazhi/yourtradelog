@@ -1,8 +1,9 @@
 "use client";
 
 import * as React from "react";
+import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Upload, FileSpreadsheet, ArrowRight, ArrowLeft, Check, AlertCircle, X, CalendarDays } from "lucide-react";
+import { Upload, FileSpreadsheet, ArrowRight, ArrowLeft, Check, AlertCircle, X, CalendarDays, Loader2 } from "lucide-react";
 import { format, parseISO, isSameDay } from "date-fns";
 import {
   Button,
@@ -261,7 +262,7 @@ function validateTrade(row: ParsedRow, mappings: ColumnMapping[], rowIndex: numb
   };
 }
 
-export default function ImportPage() {
+function ImportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dateFilter = searchParams.get("date"); // YYYY-MM-DD format from journal
@@ -1100,5 +1101,22 @@ export default function ImportPage() {
         </Card>
       )}
     </div>
+  );
+}
+
+export default function ImportPage() {
+  return (
+    <Suspense fallback={
+      <div className="container max-w-6xl py-6 px-4 sm:px-6">
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin mx-auto text-muted-foreground" />
+            <p className="text-muted-foreground">Loading import...</p>
+          </div>
+        </div>
+      </div>
+    }>
+      <ImportPageContent />
+    </Suspense>
   );
 }
