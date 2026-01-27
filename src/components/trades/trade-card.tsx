@@ -60,13 +60,17 @@ export function TradeCard({ trade, onDelete }: TradeCardProps) {
           </Badge>
         );
       case "closed":
-        return (
-          <Badge
-            variant={isWin ? "default" : isLoss ? "destructive" : "secondary"}
-          >
-            {isWin ? "Win" : isLoss ? "Loss" : "B/E"}
-          </Badge>
-        );
+        if (isWin) {
+          return <Badge variant="default">Win</Badge>;
+        }
+        if (isLoss) {
+          return (
+            <Badge className="bg-red-500 text-white border-transparent hover:bg-red-500/80">
+              Loss
+            </Badge>
+          );
+        }
+        return <Badge variant="secondary">B/E</Badge>;
       case "cancelled":
         return (
           <Badge variant="outline" className="text-muted-foreground">

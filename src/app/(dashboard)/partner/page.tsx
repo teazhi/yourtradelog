@@ -95,6 +95,42 @@ const CHALLENGE_PRESETS: { title: string; description: string; type: ChallengeTy
   { title: "Discipline Streak", description: "Complete daily check-ins every day", type: "discipline_streak", target: 5, duration: 7 },
 ];
 
+// Quick messages to send partner - focused on accountability & support
+const QUICK_MESSAGES = {
+  checkin: [
+    "Did you do your pre-market prep? 📋",
+    "How's your trading day going? 👀",
+    "Don't forget to journal tonight! 📝",
+    "Checking in - staying disciplined? 🎯",
+    "Remember your max loss limit! ⚠️",
+  ],
+  encourage: [
+    "You got this! 💪",
+    "Stay disciplined, stay profitable 📈",
+    "Trust your process! 🎯",
+    "One trade at a time 🧘",
+    "Patience pays off 🌱",
+  ],
+  support: [
+    "Rough day? Tomorrow's a reset 🌅",
+    "One bad day doesn't define you 💯",
+    "We all have red days. Bounce back! 🔄",
+    "Keep your head up 🙏",
+    "Remember why you started 🎯",
+  ],
+};
+
+// Accountability milestones (not competitive)
+const MILESTONES = [
+  { id: "first_checkin", name: "First Check-in", description: "Complete your first daily check-in", icon: "✅", requirement: 1 },
+  { id: "week_streak", name: "Week Warrior", description: "7-day check-in streak", icon: "📅", requirement: 7 },
+  { id: "clean_week", name: "Clean Week", description: "No rule violations for 7 days", icon: "✨", requirement: 7 },
+  { id: "month_streak", name: "Monthly Master", description: "30-day check-in streak", icon: "🗓️", requirement: 30 },
+  { id: "iron_discipline", name: "Iron Discipline", description: "No violations for 30 days", icon: "🛡️", requirement: 30 },
+  { id: "journaling_habit", name: "Journaling Habit", description: "Journal 20 trading days", icon: "📝", requirement: 20 },
+  { id: "accountability_duo", name: "Accountability Duo", description: "Both partners check-in same day 10 times", icon: "🤝", requirement: 10 },
+];
+
 // =====================================================
 // MAIN COMPONENT
 // =====================================================
@@ -172,6 +208,10 @@ export default function PartnerPage() {
   const [celebration, setCelebration] = React.useState<{ show: boolean; title: string; message: string }>({
     show: false, title: "", message: ""
   });
+
+  // Quick message state
+  const [showQuickMessageDialog, setShowQuickMessageDialog] = React.useState(false);
+  const [selectedMessageCategory, setSelectedMessageCategory] = React.useState<"checkin" | "encourage" | "support">("checkin");
 
   // Loading states for actions
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -396,6 +436,29 @@ export default function PartnerPage() {
   // Win/loss record
   const myWins = stats.challenges_won;
   const partnerWins = stats.challenges_lost;
+
+  // Calculate accountability stats
+  const bothCheckedInToday = todayStatus.pre_market_done || todayStatus.post_market_done;
+
+  const handleSendQuickMessage = (message: string) => {
+    // In a real app, this would send via notification system
+    toast.success(`Message sent to ${partnerName}!`);
+    setCelebration({
+      show: true,
+      title: "Message Sent! 💬",
+      message: message,
+    });
+    setShowQuickMessageDialog(false);
+  };
+
+  // Calculate unlocked milestones (accountability-focused)
+  const unlockedMilestones = React.useMemo(() => {
+    const unlocked: string[] = [];
+    // These would be tracked properly in a real app
+    if (todayStatus.pre_market_done || todayStatus.post_market_done) unlocked.push("first_checkin");
+    if (stats.total_violations === 0 && stats.total_challenges > 0) unlocked.push("clean_week");
+    return unlocked;
+  }, [todayStatus, stats]);
 
   if (isLoading) {
     return (
@@ -636,9 +699,9 @@ export default function PartnerPage() {
       {/* Navigation Tabs */}
       <div className="flex gap-2 p-1 bg-muted rounded-lg">
         {[
-          { id: "today", label: "Today", icon: Sun },
-          { id: "challenges", label: "Challenges", icon: Trophy, count: activeChallenges.length },
-          { id: "rules", label: "Rules", icon: Shield, count: rules.length },
+          { id: "today", label: "Today", icon: Sun, count: undefined },
+          { id: "challenges", label: "Challenges", icon: Trophy, count: activeChallenges.length > 0 ? activeChallenges.length : undefined },
+          { id: "rules", label: "Rules", icon: Shield, count: rules.length > 0 ? rules.length : undefined },
         ].map((tab) => (
           <button
             key={tab.id}
@@ -652,7 +715,7 @@ export default function PartnerPage() {
           >
             <tab.icon className="h-4 w-4" />
             {tab.label}
-            {tab.count && tab.count > 0 && (
+            {tab.count !== undefined && (
               <Badge variant="secondary" className="text-xs px-1.5 py-0">{tab.count}</Badge>
             )}
           </button>
@@ -662,6 +725,46 @@ export default function PartnerPage() {
       {/* TODAY VIEW */}
       {activeView === "today" && (
         <div className="space-y-4">
+          {/* Partner Status Card */}
+          <Card className="border-blue-500/30 bg-blue-500/5">
+            <CardContent className="py-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="relative">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={partnerProfile?.avatar_url || undefined} />
+                      <AvatarFallback>{partnerName[0]}</AvatarFallback>
+                    </Avatar>
+                    <div className={cn(
+                      "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-background",
+                      "bg-green-500" // Would show partner's online/check-in status
+                    )} />
+                  </div>
+                  <div>
+                    <div className="font-medium">{partnerName}</div>
+                    <div className="text-xs text-muted-foreground">Your accountability partner</div>
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setShowQuickMessageDialog(true)}
+                >
+                  <MessageCircle className="h-4 w-4 mr-1" />
+                  Nudge
+                </Button>
+              </div>
+
+              {/* Both checked in today indicator */}
+              {bothCheckedInToday && (
+                <div className="mt-3 flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                  <CheckCircle2 className="h-4 w-4" />
+                  <span>You've checked in today!</span>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Daily Check-ins */}
           <Card>
             <CardHeader className="pb-2">
@@ -848,6 +951,48 @@ export default function PartnerPage() {
               <div className="text-xs text-muted-foreground">Win Rate</div>
             </div>
           </div>
+
+          {/* Milestones */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Award className="h-4 w-4 text-blue-500" />
+                Accountability Milestones
+              </CardTitle>
+              <CardDescription>Build good habits together</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex flex-wrap gap-2">
+                {MILESTONES.map((milestone) => {
+                  const isUnlocked = unlockedMilestones.includes(milestone.id);
+                  return (
+                    <div
+                      key={milestone.id}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg border transition-all",
+                        isUnlocked
+                          ? "bg-green-500/10 border-green-500/30"
+                          : "bg-muted/30 border-transparent opacity-50"
+                      )}
+                      title={milestone.description}
+                    >
+                      <span className="text-lg">{milestone.icon}</span>
+                      <div>
+                        <div className={cn("text-xs font-medium", isUnlocked && "text-green-600 dark:text-green-400")}>
+                          {milestone.name}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              {unlockedMilestones.length === 0 && (
+                <p className="text-xs text-muted-foreground text-center mt-2">
+                  Complete check-ins and follow rules to unlock milestones!
+                </p>
+              )}
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -1516,6 +1661,57 @@ export default function PartnerPage() {
               Mark as Paid
             </Button>
           </CustomDialogFooter>
+        </CustomDialogContent>
+      </CustomDialog>
+
+      {/* Quick Message Dialog */}
+      <CustomDialog open={showQuickMessageDialog} onOpenChange={setShowQuickMessageDialog}>
+        <CustomDialogContent>
+          <CustomDialogHeader>
+            <CustomDialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Send to {partnerName}
+            </CustomDialogTitle>
+            <CustomDialogDescription>
+              Pick a message to send your accountability partner
+            </CustomDialogDescription>
+          </CustomDialogHeader>
+          <div className="py-4 space-y-4">
+            {/* Category Tabs */}
+            <div className="flex gap-2 p-1 bg-muted rounded-lg">
+              {[
+                { id: "checkin" as const, label: "Check-in 👀" },
+                { id: "encourage" as const, label: "Encourage 💪" },
+                { id: "support" as const, label: "Support 🤝" },
+              ].map((cat) => (
+                <button
+                  key={cat.id}
+                  onClick={() => setSelectedMessageCategory(cat.id)}
+                  className={cn(
+                    "flex-1 py-2 px-3 rounded-md text-sm font-medium transition-all",
+                    selectedMessageCategory === cat.id
+                      ? "bg-background shadow-sm"
+                      : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  {cat.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Messages */}
+            <div className="space-y-2">
+              {QUICK_MESSAGES[selectedMessageCategory].map((msg, i) => (
+                <button
+                  key={i}
+                  onClick={() => handleSendQuickMessage(msg)}
+                  className="w-full text-left p-3 rounded-lg border hover:bg-muted hover:border-primary/50 transition-all"
+                >
+                  <span className="text-sm">{msg}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </CustomDialogContent>
       </CustomDialog>
 

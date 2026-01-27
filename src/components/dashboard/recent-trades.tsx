@@ -109,21 +109,15 @@ export function RecentTrades({ trades = [] }: RecentTradesProps) {
                     {formatCurrency(trade.pnl)}
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      variant={
-                        trade.status === "win"
-                          ? "default"
-                          : trade.status === "loss"
-                          ? "destructive"
-                          : "secondary"
-                      }
-                    >
-                      {trade.status === "win"
-                        ? "Win"
-                        : trade.status === "loss"
-                        ? "Loss"
-                        : "B/E"}
-                    </Badge>
+                    {trade.status === "win" ? (
+                      <Badge variant="default">Win</Badge>
+                    ) : trade.status === "loss" ? (
+                      <Badge className="bg-red-500 text-white border-transparent hover:bg-red-500/80">
+                        Loss
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">B/E</Badge>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}
@@ -164,18 +158,15 @@ export function RecentTrades({ trades = [] }: RecentTradesProps) {
                   {trade.pnl > 0 ? "+" : ""}
                   {formatCurrency(trade.pnl)}
                 </p>
-                <Badge
-                  variant={
-                    trade.status === "win"
-                      ? "default"
-                      : trade.status === "loss"
-                      ? "destructive"
-                      : "secondary"
-                  }
-                  className="text-xs"
-                >
-                  {trade.status === "win" ? "Win" : trade.status === "loss" ? "Loss" : "B/E"}
-                </Badge>
+                {trade.status === "win" ? (
+                  <Badge variant="default" className="text-xs">Win</Badge>
+                ) : trade.status === "loss" ? (
+                  <Badge className="bg-red-500 text-white border-transparent hover:bg-red-500/80 text-xs">
+                    Loss
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-xs">B/E</Badge>
+                )}
               </div>
             </div>
           ))}
