@@ -524,7 +524,7 @@ function ImportPageContent() {
         }
       }
 
-      // Try to parse YYYY-MM-DD HH:mm:ss format (ISO-like)
+      // Try to parse YYYY-MM-DD HH:mm:ss format (ISO-like with space)
       const isoLikeMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})$/);
       if (isoLikeMatch) {
         const [, year, month, day, hours, minutes, seconds] = isoLikeMatch;
@@ -535,6 +535,38 @@ function ImportPageContent() {
           parseInt(hours),
           parseInt(minutes),
           parseInt(seconds)
+        );
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+      }
+
+      // Try to parse YYYY-MM-DDTHH:mm:ss format (ISO 8601)
+      const isoMatch = trimmed.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2}):(\d{2})/);
+      if (isoMatch) {
+        const [, year, month, day, hours, minutes, seconds] = isoMatch;
+        const date = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          parseInt(hours),
+          parseInt(minutes),
+          parseInt(seconds)
+        );
+        if (!isNaN(date.getTime())) {
+          return date.toISOString();
+        }
+      }
+
+      // Try MM/DD/YYYY only (date without time) - set time to market open (9:30 AM)
+      const dateOnlyMatch = trimmed.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/);
+      if (dateOnlyMatch) {
+        const [, month, day, year] = dateOnlyMatch;
+        const date = new Date(
+          parseInt(year),
+          parseInt(month) - 1,
+          parseInt(day),
+          9, 30, 0 // Default to market open
         );
         if (!isNaN(date.getTime())) {
           return date.toISOString();

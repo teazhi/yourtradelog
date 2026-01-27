@@ -42,6 +42,7 @@ import { Trade } from "@/types/database";
 import {
   formatCurrency,
   formatDate,
+  formatTime,
   formatRMultiple,
 } from "@/lib/calculations/formatters";
 
@@ -181,6 +182,7 @@ export function TradeTable({
             <TableHeader>
               <TableRow>
                 <TableHead>Date</TableHead>
+                <TableHead>Time</TableHead>
                 <TableHead>Symbol</TableHead>
                 <TableHead>Side</TableHead>
                 <TableHead>Entry</TableHead>
@@ -195,7 +197,7 @@ export function TradeTable({
             <TableBody>
               {Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 10 }).map((_, j) => (
+                  {Array.from({ length: 11 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-pulse rounded bg-muted" />
                     </TableCell>
@@ -227,6 +229,7 @@ export function TradeTable({
           <TableHeader>
             <TableRow>
               <SortableHeader field="entry_date">Date</SortableHeader>
+              <TableHead>Time</TableHead>
               <SortableHeader field="symbol">Symbol</SortableHeader>
               <SortableHeader field="side">Side</SortableHeader>
               <SortableHeader field="entry_price">Entry</SortableHeader>
@@ -252,6 +255,9 @@ export function TradeTable({
                   >
                     {formatDate(trade.entry_date, "medium")}
                   </Link>
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {formatTime(trade.entry_date, false)}
                 </TableCell>
                 <TableCell className="font-medium">{trade.symbol}</TableCell>
                 <TableCell>
