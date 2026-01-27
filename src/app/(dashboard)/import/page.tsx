@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Upload, FileSpreadsheet, ArrowRight, ArrowLeft, Check, AlertCircle, X, CalendarDays, Loader2 } from "lucide-react";
+import { Upload, FileSpreadsheet, ArrowRight, ArrowLeft, Check, AlertCircle, X, CalendarDays, Loader2, HelpCircle, ExternalLink } from "lucide-react";
 import { format, parseISO, isSameDay } from "date-fns";
 import {
   Button,
@@ -795,6 +795,35 @@ function ImportPageContent() {
                 Selecting your broker helps us auto-detect column mappings
               </p>
             </div>
+
+            {/* Tradovate Import Instructions */}
+            {broker === "tradovate" && (
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-start gap-3">
+                  <HelpCircle className="h-5 w-5 text-primary mt-0.5 shrink-0" />
+                  <div className="space-y-3">
+                    <div>
+                      <h3 className="font-medium">How to Export from Tradovate</h3>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Follow these steps to export your trade history from Tradovate:
+                      </p>
+                    </div>
+                    <ol className="text-sm space-y-2 list-decimal list-inside text-muted-foreground">
+                      <li>Log in to the <a href="https://trader.tradovate.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">Tradovate web platform <ExternalLink className="h-3 w-3" /></a></li>
+                      <li>Click on the <strong className="text-foreground">Performance</strong> tab in the top navigation</li>
+                      <li>Select your desired date range using the date picker</li>
+                      <li>Click <strong className="text-foreground">Download CSV</strong></li>
+                      <li>Upload the downloaded CSV file here</li>
+                    </ol>
+                    <div className="pt-2 border-t">
+                      <p className="text-xs text-muted-foreground">
+                        <strong>Tip:</strong> The Performance export includes entry/exit prices, timestamps, P&L, and contract details which will be automatically mapped.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* File Upload */}
             <div
