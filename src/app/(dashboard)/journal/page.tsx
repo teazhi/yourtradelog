@@ -61,6 +61,7 @@ import { Trade } from "@/types/database";
 import { JournalScreenshots } from "@/components/journal/journal-screenshots";
 import { JournalDailyScreenshots } from "@/components/journal/journal-daily-screenshots";
 import { TradeTable } from "@/components/trades/trade-table";
+import { ShareToX } from "@/components/journal/share-to-x";
 
 // Common mistakes for futures day traders
 const COMMON_MISTAKES = [
@@ -1040,19 +1041,29 @@ function JournalPageContent() {
                 View All Trades
               </Button>
             </Link>
-            <Button onClick={handleSave} disabled={isSaving || !hasChanges} size="lg" className="px-6 py-3">
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-5 w-5" />
-                  Save Weekly Review
-                </>
-              )}
-            </Button>
+            <div className="flex items-center gap-3">
+              <ShareToX
+                weeklyPnL={weeklyPnL}
+                weeklyWinRate={weeklyWinRate}
+                weeklyTradeCount={weeklyTrades.length}
+                date={format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "MMM d") + " - " + format(subDays(selectedDate, 1), "MMM d")}
+                isWeekendReview={true}
+                lessonsLearned={weeklyReviewNotes}
+              />
+              <Button onClick={handleSave} disabled={isSaving || !hasChanges} size="lg" className="px-6 py-3">
+                {isSaving ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Saving...
+                  </>
+                ) : (
+                  <>
+                    <Save className="mr-2 h-5 w-5" />
+                    Save Weekly Review
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
         </>
       ) : (
@@ -1132,6 +1143,17 @@ function JournalPageContent() {
           </TabsList>
 
           <div className="flex items-center gap-2">
+            <ShareToX
+              dailyPnL={dailyPnL}
+              winRate={winRate}
+              winCount={winCount}
+              lossCount={lossCount}
+              tradeCount={closedTrades.length}
+              date={format(selectedDate, "MMM d, yyyy")}
+              isWeekendReview={false}
+              lessonsLearned={lessonsLearned}
+              whatWentWell={whatWentWell}
+            />
             <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
               {isSaving ? (
                 <>

@@ -19,8 +19,9 @@ interface DailyPnLProps {
 }
 
 export function DailyPnL({ data = [] }: DailyPnLProps) {
-  // Calculate today's stats
-  const today = new Date().toISOString().split("T")[0];
+  // Calculate today's stats using local date (not UTC)
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
   const todayData = data.find(d => d.date === today);
   const todayPnL = todayData?.pnl || 0;
 

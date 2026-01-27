@@ -89,15 +89,18 @@ export default function DashboardPage() {
 
   // Calculate daily P&L for chart
   const dailyPnL = React.useMemo(() => {
-    const closedTrades = trades.filter(t => t.status === "closed" && t.exit_date);
+    // Include trades that are closed OR have a net_pnl value
+    const closedTrades = trades.filter(t => t.status === "closed" || t.net_pnl !== null);
     const pnlByDate: Record<string, number> = {};
 
     closedTrades.forEach(trade => {
-      const date = trade.exit_date!.split("T")[0];
+      // Use exit_date if available, otherwise fall back to entry_date
+      const dateStr = trade.exit_date || trade.entry_date;
+      const date = dateStr.split("T")[0];
       pnlByDate[date] = (pnlByDate[date] || 0) + (trade.net_pnl || 0);
     });
 
-    // Get last 30 days
+    // Get last 30 days with data
     const dates = Object.keys(pnlByDate).sort().slice(-30);
     return dates.map(date => ({
       date,
