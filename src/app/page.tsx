@@ -12,55 +12,14 @@ import {
   Trophy,
   ChevronRight,
   Check,
-  Star,
   ArrowRight,
-  Play,
   Calendar,
   PieChart,
   Activity,
+  Sparkles,
 } from "lucide-react";
 import { Button } from "@/components/ui";
 import { Logo, LogoIcon } from "@/components/ui/logo";
-
-// Animated counter component
-function AnimatedCounter({ end, duration = 2000, suffix = "" }: { end: number; duration?: number; suffix?: string }) {
-  const [count, setCount] = useState(0);
-  const [hasAnimated, setHasAnimated] = useState(false);
-
-  useEffect(() => {
-    if (hasAnimated) return;
-
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0].isIntersecting) {
-          setHasAnimated(true);
-          let startTime: number;
-          const animate = (currentTime: number) => {
-            if (!startTime) startTime = currentTime;
-            const progress = Math.min((currentTime - startTime) / duration, 1);
-            setCount(Math.floor(progress * end));
-            if (progress < 1) {
-              requestAnimationFrame(animate);
-            }
-          };
-          requestAnimationFrame(animate);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    const element = document.getElementById(`counter-${end}`);
-    if (element) observer.observe(element);
-
-    return () => observer.disconnect();
-  }, [end, duration, hasAnimated]);
-
-  return (
-    <span id={`counter-${end}`}>
-      {count.toLocaleString()}{suffix}
-    </span>
-  );
-}
 
 // Floating card animation
 function FloatingCard({ children, delay = 0 }: { children: React.ReactNode; delay?: number }) {
@@ -90,7 +49,7 @@ export default function LandingPage() {
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How it Works</a>
-            <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
+            <a href="#why-free" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why Free?</a>
           </nav>
           <div className="flex items-center gap-3">
             <Link href="/login">
@@ -115,11 +74,8 @@ export default function LandingPage() {
 
         <div className="flex-1 text-center lg:text-left space-y-8">
           <div className="inline-flex items-center gap-2 rounded-full border bg-muted/50 px-4 py-1.5 text-sm">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-            </span>
-            <span>Now with Squad Challenges & Social Feed</span>
+            <Sparkles className="h-4 w-4 text-green-500" />
+            <span>Built by traders, for traders</span>
           </div>
 
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl">
@@ -140,29 +96,17 @@ export default function LandingPage() {
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="w-full sm:w-auto text-lg px-8 h-14 gap-2">
-              <Play className="h-5 w-5" />
-              Watch Demo
-            </Button>
           </div>
 
-          <div className="flex items-center gap-8 justify-center lg:justify-start pt-4">
-            <div className="flex items-center gap-2">
-              <div className="flex -space-x-2">
-                {[1, 2, 3, 4].map((i) => (
-                  <div key={i} className="h-8 w-8 rounded-full bg-gradient-to-br from-gray-300 to-gray-400 border-2 border-background" />
-                ))}
-              </div>
-              <span className="text-sm text-muted-foreground">
-                <strong className="text-foreground">2,500+</strong> traders
-              </span>
-            </div>
-            <div className="flex items-center gap-1">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-              ))}
-              <span className="text-sm text-muted-foreground ml-1">4.9/5</span>
-            </div>
+          <div className="flex items-center gap-2 justify-center lg:justify-start pt-2 text-sm text-muted-foreground">
+            <Check className="h-4 w-4 text-green-500" />
+            <span>No credit card required</span>
+            <span className="mx-2">•</span>
+            <Check className="h-4 w-4 text-green-500" />
+            <span>Free forever</span>
+            <span className="mx-2">•</span>
+            <Check className="h-4 w-4 text-green-500" />
+            <span>All features included</span>
           </div>
         </div>
 
@@ -253,43 +197,11 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Stats Section */}
-      <section className="border-y bg-muted/30 py-16">
-        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            <div className="text-center">
-              <div className="text-4xl font-bold text-foreground">
-                <AnimatedCounter end={2500} suffix="+" />
-              </div>
-              <div className="text-muted-foreground mt-1">Active Traders</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-foreground">
-                <AnimatedCounter end={150000} suffix="+" />
-              </div>
-              <div className="text-muted-foreground mt-1">Trades Logged</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-foreground">
-                $<AnimatedCounter end={25} suffix="M+" />
-              </div>
-              <div className="text-muted-foreground mt-1">P&L Tracked</div>
-            </div>
-            <div className="text-center">
-              <div className="text-4xl font-bold text-foreground">
-                <AnimatedCounter end={98} suffix="%" />
-              </div>
-              <div className="text-muted-foreground mt-1">Satisfaction Rate</div>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Features Section */}
-      <section id="features" className="py-24">
+      <section id="features" className="py-24 bg-muted/30">
         <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="mx-auto max-w-2xl text-center mb-16">
-            <div className="inline-flex items-center gap-2 rounded-full border bg-muted/50 px-4 py-1.5 text-sm mb-4">
+            <div className="inline-flex items-center gap-2 rounded-full border bg-background px-4 py-1.5 text-sm mb-4">
               <Zap className="h-4 w-4 text-yellow-500" />
               <span>Powerful Features</span>
             </div>
@@ -377,7 +289,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works */}
-      <section id="how-it-works" className="py-24 bg-muted/30">
+      <section id="how-it-works" className="py-24">
         <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="mx-auto max-w-2xl text-center mb-16">
             <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
@@ -426,8 +338,8 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* 100% Free Section */}
-      <section className="py-24">
+      {/* Why Free Section */}
+      <section id="why-free" className="py-24 bg-muted/30">
         <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
           <div className="mx-auto max-w-4xl">
             <div className="rounded-3xl border-2 border-green-500 bg-card p-12 md:p-16 text-center relative overflow-hidden">
@@ -451,8 +363,7 @@ export default function LandingPage() {
                 </h2>
 
                 <p className="text-lg text-muted-foreground mb-8 max-w-2xl mx-auto">
-                  YourTradeLog is completely free. No hidden fees, no premium tiers, no credit card required.
-                  Get unlimited access to all features and start improving your trading today.
+                  YourTradeLog is a passion project built by traders who believe every trader deserves access to professional journaling tools. No hidden fees, no premium tiers, no credit card required.
                 </p>
 
                 <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 mb-10">
@@ -485,62 +396,6 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section id="testimonials" className="py-24 bg-muted/30">
-        <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
-          <div className="mx-auto max-w-2xl text-center mb-16">
-            <h2 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
-              Loved by{" "}
-              <span className="bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent">
-                Traders Worldwide
-              </span>
-            </h2>
-            <p className="mt-4 text-lg text-muted-foreground">
-              See what our community has to say.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-3 gap-6">
-            {[
-              {
-                quote: "YourTradeLog completely changed how I approach trading. The analytics helped me identify my winning patterns and eliminate my bad habits.",
-                author: "Alex K.",
-                role: "Day Trader",
-                rating: 5,
-              },
-              {
-                quote: "The squad feature is amazing! Competing with my trading buddies keeps me accountable and motivated. Best investment I've made in my trading career.",
-                author: "Sarah M.",
-                role: "Swing Trader",
-                rating: 5,
-              },
-              {
-                quote: "Finally, a trading journal that doesn't feel like a chore. The interface is beautiful and the insights are incredibly valuable.",
-                author: "Michael R.",
-                role: "Options Trader",
-                rating: 5,
-              },
-            ].map((testimonial, index) => (
-              <div key={index} className="rounded-2xl border bg-card p-6">
-                <div className="flex gap-1 mb-4">
-                  {[...Array(testimonial.rating)].map((_, i) => (
-                    <Star key={i} className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-muted-foreground mb-6">&quot;{testimonial.quote}&quot;</p>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-500" />
-                  <div>
-                    <div className="font-medium">{testimonial.author}</div>
-                    <div className="text-sm text-muted-foreground">{testimonial.role}</div>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
       {/* Final CTA */}
       <section className="py-24">
         <div className="container px-4 sm:px-6 lg:px-8 mx-auto">
@@ -556,7 +411,7 @@ export default function LandingPage() {
                 Ready to Transform Your Trading?
               </h2>
               <p className="text-lg text-white/80 mb-8 max-w-2xl mx-auto">
-                Join thousands of traders who are already improving their performance with YourTradeLog. It&apos;s completely free.
+                Start tracking your trades today and discover the patterns that will make you a better trader. It&apos;s completely free.
               </p>
               <div className="flex flex-col sm:flex-row gap-4 justify-center">
                 <Link href="/signup">
@@ -591,15 +446,13 @@ export default function LandingPage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#features" className="hover:text-foreground transition-colors">Features</a></li>
                 <li><a href="#how-it-works" className="hover:text-foreground transition-colors">How it Works</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Changelog</a></li>
               </ul>
             </div>
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
+              <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">About</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Blog</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Careers</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
+                <li><a href="#" className="hover:text-foreground transition-colors">Feedback</a></li>
               </ul>
             </div>
             <div>
@@ -607,7 +460,6 @@ export default function LandingPage() {
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a href="#" className="hover:text-foreground transition-colors">Privacy</a></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Terms</a></li>
-                <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
               </ul>
             </div>
           </div>
@@ -615,14 +467,6 @@ export default function LandingPage() {
             <p className="text-sm text-muted-foreground">
               © {new Date().getFullYear()} YourTradeLog. All rights reserved.
             </p>
-            <div className="flex items-center gap-4">
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M24 4.557c-.883.392-1.832.656-2.828.775 1.017-.609 1.798-1.574 2.165-2.724-.951.564-2.005.974-3.127 1.195-.897-.957-2.178-1.555-3.594-1.555-3.179 0-5.515 2.966-4.797 6.045-4.091-.205-7.719-2.165-10.148-5.144-1.29 2.213-.669 5.108 1.523 6.574-.806-.026-1.566-.247-2.229-.616-.054 2.281 1.581 4.415 3.949 4.89-.693.188-1.452.232-2.224.084.626 1.956 2.444 3.379 4.6 3.419-2.07 1.623-4.678 2.348-7.29 2.04 2.179 1.397 4.768 2.212 7.548 2.212 9.142 0 14.307-7.721 13.995-14.646.962-.695 1.797-1.562 2.457-2.549z"/></svg>
-              </a>
-              <a href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
-              </a>
-            </div>
           </div>
         </div>
       </footer>
