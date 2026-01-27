@@ -60,6 +60,7 @@ import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { JournalScreenshots } from "@/components/journal/journal-screenshots";
 import { JournalDailyScreenshots } from "@/components/journal/journal-daily-screenshots";
+import { UnlinkedScreenshots } from "@/components/journal/unlinked-screenshots";
 import { TradeTable } from "@/components/trades/trade-table";
 import { ShareToX } from "@/components/journal/share-to-x";
 
@@ -287,6 +288,9 @@ function JournalPageContent() {
   const [focusRating, setFocusRating] = React.useState<number | null>(null);
   const [disciplineRating, setDisciplineRating] = React.useState<number | null>(null);
   const [executionRating, setExecutionRating] = React.useState<number | null>(null);
+
+  // Screenshot refresh key - increment to trigger JournalScreenshots refresh
+  const [screenshotRefreshKey, setScreenshotRefreshKey] = React.useState(0);
 
   // Weekly review state (for Saturdays)
   const [weeklyTrades, setWeeklyTrades] = React.useState<Trade[]>([]);
@@ -1537,8 +1541,15 @@ function JournalPageContent() {
         </TabsContent>
 
         {/* Screenshots Tab */}
-        <TabsContent value="screenshots">
-          <JournalScreenshots date={dateKey} />
+        <TabsContent value="screenshots" className="space-y-6">
+          {/* Unlinked Screenshots - upload now, link later */}
+          <UnlinkedScreenshots
+            date={dateKey}
+            onScreenshotLinked={() => setScreenshotRefreshKey(k => k + 1)}
+          />
+
+          {/* Trade Screenshots - linked to specific trades */}
+          <JournalScreenshots date={dateKey} refreshKey={screenshotRefreshKey} />
         </TabsContent>
       </Tabs>
         </>

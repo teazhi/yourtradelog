@@ -27,6 +27,7 @@ import {
   toast,
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
+import { compressImage } from "@/lib/image-compression";
 
 // Screenshot type definition for journal
 interface JournalScreenshot {
@@ -144,8 +145,8 @@ export function JournalDailyScreenshots({
       }
 
       for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i];
-        setUploadProgress(`Uploading ${i + 1} of ${filesToUpload.length}...`);
+        let file = filesToUpload[i];
+        setUploadProgress(`Processing ${i + 1} of ${filesToUpload.length}...`);
 
         // Validate file type
         if (!file.type.startsWith("image/")) {
@@ -153,7 +154,7 @@ export function JournalDailyScreenshots({
           continue;
         }
 
-        // Validate file size (10MB max)
+        // Validate file size (10MB max before compression)
         const maxSizeBytes = 10 * 1024 * 1024;
         if (file.size > maxSizeBytes) {
           const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
@@ -162,8 +163,19 @@ export function JournalDailyScreenshots({
         }
 
         try {
+          // Compress image before upload
+          setUploadProgress(`Compressing ${i + 1} of ${filesToUpload.length}...`);
+          const originalSize = file.size;
+          file = await compressImage(file);
+          const savedBytes = originalSize - file.size;
+          if (savedBytes > 0) {
+            console.log(`Saved ${(savedBytes / 1024).toFixed(1)}KB on ${file.name}`);
+          }
+
+          setUploadProgress(`Uploading ${i + 1} of ${filesToUpload.length}...`);
+
           // Generate unique filename
-          const fileExt = file.name.split(".").pop();
+          const fileExt = file.name.split(".").pop() || "jpg";
           const fileName = `${date}/${type}-${Date.now()}-${i}.${fileExt}`;
           const filePath = `${user.id}/${fileName}`;
 

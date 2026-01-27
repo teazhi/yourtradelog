@@ -28,6 +28,7 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { TradeScreenshot } from "@/types/database";
 import { APP_DEFAULTS } from "@/lib/constants";
+import { compressImage } from "@/lib/image-compression";
 
 interface TradeScreenshotsProps {
   tradeId: string;
@@ -134,8 +135,8 @@ export function TradeScreenshots({
       }
 
       for (let i = 0; i < filesToUpload.length; i++) {
-        const file = filesToUpload[i];
-        setUploadProgress(`Uploading ${i + 1} of ${filesToUpload.length}...`);
+        let file = filesToUpload[i];
+        setUploadProgress(`Processing ${i + 1} of ${filesToUpload.length}...`);
 
         // Validate file type
         if (!file.type.startsWith("image/")) {
@@ -143,7 +144,7 @@ export function TradeScreenshots({
           continue;
         }
 
-        // Validate file size
+        // Validate file size (before compression)
         const maxSizeBytes = APP_DEFAULTS.maxFileSizeMB * 1024 * 1024;
         if (file.size > maxSizeBytes) {
           const fileSizeMB = (file.size / 1024 / 1024).toFixed(1);
@@ -152,8 +153,19 @@ export function TradeScreenshots({
         }
 
         try {
+          // Compress image before upload
+          setUploadProgress(`Compressing ${i + 1} of ${filesToUpload.length}...`);
+          const originalSize = file.size;
+          file = await compressImage(file);
+          const savedBytes = originalSize - file.size;
+          if (savedBytes > 0) {
+            console.log(`Saved ${(savedBytes / 1024).toFixed(1)}KB on ${file.name}`);
+          }
+
+          setUploadProgress(`Uploading ${i + 1} of ${filesToUpload.length}...`);
+
           // Generate unique filename - default to "other" type, user can change after
-          const fileExt = file.name.split(".").pop();
+          const fileExt = file.name.split(".").pop() || "jpg";
           const fileName = `${tradeId}/${Date.now()}-${i}-other.${fileExt}`;
           const filePath = `${user.id}/${fileName}`;
 

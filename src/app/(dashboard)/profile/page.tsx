@@ -43,6 +43,7 @@ import {
 } from "@/components/ui";
 import { CustomSwitch } from "@/components/ui/custom-switch";
 import { createClient } from "@/lib/supabase/client";
+import { dispatchProfileUpdate } from "@/components/layout/profile-completion-banner";
 import { SocialProfile, TradingStyle, ExperienceLevel } from "@/types/social";
 import { DEFAULT_FUTURES_INSTRUMENTS } from "@/lib/constants";
 
@@ -203,6 +204,7 @@ export default function ProfilePage() {
         toast.error("Failed to save profile");
       } else {
         toast.success("Profile saved!");
+        dispatchProfileUpdate(); // Update the profile completion banner
       }
     } catch (err) {
       console.error("Exception saving profile:", err);
@@ -232,6 +234,7 @@ export default function ProfilePage() {
             toast.error("Failed to save setting");
           } else {
             toast.success("Setting saved");
+            dispatchProfileUpdate(); // Update the profile completion banner
           }
         }
       } catch (err) {

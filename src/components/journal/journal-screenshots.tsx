@@ -5,10 +5,10 @@ import {
   Image as ImageIcon,
   Loader2,
   X,
-  ZoomIn,
   TrendingUp,
   TrendingDown,
   ExternalLink,
+  Trash2,
 } from "lucide-react";
 import {
   Button,
@@ -19,6 +19,7 @@ import {
   CardTitle,
   Badge,
   cn,
+  toast,
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { Trade, TradeScreenshot } from "@/types/database";
@@ -26,6 +27,7 @@ import Link from "next/link";
 
 interface JournalScreenshotsProps {
   date: string; // YYYY-MM-DD format
+  refreshKey?: number; // Increment to trigger refresh
 }
 
 interface TradeWithScreenshots extends Trade {
@@ -45,13 +47,17 @@ const SCREENSHOT_TYPES = [
   { value: "other", label: "Other" },
 ] as const;
 
-export function JournalScreenshots({ date }: JournalScreenshotsProps) {
+export function JournalScreenshots({ date, refreshKey = 0 }: JournalScreenshotsProps) {
   const [tradesWithScreenshots, setTradesWithScreenshots] = React.useState<TradeWithScreenshots[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [previewImage, setPreviewImage] = React.useState<string | null>(null);
   const [previewTitle, setPreviewTitle] = React.useState<string>("");
 
+  // Inline type editing state
+  const [editingTagId, setEditingTagId] = React.useState<string | null>(null);
+
   // Fetch trades and their screenshots for the date
+  // Re-fetch when refreshKey changes (triggered when screenshots are linked)
   React.useEffect(() => {
     async function fetchTradesAndScreenshots() {
       try {
@@ -126,7 +132,7 @@ export function JournalScreenshots({ date }: JournalScreenshotsProps) {
     }
 
     fetchTradesAndScreenshots();
-  }, [date]);
+  }, [date, refreshKey]);
 
   // Get image URL
   const getImageUrl = (screenshot: TradeScreenshot) => {
@@ -145,6 +151,75 @@ export function JournalScreenshots({ date }: JournalScreenshotsProps) {
     setPreviewImage(url);
     const typeLabel = SCREENSHOT_TYPES.find(t => t.value === screenshot.screenshot_type)?.label || screenshot.screenshot_type;
     setPreviewTitle(`${tradeName} - ${typeLabel}`);
+  };
+
+  // Handle inline type change
+  const handleTypeChange = async (screenshot: TradeScreenshot, newType: string) => {
+    try {
+      const supabase = createClient();
+
+      const { error } = await (supabase
+        .from("trade_screenshots") as any)
+        .update({ screenshot_type: newType })
+        .eq("id", screenshot.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setTradesWithScreenshots(trades =>
+        trades.map(trade => ({
+          ...trade,
+          screenshots: trade.screenshots.map(s =>
+            s.id === screenshot.id
+              ? { ...s, screenshot_type: newType }
+              : s
+          ),
+        }))
+      );
+
+      setEditingTagId(null);
+      toast.success("Type updated");
+    } catch (error) {
+      console.error("Error updating screenshot type:", error);
+      toast.error("Failed to update type");
+    }
+  };
+
+  // Delete screenshot
+  const handleDelete = async (screenshot: TradeScreenshot) => {
+    try {
+      const supabase = createClient();
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from("trade-screenshots")
+        .remove([screenshot.file_path]);
+
+      if (storageError) {
+        console.error("Error deleting from storage:", storageError);
+      }
+
+      // Delete from database
+      const { error: dbError } = await (supabase
+        .from("trade_screenshots") as any)
+        .delete()
+        .eq("id", screenshot.id);
+
+      if (dbError) throw dbError;
+
+      // Update local state
+      setTradesWithScreenshots(trades =>
+        trades.map(trade => ({
+          ...trade,
+          screenshots: trade.screenshots.filter(s => s.id !== screenshot.id),
+        }))
+      );
+
+      toast.success("Screenshot deleted");
+    } catch (error) {
+      console.error("Error deleting screenshot:", error);
+      toast.error("Failed to delete screenshot");
+    }
   };
 
   // Format trade name
@@ -259,37 +334,67 @@ export function JournalScreenshots({ date }: JournalScreenshotsProps) {
                         {trade.screenshots.map((screenshot) => (
                           <div
                             key={screenshot.id}
-                            className="group relative aspect-video rounded-lg border bg-muted overflow-hidden cursor-pointer"
-                            onClick={() => openPreview(screenshot, `Trade ${index + 1}: ${trade.symbol}`)}
+                            className="group relative aspect-video rounded-lg border bg-muted overflow-hidden"
                           >
-                            <img
-                              src={getImageUrl(screenshot)}
-                              alt={screenshot.file_name}
-                              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-                            />
+                            {/* Image - clickable for preview */}
+                            <div
+                              className="absolute inset-0 cursor-pointer"
+                              onClick={() => openPreview(screenshot, `Trade ${index + 1}: ${trade.symbol}`)}
+                            >
+                              <img
+                                src={getImageUrl(screenshot)}
+                                alt={screenshot.file_name}
+                                className="w-full h-full object-cover transition-transform group-hover:scale-105"
+                              />
+                            </div>
 
-                            {/* Overlay on hover */}
-                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            {/* Overlay on hover with delete button */}
+                            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center">
                               <Button
-                                variant="secondary"
+                                variant="destructive"
                                 size="icon"
-                                className="h-8 w-8"
+                                className="h-8 w-8 pointer-events-auto"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  openPreview(screenshot, `Trade ${index + 1}: ${trade.symbol}`);
+                                  handleDelete(screenshot);
                                 }}
                               >
-                                <ZoomIn className="h-4 w-4" />
+                                <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
 
-                            {/* Type badge */}
-                            <Badge
-                              variant="secondary"
-                              className="absolute top-2 left-2 text-xs px-2 py-0.5 font-medium"
-                            >
-                              {SCREENSHOT_TYPES.find(t => t.value === screenshot.screenshot_type)?.label || screenshot.screenshot_type}
-                            </Badge>
+                            {/* Type badge - clickable to edit */}
+                            {editingTagId === screenshot.id ? (
+                              <div
+                                className="absolute top-2 left-2 z-10"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <select
+                                  value={screenshot.screenshot_type}
+                                  onChange={(e) => handleTypeChange(screenshot, e.target.value)}
+                                  onBlur={() => setEditingTagId(null)}
+                                  autoFocus
+                                  className="h-7 px-2 text-xs rounded-md border border-input bg-background font-medium focus:outline-none focus:ring-2 focus:ring-ring"
+                                >
+                                  {SCREENSHOT_TYPES.map((type) => (
+                                    <option key={type.value} value={type.value}>
+                                      {type.label}
+                                    </option>
+                                  ))}
+                                </select>
+                              </div>
+                            ) : (
+                              <Badge
+                                variant="secondary"
+                                className="absolute top-2 left-2 text-xs px-2 py-0.5 font-medium cursor-pointer hover:bg-secondary/80 pointer-events-auto"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingTagId(screenshot.id);
+                                }}
+                              >
+                                {SCREENSHOT_TYPES.find(t => t.value === screenshot.screenshot_type)?.label || screenshot.screenshot_type}
+                              </Badge>
+                            )}
                           </div>
                         ))}
                       </div>
@@ -337,6 +442,7 @@ export function JournalScreenshots({ date }: JournalScreenshotsProps) {
           </div>
         </div>
       )}
+
     </>
   );
 }

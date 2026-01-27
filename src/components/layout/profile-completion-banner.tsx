@@ -68,10 +68,58 @@ function getMissingFields(profile: ProfileCompletionData): string[] {
   return missing;
 }
 
+// Custom event name for profile updates
+export const PROFILE_UPDATED_EVENT = "profile-updated";
+
+// Helper function to dispatch profile update event
+export function dispatchProfileUpdate() {
+  window.dispatchEvent(new CustomEvent(PROFILE_UPDATED_EVENT));
+}
+
 export function ProfileCompletionBanner() {
   const [profile, setProfile] = React.useState<ProfileCompletionData | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDismissed, setIsDismissed] = React.useState(false);
+
+  const fetchProfile = React.useCallback(async () => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("username, display_name, trading_style, experience_level, favorite_instruments, bio")
+        .eq("id", user.id)
+        .single();
+
+      if (error && error.code !== "PGRST116") {
+        console.error("Error fetching profile:", error);
+      }
+
+      if (data) {
+        setProfile(data as ProfileCompletionData);
+      } else {
+        // No profile exists - treat as completely incomplete
+        setProfile({
+          username: null,
+          display_name: null,
+          trading_style: null,
+          experience_level: null,
+          favorite_instruments: null,
+          bio: null,
+        });
+      }
+    } catch (err) {
+      console.error("Exception fetching profile:", err);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
 
   React.useEffect(() => {
     // Check if already dismissed in this session
@@ -82,48 +130,20 @@ export function ProfileCompletionBanner() {
       return;
     }
 
-    async function fetchProfile() {
-      try {
-        const supabase = createClient();
-        const { data: { user } } = await supabase.auth.getUser();
-
-        if (!user) {
-          setIsLoading(false);
-          return;
-        }
-
-        const { data, error } = await supabase
-          .from("profiles")
-          .select("username, display_name, trading_style, experience_level, favorite_instruments, bio")
-          .eq("id", user.id)
-          .single();
-
-        if (error && error.code !== "PGRST116") {
-          console.error("Error fetching profile:", error);
-        }
-
-        if (data) {
-          setProfile(data as ProfileCompletionData);
-        } else {
-          // No profile exists - treat as completely incomplete
-          setProfile({
-            username: null,
-            display_name: null,
-            trading_style: null,
-            experience_level: null,
-            favorite_instruments: null,
-            bio: null,
-          });
-        }
-      } catch (err) {
-        console.error("Exception fetching profile:", err);
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
     fetchProfile();
-  }, []);
+  }, [fetchProfile]);
+
+  // Listen for profile update events
+  React.useEffect(() => {
+    const handleProfileUpdate = () => {
+      fetchProfile();
+    };
+
+    window.addEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdate);
+    return () => {
+      window.removeEventListener(PROFILE_UPDATED_EVENT, handleProfileUpdate);
+    };
+  }, [fetchProfile]);
 
   const handleDismiss = () => {
     sessionStorage.setItem("profile-banner-dismissed", "true");

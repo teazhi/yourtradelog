@@ -632,13 +632,9 @@ export default function AnalyticsPage() {
 
         {/* Overview Tab */}
         <TabsContent value="overview" className="space-y-4">
-          <div className="grid gap-4 lg:grid-cols-3">
-            <div className="lg:col-span-2">
-              <EquityCurve data={analytics.equityCurve} />
-            </div>
-            <div>
-              <WinRateChart data={analytics.winRateData} />
-            </div>
+          <div className="grid gap-4 md:grid-cols-2">
+            <EquityCurve data={analytics.equityCurve} />
+            <WinRateChart data={analytics.winRateData} />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
             <PnLByDay data={analytics.pnlByDay} />
