@@ -162,10 +162,10 @@ export default function AchievementsPage() {
         .eq("status", "closed")
         .order("entry_date", { ascending: true });
 
-      // Fetch journal entries with pre/post market notes
+      // Fetch journal entries with all relevant content fields
       const { data: journals } = await supabase
         .from("daily_journals")
-        .select("id, pre_market_notes, post_market_notes, is_weekly_review")
+        .select("id, pre_market_notes, post_market_notes, lessons_learned, weekly_review_notes, weekly_wins, weekly_improvements, goals, what_went_well, mistakes_made, mood_rating, focus_rating, discipline_rating, execution_rating")
         .eq("user_id", user.id);
 
       // Fetch setups count
@@ -174,13 +174,55 @@ export default function AchievementsPage() {
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id);
 
-      // Fetch trades with screenshots
-      const { count: screenshotCount } = await supabase
+      // Fetch trades with screenshots (count distinct trades that have at least one screenshot)
+      const { data: screenshotData } = await supabase
         .from("trade_screenshots")
-        .select("trade_id", { count: "exact", head: true });
+        .select("trade_id")
+        .eq("user_id", user.id);
 
-      const journalCount = journals?.length || 0;
-      const weeklyReviewCount = journals?.filter((j: any) => j.is_weekly_review).length || 0;
+      // Count unique trades that have screenshots
+      const uniqueTradesWithScreenshots = new Set(screenshotData?.map((s: any) => s.trade_id) || []);
+      const screenshotCount = uniqueTradesWithScreenshots.size;
+
+      // Helper function to check if a journal has meaningful content
+      const hasJournalContent = (j: any): boolean => {
+        // Check text fields for non-empty content
+        const hasTextContent =
+          (j.pre_market_notes && j.pre_market_notes.trim().length > 0) ||
+          (j.post_market_notes && j.post_market_notes.trim().length > 0) ||
+          (j.lessons_learned && j.lessons_learned.trim().length > 0) ||
+          (j.weekly_review_notes && j.weekly_review_notes.trim().length > 0) ||
+          (j.weekly_wins && j.weekly_wins.trim().length > 0) ||
+          (j.weekly_improvements && j.weekly_improvements.trim().length > 0);
+
+        // Check array fields for non-empty content
+        const hasArrayContent =
+          (Array.isArray(j.goals) && j.goals.length > 0) ||
+          (Array.isArray(j.what_went_well) && j.what_went_well.length > 0) ||
+          (Array.isArray(j.mistakes_made) && j.mistakes_made.length > 0);
+
+        // Check ratings (any rating set counts as content)
+        const hasRatings =
+          j.mood_rating !== null ||
+          j.focus_rating !== null ||
+          j.discipline_rating !== null ||
+          j.execution_rating !== null;
+
+        return hasTextContent || hasArrayContent || hasRatings;
+      };
+
+      // Count journals that have actual content
+      const journalCount = journals?.filter((j: any) => hasJournalContent(j)).length || 0;
+
+      // Count weekly reviews that have content (weekly review specific fields or general content)
+      const weeklyReviewCount = journals?.filter((j: any) => {
+        const hasWeeklyContent =
+          (j.weekly_review_notes && j.weekly_review_notes.trim().length > 0) ||
+          (j.weekly_wins && j.weekly_wins.trim().length > 0) ||
+          (j.weekly_improvements && j.weekly_improvements.trim().length > 0);
+        return hasWeeklyContent;
+      }).length || 0;
+
       const hasPreMarketNote = journals?.some((j: any) => j.pre_market_notes && j.pre_market_notes.trim().length > 0) || false;
       const hasPostMarketReview = journals?.some((j: any) => j.post_market_notes && j.post_market_notes.trim().length > 0) || false;
 

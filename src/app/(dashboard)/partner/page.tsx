@@ -34,6 +34,8 @@ import {
   Award,
   ArrowRight,
   Sparkles,
+  ShieldCheck,
+  RefreshCw,
 } from "lucide-react";
 import {
   Button,
@@ -65,6 +67,7 @@ import {
   CustomDialogTitle,
 } from "@/components/ui/custom-dialog";
 import { usePartner } from "@/lib/partner";
+import { createClient } from "@/lib/supabase/client";
 import type {
   ChallengeType,
   PartnerProfile,
@@ -200,9 +203,13 @@ export default function PartnerPage() {
     maxLoss: false,
   });
   const [tradingPlan, setTradingPlan] = React.useState("");
-  const [dailyPnL, setDailyPnL] = React.useState<number>(0);
   const [followedRules, setFollowedRules] = React.useState(true);
   const [sessionNotes, setSessionNotes] = React.useState("");
+
+  // Auto-synced P&L from actual trades (can't be faked!)
+  const [verifiedDailyPnL, setVerifiedDailyPnL] = React.useState<number | null>(null);
+  const [verifiedTradeCount, setVerifiedTradeCount] = React.useState<number>(0);
+  const [isLoadingPnL, setIsLoadingPnL] = React.useState(false);
 
   // Celebration
   const [celebration, setCelebration] = React.useState<{ show: boolean; title: string; message: string }>({
@@ -388,7 +395,8 @@ export default function PartnerPage() {
             trading_plan: tradingPlan || undefined,
           }
         : {
-            daily_pnl: dailyPnL,
+            // Use VERIFIED P&L from actual trades (can't be faked!)
+            daily_pnl: verifiedDailyPnL ?? 0,
             followed_rules: followedRules,
             session_notes: sessionNotes || undefined,
           }),
@@ -416,9 +424,57 @@ export default function PartnerPage() {
   const resetCheckInForm = () => {
     setPreMarketChecks({ calendar: false, levels: false, bias: false, maxLoss: false });
     setTradingPlan("");
-    setDailyPnL(0);
     setFollowedRules(true);
     setSessionNotes("");
+    setVerifiedDailyPnL(null);
+    setVerifiedTradeCount(0);
+  };
+
+  // Fetch today's ACTUAL P&L from trades (auto-sync - can't be faked!)
+  const fetchTodayPnL = async () => {
+    if (!currentUserId) return;
+
+    setIsLoadingPnL(true);
+    try {
+      const supabase = createClient();
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+      // Fetch trades from today
+      const { data: trades, error } = await supabase
+        .from('trades')
+        .select('net_pnl, status')
+        .eq('user_id', currentUserId)
+        .gte('entry_date', todayStr)
+        .lt('entry_date', `${todayStr}T23:59:59`);
+
+      if (error) {
+        console.error('Error fetching trades:', error);
+        setVerifiedDailyPnL(0);
+        setVerifiedTradeCount(0);
+        return;
+      }
+
+      // Calculate total P&L from closed trades
+      const closedTrades = (trades as Array<{ net_pnl: number | null; status: string }> | null)?.filter(t => t.status === 'closed') || [];
+      const totalPnL = closedTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
+
+      setVerifiedDailyPnL(totalPnL);
+      setVerifiedTradeCount(closedTrades.length);
+    } catch (err) {
+      console.error('Error fetching P&L:', err);
+      setVerifiedDailyPnL(0);
+      setVerifiedTradeCount(0);
+    } finally {
+      setIsLoadingPnL(false);
+    }
+  };
+
+  // Open post-market check-in with auto-synced P&L
+  const openPostMarketCheckIn = () => {
+    setCheckInType("post_market");
+    setShowCheckInDialog(true);
+    fetchTodayPnL(); // Auto-fetch real P&L
   };
 
   const copyUsername = () => {
@@ -816,8 +872,7 @@ export default function PartnerPage() {
               <button
                 onClick={() => {
                   if (!todayStatus.post_market_done) {
-                    setCheckInType("post_market");
-                    setShowCheckInDialog(true);
+                    openPostMarketCheckIn();
                   }
                 }}
                 disabled={todayStatus.post_market_done}
@@ -1395,15 +1450,49 @@ export default function PartnerPage() {
               </>
             ) : (
               <>
-                <div>
-                  <label className="text-sm font-medium">Today's P&L</label>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    value={dailyPnL || ""}
-                    onChange={(e) => setDailyPnL(parseFloat(e.target.value) || 0)}
-                  />
+                {/* Verified P&L from actual trades - CAN'T BE FAKED! */}
+                <div className="p-4 rounded-lg border-2 border-green-500/30 bg-green-500/5">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-green-500" />
+                      <span className="text-sm font-medium text-green-600 dark:text-green-400">Verified P&L</span>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-xs"
+                      onClick={fetchTodayPnL}
+                      disabled={isLoadingPnL}
+                    >
+                      <RefreshCw className={cn("h-3 w-3 mr-1", isLoadingPnL && "animate-spin")} />
+                      Refresh
+                    </Button>
+                  </div>
+                  {isLoadingPnL ? (
+                    <div className="flex items-center justify-center py-2">
+                      <Spinner className="h-5 w-5" />
+                    </div>
+                  ) : (
+                    <>
+                      <div className={cn(
+                        "text-3xl font-bold",
+                        (verifiedDailyPnL ?? 0) > 0 ? "text-green-500" :
+                        (verifiedDailyPnL ?? 0) < 0 ? "text-red-500" : "text-muted-foreground"
+                      )}>
+                        {(verifiedDailyPnL ?? 0) > 0 ? "+" : ""}
+                        ${(verifiedDailyPnL ?? 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        From {verifiedTradeCount} closed trade{verifiedTradeCount !== 1 ? 's' : ''} today
+                      </div>
+                    </>
+                  )}
+                  <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1">
+                    <Shield className="h-3 w-3" />
+                    Auto-synced from your trades • Cannot be edited
+                  </div>
                 </div>
+
                 <div className="flex items-center justify-between p-3 rounded-lg border">
                   <span className="font-medium text-sm">Followed all rules?</span>
                   <Switch checked={followedRules} onCheckedChange={setFollowedRules} />

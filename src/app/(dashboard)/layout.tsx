@@ -26,6 +26,7 @@ import {
 import { Button, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/ui/logo";
+import { ProfileCompletionBanner } from "@/components/layout/profile-completion-banner";
 import { createClient } from "@/lib/supabase/client";
 
 const navigationItems = [
@@ -525,6 +526,7 @@ export default function DashboardLayout({
 
         {/* Page Content */}
         <main className="flex-1 overflow-auto p-4 md:p-6">
+          <ProfileCompletionBanner />
           {children}
         </main>
       </div>
