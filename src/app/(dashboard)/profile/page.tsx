@@ -270,21 +270,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <Users className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-            <div className="text-2xl font-bold">{stats.followerCount}</div>
-            <div className="text-sm text-muted-foreground">Followers</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-6 text-center">
-            <Users className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-            <div className="text-2xl font-bold">{stats.followingCount}</div>
-            <div className="text-sm text-muted-foreground">Following</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-2 gap-4 mb-8">
         <Card>
           <CardContent className="pt-6 text-center">
             <TrendingUp className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />

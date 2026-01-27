@@ -63,6 +63,14 @@ import { JournalDailyScreenshots } from "@/components/journal/journal-daily-scre
 import { UnlinkedScreenshots } from "@/components/journal/unlinked-screenshots";
 import { TradeTable } from "@/components/trades/trade-table";
 import { ShareToX } from "@/components/journal/share-to-x";
+import {
+  CustomDialog,
+  CustomDialogContent,
+  CustomDialogDescription,
+  CustomDialogFooter,
+  CustomDialogHeader,
+  CustomDialogTitle,
+} from "@/components/ui/custom-dialog";
 
 // Common mistakes for futures day traders
 const COMMON_MISTAKES = [
@@ -288,6 +296,12 @@ function JournalPageContent() {
   const [focusRating, setFocusRating] = React.useState<number | null>(null);
   const [disciplineRating, setDisciplineRating] = React.useState<number | null>(null);
   const [executionRating, setExecutionRating] = React.useState<number | null>(null);
+
+  // Share to feed dialog state
+  const [showShareDialog, setShowShareDialog] = React.useState(false);
+  const [shareTradeId, setShareTradeId] = React.useState<string | null>(null);
+  const [shareComment, setShareComment] = React.useState("");
+  const [isSharing, setIsSharing] = React.useState(false);
 
   // Screenshot refresh key - increment to trigger JournalScreenshots refresh
   const [screenshotRefreshKey, setScreenshotRefreshKey] = React.useState(0);
@@ -576,6 +590,83 @@ function JournalPageContent() {
     } catch (err) {
       console.error("Exception deleting trade:", err);
       toast.error("An error occurred while deleting");
+    }
+  };
+
+  // Open share dialog
+  const handleShareTrade = (tradeId: string) => {
+    setShareTradeId(tradeId);
+    setShareComment("");
+    setShowShareDialog(true);
+  };
+
+  // Confirm share to feed with comment
+  const handleConfirmShare = async () => {
+    if (!shareTradeId) return;
+
+    setIsSharing(true);
+    try {
+      const supabase = createClient();
+      const { error } = await (supabase
+        .from("trades") as any)
+        .update({
+          visibility: "public",
+          shared_to_feed: true,
+          share_analysis: shareComment || null,
+        })
+        .eq("id", shareTradeId);
+
+      if (error) {
+        console.error("Error sharing trade:", error);
+        toast.error("Failed to share trade");
+      } else {
+        // Update local state
+        setTrades(prev => prev.map(t =>
+          t.id === shareTradeId
+            ? { ...t, visibility: "public", shared_to_feed: true, share_analysis: shareComment || null } as Trade
+            : t
+        ));
+        toast.success("Trade shared to feed!");
+        setShowShareDialog(false);
+        setShareTradeId(null);
+        setShareComment("");
+      }
+    } catch (err) {
+      console.error("Exception sharing trade:", err);
+      toast.error("An error occurred while sharing");
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  // Unshare a trade from the feed
+  const handleUnshareTrade = async (tradeId: string) => {
+    try {
+      const supabase = createClient();
+      const { error } = await (supabase
+        .from("trades") as any)
+        .update({
+          visibility: "private",
+          shared_to_feed: false,
+          share_analysis: null,
+        })
+        .eq("id", tradeId);
+
+      if (error) {
+        console.error("Error unsharing trade:", error);
+        toast.error("Failed to unshare trade");
+      } else {
+        // Update local state
+        setTrades(prev => prev.map(t =>
+          t.id === tradeId
+            ? { ...t, visibility: "private", shared_to_feed: false, share_analysis: null } as Trade
+            : t
+        ));
+        toast.success("Trade removed from feed");
+      }
+    } catch (err) {
+      console.error("Exception unsharing trade:", err);
+      toast.error("An error occurred while unsharing");
     }
   };
 
@@ -1532,6 +1623,8 @@ function JournalPageContent() {
               <TradeTable
                 trades={trades}
                 onDelete={handleDeleteTrade}
+                onShare={handleShareTrade}
+                onUnshare={handleUnshareTrade}
                 pageSize={trades.length}
                 currentPage={1}
                 totalCount={trades.length}
@@ -1554,6 +1647,46 @@ function JournalPageContent() {
       </Tabs>
         </>
       )}
+
+      {/* Share to Feed Dialog */}
+      <CustomDialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <CustomDialogContent>
+          <CustomDialogHeader>
+            <CustomDialogTitle>Share to Feed</CustomDialogTitle>
+            <CustomDialogDescription>
+              Add an optional comment to share with your trade
+            </CustomDialogDescription>
+          </CustomDialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="What's the story behind this trade? Share your thought process, lessons learned, or any insights..."
+              value={shareComment}
+              onChange={(e) => setShareComment(e.target.value)}
+              rows={4}
+              className="resize-none"
+            />
+            <p className="text-xs text-muted-foreground mt-2">
+              This will be visible to everyone on the public feed.
+            </p>
+          </div>
+          <CustomDialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setShowShareDialog(false);
+                setShareTradeId(null);
+                setShareComment("");
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmShare} disabled={isSharing}>
+              {isSharing ? <Spinner className="h-4 w-4 mr-2" /> : null}
+              Share to Feed
+            </Button>
+          </CustomDialogFooter>
+        </CustomDialogContent>
+      </CustomDialog>
     </div>
   );
 }

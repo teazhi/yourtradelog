@@ -296,20 +296,12 @@ export default function FeedPage() {
           </p>
         </div>
 
-        {/* Feed Filter Tabs */}
+        {/* Feed Filter Tabs - Only showing Public for now */}
         <Tabs value={feedType} onValueChange={(v) => setFeedType(v as any)}>
           <TabsList>
             <TabsTrigger value="public" className="gap-1.5">
               <Globe className="h-4 w-4" />
               <span className="hidden sm:inline">Public</span>
-            </TabsTrigger>
-            <TabsTrigger value="following" className="gap-1.5">
-              <Users className="h-4 w-4" />
-              <span className="hidden sm:inline">Following</span>
-            </TabsTrigger>
-            <TabsTrigger value="squad" className="gap-1.5">
-              <BarChart3 className="h-4 w-4" />
-              <span className="hidden sm:inline">Squads</span>
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -322,18 +314,22 @@ export default function FeedPage() {
         </div>
       ) : trades.length === 0 ? (
         <Card className="border-dashed">
-          <CardContent className="py-16 text-center">
+          <CardContent className="py-12 text-center">
             <div className="mx-auto w-12 h-12 rounded-full bg-muted flex items-center justify-center mb-4">
               <BarChart3 className="h-6 w-6 text-muted-foreground" />
             </div>
             <h3 className="font-semibold mb-2">No trades yet</h3>
-            <p className="text-muted-foreground text-sm max-w-sm mx-auto">
-              {feedType === "following"
-                ? "No trades from people you follow yet. Try following more traders!"
-                : feedType === "squad"
-                ? "No trades from your squads yet."
-                : "No public trades yet. Be the first to share!"}
+            <p className="text-muted-foreground text-sm max-w-sm mx-auto mb-6">
+              No public trades yet. Be the first to share!
             </p>
+            <div className="bg-muted/50 rounded-lg p-4 max-w-md mx-auto text-left">
+              <h4 className="font-medium text-sm mb-2">How to share a trade:</h4>
+              <ol className="text-sm text-muted-foreground space-y-1.5 list-decimal list-inside">
+                <li>Go to your <Link href="/journal" className="text-primary hover:underline">Journal</Link></li>
+                <li>Click on any trade to open the details</li>
+                <li>Click the "Share" button to post it to the feed</li>
+              </ol>
+            </div>
           </CardContent>
         </Card>
       ) : (

@@ -14,6 +14,8 @@ import {
   Trash2,
   ChevronLeft,
   ChevronRight,
+  Share2,
+  Check,
 } from "lucide-react";
 import {
   Table,
@@ -64,6 +66,8 @@ interface TradeTableProps {
   onSort?: (field: SortField, direction: SortDirection) => void;
   sortConfig?: SortConfig;
   onDelete?: (tradeId: string) => void;
+  onShare?: (tradeId: string) => void;
+  onUnshare?: (tradeId: string) => void;
   isLoading?: boolean;
   pageSize?: number;
   currentPage?: number;
@@ -77,6 +81,8 @@ export function TradeTable({
   onSort,
   sortConfig,
   onDelete,
+  onShare,
+  onUnshare,
   isLoading = false,
   pageSize = 25,
   currentPage = 1,
@@ -308,6 +314,22 @@ export function TradeTable({
                           Edit
                         </Link>
                       </DropdownMenuItem>
+                      {trade.status === "closed" && (onShare || onUnshare) && (
+                        <>
+                          <DropdownMenuSeparator />
+                          {(trade as any).shared_to_feed ? (
+                            <DropdownMenuItem onClick={() => onUnshare?.(trade.id)}>
+                              <Check className="mr-2 h-4 w-4 text-green-500" />
+                              Shared to Feed
+                            </DropdownMenuItem>
+                          ) : (
+                            <DropdownMenuItem onClick={() => onShare?.(trade.id)}>
+                              <Share2 className="mr-2 h-4 w-4" />
+                              Share to Feed
+                            </DropdownMenuItem>
+                          )}
+                        </>
+                      )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem
                         className="text-destructive focus:text-destructive"
