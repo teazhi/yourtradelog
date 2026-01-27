@@ -530,11 +530,9 @@ export default function PartnerPage() {
   if (!partnership) {
     return (
       <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
-        <div className="text-center">
-          <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-indigo-600 mx-auto mb-4 flex items-center justify-center">
-            <Handshake className="h-8 w-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold mb-2">Accountability Partner</h1>
+        {/* Page Header */}
+        <div className="flex flex-col gap-1">
+          <h1 className="text-2xl font-semibold tracking-tight">Accountability Partner</h1>
           <p className="text-muted-foreground">
             Put real money on the line. Break rules, pay up. Win challenges, get paid.
           </p>
@@ -542,105 +540,133 @@ export default function PartnerPage() {
 
         {/* Pending Requests */}
         {pendingRequests.length > 0 && (
-          <Card className="border-blue-500/50 bg-blue-500/5">
-            <CardContent className="py-4">
-              <div className="text-sm font-medium text-blue-500 mb-3 flex items-center gap-2">
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
                 <Bell className="h-4 w-4" />
                 {pendingRequests.length} Partner Request{pendingRequests.length > 1 ? "s" : ""}
-              </div>
-              <div className="space-y-3">
-                {pendingRequests.map((request) => (
-                  <div key={request.id} className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-10 w-10">
-                        <AvatarImage src={request.partner_profile?.avatar_url || undefined} />
-                        <AvatarFallback>
-                          {request.partner_profile?.display_name?.[0] || "?"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div>
-                        <div className="font-medium">
-                          {request.partner_profile?.display_name || request.partner_profile?.username}
-                        </div>
-                        <div className="text-sm text-muted-foreground">
-                          @{request.partner_profile?.username}
-                        </div>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {pendingRequests.map((request) => (
+                <div key={request.id} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-lg border bg-muted/30">
+                  <div className="flex items-center gap-3 flex-1">
+                    <Avatar className="h-12 w-12">
+                      <AvatarImage src={request.partner_profile?.avatar_url || undefined} />
+                      <AvatarFallback>
+                        {request.partner_profile?.display_name?.[0] || "?"}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium">
+                        {request.partner_profile?.display_name || request.partner_profile?.username}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        @{request.partner_profile?.username}
                       </div>
                     </div>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleRespondToRequest(request.id, false)}
-                        disabled={isSubmitting}
-                      >
-                        Decline
-                      </Button>
-                      <Button
-                        size="sm"
-                        onClick={() => handleRespondToRequest(request.id, true)}
-                        disabled={isSubmitting}
-                      >
-                        Accept
-                      </Button>
-                    </div>
                   </div>
-                ))}
-              </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      className="flex-1 sm:flex-none"
+                      onClick={() => handleRespondToRequest(request.id, false)}
+                      disabled={isSubmitting}
+                    >
+                      Decline
+                    </Button>
+                    <Button
+                      className="flex-1 sm:flex-none"
+                      onClick={() => handleRespondToRequest(request.id, true)}
+                      disabled={isSubmitting}
+                    >
+                      Accept
+                    </Button>
+                  </div>
+                </div>
+              ))}
             </CardContent>
           </Card>
         )}
 
-        {/* How it Works */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-yellow-500" />
-              How it works
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0 text-blue-500 font-bold text-sm">1</div>
-              <div>
-                <div className="font-medium">Find a partner</div>
-                <div className="text-sm text-muted-foreground">Connect with another trader who wants to improve</div>
+        {/* Main Content Grid */}
+        <div className="grid lg:grid-cols-2 gap-6">
+          {/* Get Started Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Handshake className="h-5 w-5" />
+                Get Started
+              </CardTitle>
+              <CardDescription>
+                Find a trading partner or share your username
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <Button
+                className="w-full justify-start h-12"
+                onClick={() => setShowFindDialog(true)}
+              >
+                <UserPlus className="h-5 w-5 mr-3" />
+                Find Partner by Username
+              </Button>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-sm font-medium">Your Username</div>
+                  <div className="text-muted-foreground text-sm">Share this with your trading buddy</div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <code className="px-3 py-1.5 rounded-md bg-muted font-mono text-sm">
+                    @{currentUsername || "..."}
+                  </code>
+                  <Button variant="ghost" size="icon" onClick={copyUsername}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-green-500/10 flex items-center justify-center shrink-0 text-green-500 font-bold text-sm">2</div>
-              <div>
-                <div className="font-medium">Set rules with stakes</div>
-                <div className="text-sm text-muted-foreground">"No revenge trading" - $50 stake. Break it? Pay up.</div>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-yellow-500/10 flex items-center justify-center shrink-0 text-yellow-500 font-bold text-sm">3</div>
-              <div>
-                <div className="font-medium">Create challenges</div>
-                <div className="text-sm text-muted-foreground">"Most green days this week" with $50 on the line</div>
-              </div>
-            </div>
-            <div className="flex gap-3">
-              <div className="w-8 h-8 rounded-full bg-purple-500/10 flex items-center justify-center shrink-0 text-purple-500 font-bold text-sm">4</div>
-              <div>
-                <div className="font-medium">Compete & improve</div>
-                <div className="text-sm text-muted-foreground">Winner takes the pot, both get better</div>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Action Buttons */}
-        <div className="space-y-3">
-          <Button className="w-full" size="lg" onClick={() => setShowFindDialog(true)}>
-            <UserPlus className="h-5 w-5 mr-2" />
-            Find Partner by Username
-          </Button>
-          <Button className="w-full" variant="outline" size="lg" onClick={() => setShowShareDialog(true)}>
-            <Share2 className="h-5 w-5 mr-2" />
-            Share My Username
-          </Button>
+          {/* How it Works Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                How it works
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">1</div>
+                <div>
+                  <div className="font-medium text-sm">Find a partner</div>
+                  <div className="text-sm text-muted-foreground">Connect with another trader who wants to improve</div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">2</div>
+                <div>
+                  <div className="font-medium text-sm">Set rules with stakes</div>
+                  <div className="text-sm text-muted-foreground">"No revenge trading" - $50 stake. Break it? Pay up.</div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">3</div>
+                <div>
+                  <div className="font-medium text-sm">Create challenges</div>
+                  <div className="text-sm text-muted-foreground">"Most green days this week" with $50 on the line</div>
+                </div>
+              </div>
+              <div className="flex gap-3">
+                <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0 text-sm font-medium">4</div>
+                <div>
+                  <div className="font-medium text-sm">Compete & improve</div>
+                  <div className="text-sm text-muted-foreground">Winner takes the pot, both get better</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Find Partner Dialog */}
@@ -663,9 +689,9 @@ export default function PartnerPage() {
                 </Button>
               </div>
               {searchResult && (
-                <div className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50 border">
                   <div className="flex items-center gap-3">
-                    <Avatar>
+                    <Avatar className="h-10 w-10">
                       <AvatarImage src={searchResult.avatar_url || undefined} />
                       <AvatarFallback>{searchResult.display_name?.[0] || "?"}</AvatarFallback>
                     </Avatar>
@@ -683,22 +709,6 @@ export default function PartnerPage() {
           </CustomDialogContent>
         </CustomDialog>
 
-        {/* Share Username Dialog */}
-        <CustomDialog open={showShareDialog} onOpenChange={setShowShareDialog}>
-          <CustomDialogContent>
-            <CustomDialogHeader>
-              <CustomDialogTitle>Your Username</CustomDialogTitle>
-              <CustomDialogDescription>Share this with your trading buddy</CustomDialogDescription>
-            </CustomDialogHeader>
-            <div className="py-6 text-center">
-              <div className="text-3xl font-bold font-mono mb-4">@{currentUsername || "..."}</div>
-              <Button onClick={copyUsername}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy
-              </Button>
-            </div>
-          </CustomDialogContent>
-        </CustomDialog>
 
         <CelebrationModal
           open={celebration.show}

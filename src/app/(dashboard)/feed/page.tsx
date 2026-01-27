@@ -15,6 +15,8 @@ import {
   Sparkles,
   Clock,
   BarChart3,
+  MoreHorizontal,
+  Trash2,
 } from "lucide-react";
 import {
   Button,
@@ -28,6 +30,10 @@ import {
   Tabs,
   TabsList,
   TabsTrigger,
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
   cn,
   toast,
 } from "@/components/ui";
@@ -233,6 +239,41 @@ export default function FeedPage() {
     }
   };
 
+  const handleDeleteFromFeed = async (tradeId: string) => {
+    if (!currentUserId) {
+      toast.error("Please log in");
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+
+      // Update the trade to remove it from the feed (not delete the trade itself)
+      const { error } = await (supabase
+        .from("trades") as any)
+        .update({
+          shared_to_feed: false,
+          share_analysis: null,
+          visibility: "private"
+        })
+        .eq("id", tradeId)
+        .eq("user_id", currentUserId);
+
+      if (error) {
+        console.error("Error removing from feed:", error);
+        toast.error("Failed to remove from feed");
+        return;
+      }
+
+      // Remove from local state
+      setTrades(prev => prev.filter(t => t.id !== tradeId));
+      toast.success("Removed from feed");
+    } catch (err) {
+      console.error("Exception removing from feed:", err);
+      toast.error("Failed to remove from feed");
+    }
+  };
+
   // Prevent hydration issues
   if (!mounted) {
     return (
@@ -302,6 +343,7 @@ export default function FeedPage() {
               key={trade.id}
               trade={trade}
               onReaction={handleReaction}
+              onDelete={handleDeleteFromFeed}
               currentUserId={currentUserId}
             />
           ))}
@@ -314,10 +356,12 @@ export default function FeedPage() {
 function TradeCard({
   trade,
   onReaction,
+  onDelete,
   currentUserId,
 }: {
   trade: FeedTrade;
   onReaction: (tradeId: string, type: ReactionType) => void;
+  onDelete: (tradeId: string) => void;
   currentUserId: string | null;
 }) {
   const isWin = (trade.net_pnl || 0) > 0;
@@ -327,6 +371,7 @@ function TradeCard({
     : trade.user?.display_name || trade.user?.username || "Trader";
 
   const totalReactions = Object.values(trade.reaction_counts).reduce((a, b) => a + b, 0);
+  const isOwnTrade = currentUserId === trade.user_id;
 
   return (
     <Card className="overflow-hidden hover:shadow-md transition-shadow">
@@ -360,16 +405,36 @@ function TradeCard({
               </div>
             </div>
           </div>
-          <Badge
-            variant="outline"
-            className={cn(
-              "text-xs",
-              isWin && "border-green-500/50 text-green-600 bg-green-500/10",
-              isLoss && "border-red-500/50 text-red-600 bg-red-500/10"
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className={cn(
+                "text-xs",
+                isWin && "border-green-500/50 text-green-600 bg-green-500/10",
+                isLoss && "border-red-500/50 text-red-600 bg-red-500/10"
+              )}
+            >
+              {isWin ? "Win" : isLoss ? "Loss" : "Break Even"}
+            </Badge>
+            {isOwnTrade && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-8 w-8">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => onDelete(trade.id)}
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Remove from Feed
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             )}
-          >
-            {isWin ? "Win" : isLoss ? "Loss" : "Break Even"}
-          </Badge>
+          </div>
         </div>
 
         {/* Trade Details */}
