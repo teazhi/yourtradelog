@@ -22,7 +22,7 @@ import {
   toast,
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
-import { Trade, TradeScreenshot } from "@/types/database";
+import { Trade, TradeScreenshot, ScreenshotType } from "@/types/database";
 import Link from "next/link";
 
 interface JournalScreenshotsProps {
@@ -171,7 +171,7 @@ export function JournalScreenshots({ date, refreshKey = 0 }: JournalScreenshotsP
           ...trade,
           screenshots: trade.screenshots.map(s =>
             s.id === screenshot.id
-              ? { ...s, screenshot_type: newType }
+              ? { ...s, screenshot_type: newType as ScreenshotType }
               : s
           ),
         }))
