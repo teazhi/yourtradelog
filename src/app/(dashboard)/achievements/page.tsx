@@ -162,10 +162,10 @@ export default function AchievementsPage() {
         .eq("status", "closed")
         .order("entry_date", { ascending: true });
 
-      // Fetch journal entries with all relevant content fields
+      // Fetch journal entries with all relevant content fields (including date for perfect week calculation)
       const { data: journals } = await supabase
         .from("daily_journals")
-        .select("id, pre_market_notes, post_market_notes, lessons_learned, weekly_review_notes, weekly_wins, weekly_improvements, goals, what_went_well, mistakes_made, mood_rating, focus_rating, discipline_rating, execution_rating")
+        .select("id, date, pre_market_notes, post_market_notes, lessons_learned, weekly_review_notes, weekly_wins, weekly_improvements, goals, what_went_well, mistakes_made, mood_rating, focus_rating, discipline_rating, execution_rating")
         .eq("user_id", user.id);
 
       // Fetch setups count
@@ -232,24 +232,44 @@ export default function AchievementsPage() {
       let totalPnl = 0;
       let greenDays = 0;
 
+      // Helper to check if a date is a weekend (Saturday = 6, Sunday = 0)
+      const isWeekend = (date: Date): boolean => {
+        const day = date.getDay();
+        return day === 0 || day === 6;
+      };
+
+      // Helper to get the next trading day (skipping weekends)
+      const getNextTradingDay = (date: Date): Date => {
+        const next = new Date(date);
+        next.setDate(next.getDate() + 1);
+        while (isWeekend(next)) {
+          next.setDate(next.getDate() + 1);
+        }
+        return next;
+      };
+
+      // Helper to check if two dates are consecutive trading days
+      const areConsecutiveTradingDays = (date1: string, date2: string): boolean => {
+        const d1 = new Date(date1);
+        const d2 = new Date(date2);
+        const expectedNext = getNextTradingDay(d1);
+        return expectedNext.toISOString().split('T')[0] === date2;
+      };
+
       if (trades && trades.length > 0) {
         totalTrades = trades.length;
         totalPnl = trades.reduce((sum: number, t: any) => sum + (t.net_pnl || 0), 0);
 
-        // Calculate streaks based on trading days
+        // Calculate streaks based on trading days (accounting for weekends)
         const tradeDates = [...new Set(trades.map((t: any) =>
           new Date(t.entry_date).toISOString().split('T')[0]
         ))].sort();
 
         let tempStreak = 1;
 
-        // Calculate consecutive trading days
+        // Calculate consecutive trading days (skipping weekends)
         for (let i = 1; i < tradeDates.length; i++) {
-          const prevDate = new Date(tradeDates[i - 1]);
-          const currDate = new Date(tradeDates[i]);
-          const diffDays = Math.floor((currDate.getTime() - prevDate.getTime()) / (1000 * 60 * 60 * 24));
-
-          if (diffDays === 1) {
+          if (areConsecutiveTradingDays(tradeDates[i - 1], tradeDates[i])) {
             tempStreak++;
           } else {
             longestStreak = Math.max(longestStreak, tempStreak);
@@ -258,12 +278,20 @@ export default function AchievementsPage() {
         }
         longestStreak = Math.max(longestStreak, tempStreak);
 
-        // Check if current streak is active (traded today or yesterday)
-        const today = new Date().toISOString().split('T')[0];
-        const yesterday = new Date(Date.now() - 86400000).toISOString().split('T')[0];
+        // Check if current streak is active (traded today or the last trading day)
+        const today = new Date();
+        const todayStr = today.toISOString().split('T')[0];
         const lastTradeDate = tradeDates[tradeDates.length - 1];
 
-        if (lastTradeDate === today || lastTradeDate === yesterday) {
+        // Find the previous trading day from today
+        let prevTradingDay = new Date(today);
+        prevTradingDay.setDate(prevTradingDay.getDate() - 1);
+        while (isWeekend(prevTradingDay)) {
+          prevTradingDay.setDate(prevTradingDay.getDate() - 1);
+        }
+        const prevTradingDayStr = prevTradingDay.toISOString().split('T')[0];
+
+        if (lastTradeDate === todayStr || lastTradeDate === prevTradingDayStr) {
           currentStreak = tempStreak;
         }
 
@@ -276,8 +304,66 @@ export default function AchievementsPage() {
         greenDays = Object.values(dailyPnl).filter(pnl => pnl > 0).length;
       }
 
-      // Calculate perfect weeks (simplified - 5 green days counts as 1 perfect week)
-      const perfectWeeks = greenDays >= 5 ? Math.floor(greenDays / 5) : 0;
+      // Calculate perfect weeks: weeks where user traded AND journaled every weekday (Mon-Fri)
+      // Group trades and journals by week
+      let perfectWeeks = 0;
+      if (trades && trades.length > 0 && journals && journals.length > 0) {
+        const tradesByWeek: Record<string, Set<number>> = {};
+        const journalsByWeek: Record<string, Set<number>> = {};
+
+        // Get week key (year-weeknumber) for a date
+        const getWeekKey = (dateStr: string): string => {
+          const date = new Date(dateStr);
+          const startOfYear = new Date(date.getFullYear(), 0, 1);
+          const days = Math.floor((date.getTime() - startOfYear.getTime()) / (1000 * 60 * 60 * 24));
+          const weekNumber = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+          return `${date.getFullYear()}-W${weekNumber}`;
+        };
+
+        // Track which weekdays have trades
+        trades.forEach((t: any) => {
+          const date = new Date(t.entry_date);
+          const day = date.getDay();
+          if (day >= 1 && day <= 5) { // Only weekdays
+            const weekKey = getWeekKey(t.entry_date);
+            if (!tradesByWeek[weekKey]) tradesByWeek[weekKey] = new Set();
+            tradesByWeek[weekKey].add(day);
+          }
+        });
+
+        // Track which weekdays have journal entries with content
+        journals.filter((j: any) => hasJournalContent(j)).forEach((j: any) => {
+          // Journal entries have a 'date' field in YYYY-MM-DD format
+          // We need to get the date from the journal
+          const journalDate = (j as any).date || (j as any).created_at?.split('T')[0];
+          if (journalDate) {
+            const date = new Date(journalDate);
+            const day = date.getDay();
+            if (day >= 1 && day <= 5) { // Only weekdays
+              const weekKey = getWeekKey(journalDate);
+              if (!journalsByWeek[weekKey]) journalsByWeek[weekKey] = new Set();
+              journalsByWeek[weekKey].add(day);
+            }
+          }
+        });
+
+        // Count perfect weeks (5 trading days with both trades AND journals)
+        for (const weekKey of Object.keys(tradesByWeek)) {
+          const tradeDays = tradesByWeek[weekKey];
+          const journalDays = journalsByWeek[weekKey] || new Set();
+
+          // Check if all 5 weekdays have both trades and journals
+          if (tradeDays.size === 5 && journalDays.size === 5) {
+            perfectWeeks++;
+          }
+        }
+      }
+
+      // Get analytics views from localStorage (client-side tracking)
+      let analyticsViews = 0;
+      if (typeof window !== 'undefined') {
+        analyticsViews = parseInt(localStorage.getItem('analytics_page_views') || '0', 10);
+      }
 
       setStats({
         totalTrades,
@@ -292,7 +378,7 @@ export default function AchievementsPage() {
         tradesWithScreenshots: screenshotCount || 0,
         hasPreMarketNote,
         hasPostMarketReview,
-        analyticsViews: 0, // Would need to track this separately
+        analyticsViews,
       });
     } catch (err) {
       // Silently handle errors

@@ -344,6 +344,21 @@ export default function AnalyticsPage() {
   const [trades, setTrades] = React.useState<Trade[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
+  // Track analytics page views for the "Data Driven" achievement
+  React.useEffect(() => {
+    // Only track on client side and once per session
+    if (typeof window !== 'undefined') {
+      const sessionKey = 'analytics_view_tracked_this_session';
+      const alreadyTracked = sessionStorage.getItem(sessionKey);
+
+      if (!alreadyTracked) {
+        const currentViews = parseInt(localStorage.getItem('analytics_page_views') || '0', 10);
+        localStorage.setItem('analytics_page_views', String(currentViews + 1));
+        sessionStorage.setItem(sessionKey, 'true');
+      }
+    }
+  }, []);
+
   // Fetch trades
   React.useEffect(() => {
     async function fetchTrades() {
