@@ -390,6 +390,11 @@ export interface PropFirm {
   website?: string;
 }
 
+// Note: Commission rates are estimates for ES/NQ futures and may vary by:
+// - Specific instrument (micros are typically lower)
+// - Platform (Rithmic vs Tradovate vs proprietary)
+// - Account type (evaluation vs funded)
+// Users should verify with their prop firm for exact rates.
 export const PROP_FIRMS: PropFirm[] = [
   {
     id: 'custom',
@@ -401,65 +406,65 @@ export const PROP_FIRMS: PropFirm[] = [
   {
     id: 'topstep',
     name: 'Topstep',
-    commissionPerContract: 2.52, // $2.52 per side per contract
+    commissionPerContract: 1.02, // ~$1.02 per side (varies by platform, TopstepX is lower)
     commissionPerTrade: 0,
-    description: '$2.52 per side per contract',
+    description: '~$1.02/side for ES/NQ (varies by platform)',
     website: 'https://topstep.com',
   },
   {
     id: 'apex',
     name: 'Apex Trader Funding',
-    commissionPerContract: 0.55, // $0.55 per side per contract (Rithmic)
+    commissionPerContract: 1.55, // $1.55 per side on Tradovate for ES/NQ
     commissionPerTrade: 0,
-    description: '$0.55 per side per contract',
+    description: '~$1.55/side on Tradovate, ~$1.99/side on Rithmic',
     website: 'https://apextraderfunding.com',
   },
   {
     id: 'takeprofittrader',
     name: 'Take Profit Trader',
-    commissionPerContract: 0.55, // $0.55 per side per contract
+    commissionPerContract: 2.50, // $5 round-trip = $2.50 per side
     commissionPerTrade: 0,
-    description: '$0.55 per side per contract',
+    description: '$2.50/side ($5 round-trip) for all products',
     website: 'https://takeprofittrader.com',
   },
   {
     id: 'earn2trade',
     name: 'Earn2Trade',
-    commissionPerContract: 0.55, // $0.55 per side per contract
+    commissionPerContract: 1.40, // ~$1.40 per side average for ES
     commissionPerTrade: 0,
-    description: '$0.55 per side per contract',
+    description: '~$1.40/side for ES (varies $0.82-$2.76 by asset)',
     website: 'https://earn2trade.com',
   },
   {
     id: 'myfundedfutures',
     name: 'My Funded Futures',
-    commissionPerContract: 0.55, // $0.55 per side per contract
+    commissionPerContract: 2.13, // $4.26 round-trip = $2.13 per side for ES
     commissionPerTrade: 0,
-    description: '$0.55 per side per contract',
+    description: '~$2.13/side for ES on Tradovate',
     website: 'https://myfundedfutures.com',
   },
   {
     id: 'lucidtrading',
     name: 'Lucid Trading',
-    commissionPerContract: 0.55, // $0.55 per side per contract (typical Rithmic rate)
+    commissionPerContract: 1.55, // Uses Rithmic/Tradovate standard rates
     commissionPerTrade: 0,
-    description: '$0.55 per side per contract',
+    description: '~$1.55/side (uses Rithmic/Tradovate rates)',
     website: 'https://lucidtrading.com',
   },
   {
     id: 'tradeday',
     name: 'TradeDay',
-    commissionPerContract: 0.55,
+    commissionPerContract: 1.55, // Similar to other Rithmic-based firms
     commissionPerTrade: 0,
-    description: '$0.55 per side per contract',
+    description: '~$1.55/side (estimate)',
     website: 'https://tradeday.com',
   },
   {
     id: 'bulenox',
     name: 'Bulenox',
-    commissionPerContract: 0.55,
+    commissionPerContract: 1.05, // ~$2.09 round-trip = $1.05 per side for ES
     commissionPerTrade: 0,
-    description: '$0.55 per side per contract',
+    description: '~$1.05/side for ES ($2.09 round-trip)',
     website: 'https://bulenox.com',
   },
 ];

@@ -626,7 +626,7 @@ function TradingSettings({
                       <span>{firm.name}</span>
                       {firm.id !== "custom" && (
                         <span className="text-xs text-muted-foreground">
-                          ${firm.commissionPerContract}/side
+                          ~${firm.commissionPerContract}/side
                         </span>
                       )}
                     </div>
@@ -639,6 +639,9 @@ function TradingSettings({
                 {selectedPropFirm.description}
               </p>
             )}
+            <p className="text-xs text-amber-600 dark:text-amber-500">
+              ⚠️ Rates are estimates for ES/NQ. Verify with your prop firm as fees vary by instrument and platform.
+            </p>
           </div>
 
           <Separator />
