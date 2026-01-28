@@ -46,6 +46,7 @@ import { createClient } from "@/lib/supabase/client";
 import { dispatchProfileUpdate } from "@/components/layout/profile-completion-banner";
 import { SocialProfile, TradingStyle, ExperienceLevel } from "@/types/social";
 import { DEFAULT_FUTURES_INSTRUMENTS } from "@/lib/constants";
+import { getLevelFromXP, formatXP, type TraderLevel, TRADER_LEVELS } from "@/lib/leveling";
 
 const TRADING_STYLES: { value: TradingStyle; label: string }[] = [
   { value: "scalper", label: "Scalper" },
@@ -70,6 +71,8 @@ export default function ProfilePage() {
     followingCount: 0,
     totalTrades: 0,
     winRate: 0,
+    totalXP: 0,
+    level: TRADER_LEVELS[0] as TraderLevel,
   });
 
   React.useEffect(() => {
@@ -137,11 +140,17 @@ export default function ProfilePage() {
         const wins = (trades as { net_pnl: number | null }[] | null)?.filter(t => (t.net_pnl || 0) > 0).length || 0;
         const winRate = totalTrades > 0 ? (wins / totalTrades) * 100 : 0;
 
+        // Get XP from profile
+        const totalXP = (data as any)?.total_xp || 0;
+        const level = getLevelFromXP(totalXP);
+
         setStats({
           followerCount: followerCount || 0,
           followingCount: followingCount || 0,
           totalTrades,
           winRate,
+          totalXP,
+          level,
         });
       } catch (err) {
         console.error("Exception fetching profile:", err);
@@ -268,6 +277,22 @@ export default function ProfilePage() {
           Manage your profile and privacy settings
         </p>
       </div>
+
+      {/* Level & Stats Overview */}
+      <Card className="mb-6 bg-gradient-to-r from-slate-900 to-slate-800 border-slate-700 text-white">
+        <CardContent className="py-6">
+          <div className="flex items-center gap-4">
+            <div className="h-16 w-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center text-3xl shadow-lg">
+              {stats.level.badge}
+            </div>
+            <div>
+              <div className="text-sm text-slate-400">Level {stats.level.level}</div>
+              <div className={`text-xl font-bold ${stats.level.color}`}>{stats.level.title}</div>
+              <div className="text-sm text-amber-400">{formatXP(stats.totalXP)} XP</div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Stats Overview */}
       <div className="grid grid-cols-2 gap-4 mb-8">

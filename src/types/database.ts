@@ -22,6 +22,10 @@ export interface Profile {
   prop_firm: string | null;
   commission_per_contract: number | null;
   commission_per_trade: number | null;
+  // XP and Leveling
+  total_xp: number;
+  current_level: number;
+  trader_title: string;
   created_at: string;
   updated_at: string;
 }
@@ -40,6 +44,10 @@ export interface ProfileInsert {
   prop_firm?: string | null;
   commission_per_contract?: number | null;
   commission_per_trade?: number | null;
+  // XP and Leveling
+  total_xp?: number;
+  current_level?: number;
+  trader_title?: string;
   created_at?: string;
   updated_at?: string;
 }
@@ -58,6 +66,10 @@ export interface ProfileUpdate {
   prop_firm?: string | null;
   commission_per_contract?: number | null;
   commission_per_trade?: number | null;
+  // XP and Leveling
+  total_xp?: number;
+  current_level?: number;
+  trader_title?: string;
   updated_at?: string;
 }
 

@@ -31,7 +31,7 @@ export * from "shadcn-packaged/ui/progress";
 export * from "shadcn-packaged/ui/radio-group";
 export * from "shadcn-packaged/ui/resizable";
 export * from "shadcn-packaged/ui/scroll-area";
-export * from "shadcn-packaged/ui/select";
+export * from "./select";
 export * from "shadcn-packaged/ui/separator";
 export * from "shadcn-packaged/ui/sheet";
 export * from "shadcn-packaged/ui/sidebar";
