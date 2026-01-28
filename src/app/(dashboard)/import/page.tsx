@@ -262,6 +262,11 @@ function validateTrade(row: ParsedRow, mappings: ColumnMapping[], rowIndex: numb
   };
 }
 
+interface CommissionSettings {
+  commission_per_contract: number;
+  commission_per_trade: number;
+}
+
 function ImportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -276,7 +281,34 @@ function ImportPageContent() {
   const [selectedRows, setSelectedRows] = React.useState<Set<number>>(new Set());
   const [isImporting, setIsImporting] = React.useState(false);
   const [importProgress, setImportProgress] = React.useState(0);
+  const [commissionSettings, setCommissionSettings] = React.useState<CommissionSettings>({
+    commission_per_contract: 0,
+    commission_per_trade: 0,
+  });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // Fetch commission settings on mount
+  React.useEffect(() => {
+    const fetchCommissionSettings = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await (supabase.from("profiles") as any)
+        .select("commission_per_contract, commission_per_trade")
+        .eq("id", user.id)
+        .single();
+
+      if (profile) {
+        setCommissionSettings({
+          commission_per_contract: profile.commission_per_contract || 0,
+          commission_per_trade: profile.commission_per_trade || 0,
+        });
+      }
+    };
+
+    fetchCommissionSettings();
+  }, []);
 
   // Parse the date filter for comparison
   const filterDate = React.useMemo(() => {
@@ -641,8 +673,6 @@ function ImportPageContent() {
         let exitPrice = parseNumber(getMappedValue(row, "exit_price"));
         const contracts = parseNumber(getMappedValue(row, "entry_contracts")) || 0;
         const stopLoss = parseNumber(getMappedValue(row, "stop_loss"));
-        const commission = parseNumber(getMappedValue(row, "commission")) || 0;
-        const fees = parseNumber(getMappedValue(row, "fees")) || 0;
         const side = determineSide(row);
 
         // For Tradovate Performance exports with short trades:
@@ -660,6 +690,29 @@ function ImportPageContent() {
           const tempPrice = entryPrice;
           entryPrice = exitPrice || 0;
           exitPrice = tempPrice;
+        }
+
+        // Calculate commission and fees
+        // First check if the CSV has these values, otherwise use settings
+        let csvCommission = parseNumber(getMappedValue(row, "commission"));
+        let csvFees = parseNumber(getMappedValue(row, "fees"));
+
+        // If no commission in CSV, calculate from settings
+        // Round-trip: (per-contract * contracts * 2) + (per-trade * 2)
+        // The *2 accounts for both entry and exit
+        let commission: number;
+        let fees: number;
+
+        if (csvCommission !== null || csvFees !== null) {
+          // Use CSV values if provided
+          commission = csvCommission || 0;
+          fees = csvFees || 0;
+        } else {
+          // Calculate from settings (round-trip costs)
+          const perContractTotal = commissionSettings.commission_per_contract * contracts * 2;
+          const perTradeTotal = commissionSettings.commission_per_trade * 2;
+          commission = perContractTotal + perTradeTotal;
+          fees = 0; // Fees calculated into commission
         }
 
         // Calculate net P&L (gross - fees)

@@ -378,6 +378,93 @@ export const SUPPORTED_BROKERS = [
 ];
 
 // ============================================================================
+// Prop Firms with Commission Structures
+// ============================================================================
+
+export interface PropFirm {
+  id: string;
+  name: string;
+  commissionPerContract: number; // Per side (will be multiplied by 2 for round-trip)
+  commissionPerTrade: number; // Per side (will be multiplied by 2 for round-trip)
+  description?: string;
+  website?: string;
+}
+
+export const PROP_FIRMS: PropFirm[] = [
+  {
+    id: 'custom',
+    name: 'Custom / Personal Account',
+    commissionPerContract: 0,
+    commissionPerTrade: 0,
+    description: 'Set your own commission rates',
+  },
+  {
+    id: 'topstep',
+    name: 'Topstep',
+    commissionPerContract: 2.52, // $2.52 per side per contract
+    commissionPerTrade: 0,
+    description: '$2.52 per side per contract',
+    website: 'https://topstep.com',
+  },
+  {
+    id: 'apex',
+    name: 'Apex Trader Funding',
+    commissionPerContract: 0.55, // $0.55 per side per contract (Rithmic)
+    commissionPerTrade: 0,
+    description: '$0.55 per side per contract',
+    website: 'https://apextraderfunding.com',
+  },
+  {
+    id: 'takeprofittrader',
+    name: 'Take Profit Trader',
+    commissionPerContract: 0.55, // $0.55 per side per contract
+    commissionPerTrade: 0,
+    description: '$0.55 per side per contract',
+    website: 'https://takeprofittrader.com',
+  },
+  {
+    id: 'earn2trade',
+    name: 'Earn2Trade',
+    commissionPerContract: 0.55, // $0.55 per side per contract
+    commissionPerTrade: 0,
+    description: '$0.55 per side per contract',
+    website: 'https://earn2trade.com',
+  },
+  {
+    id: 'myfundedfutures',
+    name: 'My Funded Futures',
+    commissionPerContract: 0.55, // $0.55 per side per contract
+    commissionPerTrade: 0,
+    description: '$0.55 per side per contract',
+    website: 'https://myfundedfutures.com',
+  },
+  {
+    id: 'lucidtrading',
+    name: 'Lucid Trading',
+    commissionPerContract: 0.55, // $0.55 per side per contract (typical Rithmic rate)
+    commissionPerTrade: 0,
+    description: '$0.55 per side per contract',
+    website: 'https://lucidtrading.com',
+  },
+  {
+    id: 'tradeday',
+    name: 'TradeDay',
+    commissionPerContract: 0.55,
+    commissionPerTrade: 0,
+    description: '$0.55 per side per contract',
+    website: 'https://tradeday.com',
+  },
+  {
+    id: 'bulenox',
+    name: 'Bulenox',
+    commissionPerContract: 0.55,
+    commissionPerTrade: 0,
+    description: '$0.55 per side per contract',
+    website: 'https://bulenox.com',
+  },
+];
+
+// ============================================================================
 // Date/Time Helpers
 // ============================================================================
 

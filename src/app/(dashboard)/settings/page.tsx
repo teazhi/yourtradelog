@@ -48,6 +48,7 @@ import {
 import { formatCurrency } from "@/lib/calculations/formatters";
 import { createClient } from "@/lib/supabase/client";
 import { dispatchProfileUpdate } from "@/components/layout/profile-completion-banner";
+import { PROP_FIRMS } from "@/lib/constants";
 
 const timezones = [
   { value: "America/New_York", label: "Eastern Time (ET)" },
@@ -69,6 +70,9 @@ interface Profile {
   daily_loss_limit: number | null;
   weekly_loss_limit: number | null;
   account_size: number | null;
+  prop_firm: string | null;
+  commission_per_contract: number | null;
+  commission_per_trade: number | null;
 }
 
 interface Account {
@@ -444,6 +448,9 @@ function TradingSettings({
   const [dailyLimit, setDailyLimit] = React.useState(profile?.daily_loss_limit || 500);
   const [weeklyLimit, setWeeklyLimit] = React.useState(profile?.weekly_loss_limit || 1500);
   const [accountSize, setAccountSize] = React.useState(profile?.account_size || 50000);
+  const [propFirm, setPropFirm] = React.useState(profile?.prop_firm || "custom");
+  const [commissionPerContract, setCommissionPerContract] = React.useState(profile?.commission_per_contract || 0);
+  const [commissionPerTrade, setCommissionPerTrade] = React.useState(profile?.commission_per_trade || 0);
   const [isSaving, setIsSaving] = React.useState(false);
 
   React.useEffect(() => {
@@ -452,8 +459,22 @@ function TradingSettings({
       setDailyLimit(profile.daily_loss_limit || 500);
       setWeeklyLimit(profile.weekly_loss_limit || 1500);
       setAccountSize(profile.account_size || 50000);
+      setPropFirm(profile.prop_firm || "custom");
+      setCommissionPerContract(profile.commission_per_contract || 0);
+      setCommissionPerTrade(profile.commission_per_trade || 0);
     }
   }, [profile]);
+
+  // Handle prop firm selection - auto-fill commission rates
+  const handlePropFirmChange = (firmId: string) => {
+    setPropFirm(firmId);
+    const selectedFirm = PROP_FIRMS.find(f => f.id === firmId);
+    if (selectedFirm && firmId !== "custom") {
+      // Set the commission rates from the prop firm
+      setCommissionPerContract(selectedFirm.commissionPerContract);
+      setCommissionPerTrade(selectedFirm.commissionPerTrade);
+    }
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -466,6 +487,9 @@ function TradingSettings({
           daily_loss_limit: dailyLimit,
           weekly_loss_limit: weeklyLimit,
           account_size: accountSize,
+          prop_firm: propFirm,
+          commission_per_contract: commissionPerContract,
+          commission_per_trade: commissionPerTrade,
         })
         .eq("id", profile?.id);
 
@@ -477,6 +501,9 @@ function TradingSettings({
           daily_loss_limit: dailyLimit,
           weekly_loss_limit: weeklyLimit,
           account_size: accountSize,
+          prop_firm: propFirm,
+          commission_per_contract: commissionPerContract,
+          commission_per_trade: commissionPerTrade,
         });
         toast.success("Settings saved");
         dispatchProfileUpdate();
@@ -487,6 +514,9 @@ function TradingSettings({
       setIsSaving(false);
     }
   };
+
+  // Get the current selected prop firm details
+  const selectedPropFirm = PROP_FIRMS.find(f => f.id === propFirm);
 
   return (
     <div className="space-y-6">
@@ -570,6 +600,99 @@ function TradingSettings({
                 Stop trading for the week
               </p>
             </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">Commission & Fees</CardTitle>
+          <CardDescription>
+            Set your default commission structure for accurate P&L calculations on imported trades
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {/* Prop Firm Selector */}
+          <div className="space-y-2">
+            <Label htmlFor="propFirm">Prop Firm / Account Type</Label>
+            <Select value={propFirm} onValueChange={handlePropFirmChange}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select your prop firm" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROP_FIRMS.map((firm) => (
+                  <SelectItem key={firm.id} value={firm.id}>
+                    <div className="flex items-center justify-between gap-4">
+                      <span>{firm.name}</span>
+                      {firm.id !== "custom" && (
+                        <span className="text-xs text-muted-foreground">
+                          ${firm.commissionPerContract}/side
+                        </span>
+                      )}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedPropFirm && selectedPropFirm.id !== "custom" && (
+              <p className="text-xs text-muted-foreground">
+                {selectedPropFirm.description}
+              </p>
+            )}
+          </div>
+
+          <Separator />
+
+          {/* Manual Commission Inputs */}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="commissionPerContract">Per Contract / Per Side ($)</Label>
+              <Input
+                id="commissionPerContract"
+                type="number"
+                value={commissionPerContract}
+                onChange={(e) => {
+                  setCommissionPerContract(Number(e.target.value));
+                  // Switch to custom if user manually edits
+                  if (propFirm !== "custom") setPropFirm("custom");
+                }}
+                min={0}
+                step={0.01}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground">
+                Fee charged per contract per side
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="commissionPerTrade">Per Trade / Per Side ($)</Label>
+              <Input
+                id="commissionPerTrade"
+                type="number"
+                value={commissionPerTrade}
+                onChange={(e) => {
+                  setCommissionPerTrade(Number(e.target.value));
+                  // Switch to custom if user manually edits
+                  if (propFirm !== "custom") setPropFirm("custom");
+                }}
+                min={0}
+                step={0.01}
+                placeholder="0.00"
+              />
+              <p className="text-xs text-muted-foreground">
+                Flat fee per trade per side
+              </p>
+            </div>
+          </div>
+
+          {/* Example calculation */}
+          <div className="rounded-lg bg-muted p-3">
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">Example:</strong> For a 2-contract trade, your round-trip fees would be:
+              <span className="font-mono text-foreground block mt-1">
+                (2 × ${commissionPerContract.toFixed(2)} × 2 sides) + (${commissionPerTrade.toFixed(2)} × 2 sides) = ${((commissionPerContract * 2 * 2) + (commissionPerTrade * 2)).toFixed(2)}
+              </span>
+            </p>
           </div>
         </CardContent>
       </Card>

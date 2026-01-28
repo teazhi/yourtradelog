@@ -758,7 +758,7 @@ export default function TradeDetailPage() {
               }
               subValue={
                 trade.gross_pnl !== null
-                  ? `Gross: ${formatCurrency(trade.gross_pnl)}`
+                  ? `Gross: ${formatCurrency(trade.gross_pnl)}${(trade.commission || 0) + (trade.fees || 0) > 0 ? ` - Fees: ${formatCurrency((trade.commission || 0) + (trade.fees || 0))}` : ""}`
                   : undefined
               }
               icon={trade.net_pnl && trade.net_pnl > 0 ? TrendingUp : TrendingDown}

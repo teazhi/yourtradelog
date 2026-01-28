@@ -18,6 +18,10 @@ export interface Profile {
   daily_loss_limit: number | null;
   weekly_loss_limit: number | null;
   account_size: number | null;
+  // Commission settings
+  prop_firm: string | null;
+  commission_per_contract: number | null;
+  commission_per_trade: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -33,6 +37,9 @@ export interface ProfileInsert {
   daily_loss_limit?: number | null;
   weekly_loss_limit?: number | null;
   account_size?: number | null;
+  prop_firm?: string | null;
+  commission_per_contract?: number | null;
+  commission_per_trade?: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -48,6 +55,9 @@ export interface ProfileUpdate {
   daily_loss_limit?: number | null;
   weekly_loss_limit?: number | null;
   account_size?: number | null;
+  prop_firm?: string | null;
+  commission_per_contract?: number | null;
+  commission_per_trade?: number | null;
   updated_at?: string;
 }
 

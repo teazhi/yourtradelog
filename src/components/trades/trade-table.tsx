@@ -187,7 +187,9 @@ export function TradeTable({
                 <TableHead>Side</TableHead>
                 <TableHead>Entry</TableHead>
                 <TableHead>Exit</TableHead>
-                <TableHead>P&L</TableHead>
+                <TableHead>Gross P&L</TableHead>
+                <TableHead>Fees</TableHead>
+                <TableHead>Net P&L</TableHead>
                 <TableHead>R-Multiple</TableHead>
                 <TableHead>Setup</TableHead>
                 <TableHead>Status</TableHead>
@@ -197,7 +199,7 @@ export function TradeTable({
             <TableBody>
               {Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 11 }).map((_, j) => (
+                  {Array.from({ length: 13 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-pulse rounded bg-muted" />
                     </TableCell>
@@ -234,8 +236,10 @@ export function TradeTable({
               <SortableHeader field="side">Side</SortableHeader>
               <SortableHeader field="entry_price">Entry</SortableHeader>
               <SortableHeader field="exit_price">Exit</SortableHeader>
+              <TableHead className="text-right">Gross P&L</TableHead>
+              <TableHead className="text-right">Fees</TableHead>
               <SortableHeader field="net_pnl" className="text-right">
-                P&L
+                Net P&L
               </SortableHeader>
               <SortableHeader field="r_multiple" className="text-right">
                 R-Multiple
@@ -276,6 +280,16 @@ export function TradeTable({
                 <TableCell>
                   {trade.exit_price
                     ? formatCurrency(trade.exit_price).replace("$", "")
+                    : "-"}
+                </TableCell>
+                <TableCell className={cn("text-right", getPnLColor(trade.gross_pnl))}>
+                  {trade.gross_pnl !== null
+                    ? `${trade.gross_pnl > 0 ? "+" : ""}${formatCurrency(trade.gross_pnl)}`
+                    : "-"}
+                </TableCell>
+                <TableCell className="text-right text-muted-foreground">
+                  {(trade.commission || 0) + (trade.fees || 0) > 0
+                    ? `-${formatCurrency((trade.commission || 0) + (trade.fees || 0))}`
                     : "-"}
                 </TableCell>
                 <TableCell className={cn("text-right font-medium", getPnLColor(trade.net_pnl))}>
