@@ -74,11 +74,11 @@ const ACHIEVEMENTS: Achievement[] = [
   { id: "trades_100", name: "Century Club", description: "Log 100 trades", icon: Trophy, color: "text-yellow-500", requirement: 100, type: "trades", tier: "gold" },
   { id: "trades_500", name: "Trading Historian", description: "Log 500 trades", icon: Crown, color: "text-purple-500", requirement: 500, type: "trades", tier: "platinum" },
 
-  // Streak Achievements - reward consistency
-  { id: "streak_3", name: "Momentum", description: "Log trades 3 days in a row", icon: Flame, color: "text-orange-500", requirement: 3, type: "streak", tier: "bronze" },
-  { id: "streak_7", name: "Week Warrior", description: "Log trades 7 days in a row", icon: Flame, color: "text-orange-500", requirement: 7, type: "streak", tier: "silver" },
-  { id: "streak_30", name: "Monthly Dedication", description: "Log trades 30 days in a row", icon: Flame, color: "text-red-500", requirement: 30, type: "streak", tier: "gold" },
-  { id: "streak_100", name: "Unstoppable", description: "Log trades 100 days in a row", icon: Zap, color: "text-yellow-400", requirement: 100, type: "streak", tier: "platinum" },
+  // Streak Achievements - reward consistency in journaling/logging (not forcing trades)
+  { id: "streak_3", name: "Momentum", description: "Journal or log trades 3 trading days in a row", icon: Flame, color: "text-orange-500", requirement: 3, type: "streak", tier: "bronze" },
+  { id: "streak_7", name: "Week Warrior", description: "Journal or log trades 7 trading days in a row", icon: Flame, color: "text-orange-500", requirement: 7, type: "streak", tier: "silver" },
+  { id: "streak_30", name: "Monthly Dedication", description: "Stay consistent for 30 trading days", icon: Flame, color: "text-red-500", requirement: 30, type: "streak", tier: "gold" },
+  { id: "streak_100", name: "Unstoppable", description: "Maintain your logging habit for 100 trading days", icon: Zap, color: "text-yellow-400", requirement: 100, type: "streak", tier: "platinum" },
 
   // Journal Achievements - reward self-reflection
   { id: "journal_1", name: "Self-Reflection", description: "Write your first journal entry", icon: BookOpen, color: "text-indigo-500", requirement: 1, type: "journal", tier: "bronze" },

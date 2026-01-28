@@ -28,6 +28,8 @@ import { ThemeToggle } from "@/components/layout/theme-toggle";
 import { Logo } from "@/components/ui/logo";
 import { ProfileCompletionBanner } from "@/components/layout/profile-completion-banner";
 import { createClient } from "@/lib/supabase/client";
+import { AccountProvider } from "@/components/providers/account-provider";
+import { AccountSelector } from "@/components/layout/account-selector";
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
@@ -126,6 +128,7 @@ export default function DashboardLayout({
   const greeting = user?.name ? `Welcome back, ${user.name}!` : "Welcome back!";
 
   return (
+    <AccountProvider>
     <div className="flex h-screen overflow-hidden">
       {/* Desktop Sidebar */}
       <aside
@@ -466,6 +469,7 @@ export default function DashboardLayout({
             <h1 className="text-sm sm:text-lg font-semibold truncate">{greeting}</h1>
           </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+            <AccountSelector />
             <ThemeToggle />
 
             {/* User Dropdown */}
@@ -531,5 +535,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </div>
+    </AccountProvider>
   );
 }

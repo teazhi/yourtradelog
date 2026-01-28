@@ -22,6 +22,7 @@ import {
 import { formatCurrency, formatPercentage } from "@/lib/calculations/formatters";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
+import { useAccount } from "@/components/providers/account-provider";
 
 // Analytics components
 import { EquityCurve } from "@/components/analytics/equity-curve";
@@ -336,6 +337,7 @@ function calculateAnalytics(trades: Trade[]) {
 }
 
 export default function AnalyticsPage() {
+  const { selectedAccountId, showAllAccounts } = useAccount();
   const [dateRange, setDateRange] = React.useState<DateRange>("all");
   const [customStartDate, setCustomStartDate] = React.useState<Date | undefined>(undefined);
   const [customEndDate, setCustomEndDate] = React.useState<Date | undefined>(undefined);
@@ -396,14 +398,22 @@ export default function AnalyticsPage() {
     fetchTrades();
   }, []);
 
+  // Filter trades by account first
+  const accountFilteredTrades = React.useMemo(() => {
+    if (showAllAccounts || !selectedAccountId) {
+      return trades;
+    }
+    return trades.filter(t => t.account_id === selectedAccountId);
+  }, [trades, selectedAccountId, showAllAccounts]);
+
   // Filter trades by date range
   const filteredTrades = React.useMemo(() => {
     const { start, end } = getDateRange(dateRange, customStartDate, customEndDate);
-    return trades.filter(trade => {
+    return accountFilteredTrades.filter(trade => {
       const tradeDate = new Date(trade.exit_date || trade.entry_date);
       return tradeDate >= start && tradeDate <= end;
     });
-  }, [trades, dateRange, customStartDate, customEndDate]);
+  }, [accountFilteredTrades, dateRange, customStartDate, customEndDate]);
 
   // Calculate analytics
   const analytics = React.useMemo(() => {

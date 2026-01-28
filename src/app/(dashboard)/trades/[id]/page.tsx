@@ -27,6 +27,7 @@ import {
   Users,
   Lock,
   Eye,
+  Wallet,
 } from "lucide-react";
 import {
   Button,
@@ -74,6 +75,7 @@ import {
 } from "@/components/ui/custom-dialog";
 import { Trade } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { useAccount } from "@/components/providers/account-provider";
 import { TradeScreenshots } from "@/components/trades/trade-screenshots";
 import {
   formatCurrency,
@@ -261,6 +263,7 @@ export default function TradeDetailPage() {
   const params = useParams();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { accounts } = useAccount();
   const [trade, setTrade] = React.useState<Trade | null>(null);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isDeleting, setIsDeleting] = React.useState(false);
@@ -273,6 +276,13 @@ export default function TradeDetailPage() {
 
   // Edit state
   const [editData, setEditData] = React.useState<Partial<Trade>>({});
+
+  // Get the account name for display
+  const tradeAccount = React.useMemo(() => {
+    const accountId = isEditing ? editData.account_id : trade?.account_id;
+    if (!accountId) return null;
+    return accounts.find(a => a.id === accountId);
+  }, [accounts, trade?.account_id, editData.account_id, isEditing]);
 
   // Fetch the trade from Supabase
   React.useEffect(() => {
@@ -342,6 +352,32 @@ export default function TradeDetailPage() {
     }
   };
 
+  // Quick save for ratings without entering edit mode
+  const handleQuickRating = async (field: "entry_rating" | "exit_rating" | "management_rating", value: number | null) => {
+    if (!trade) return;
+
+    try {
+      const supabase = createClient();
+      const { error } = await (supabase
+        .from("trades") as any)
+        .update({ [field]: value, updated_at: new Date().toISOString() })
+        .eq("id", trade.id);
+
+      if (error) {
+        console.error("Error saving rating:", error);
+        toast.error("Failed to save rating");
+        return;
+      }
+
+      // Update local state
+      setTrade({ ...trade, [field]: value });
+      toast.success("Rating saved");
+    } catch (err) {
+      console.error("Exception saving rating:", err);
+      toast.error("Failed to save rating");
+    }
+  };
+
   const handleSave = async () => {
     if (!trade) return;
 
@@ -402,6 +438,7 @@ export default function TradeDetailPage() {
         management_rating: editData.management_rating,
         notes: editData.notes,
         lessons: editData.lessons,
+        account_id: editData.account_id,
         status: editData.exit_price ? "closed" : "open",
         updated_at: new Date().toISOString(),
       };
@@ -826,6 +863,46 @@ export default function TradeDetailPage() {
             <CardDescription>Entry and exit details</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
+            {/* Account Selector */}
+            <div>
+              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                <Wallet className="h-3.5 w-3.5" />
+                Account
+              </p>
+              {isEditing ? (
+                <Select
+                  value={editData.account_id || ""}
+                  onValueChange={(v) => updateField("account_id", v || null)}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select account" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name} {account.broker ? `(${account.broker})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <p className="font-medium">
+                  {tradeAccount ? (
+                    <>
+                      {tradeAccount.name}
+                      {tradeAccount.broker && (
+                        <span className="text-muted-foreground font-normal"> ({tradeAccount.broker})</span>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-muted-foreground">No account assigned</span>
+                  )}
+                </p>
+              )}
+            </div>
+
+            <Separator />
+
             {/* Symbol & Side (only in edit mode) */}
             {isEditing && (
               <>
@@ -1086,32 +1163,50 @@ export default function TradeDetailPage() {
 
             <Separator />
 
-            {/* Ratings */}
+            {/* Ratings - Always interactive for quick review */}
             <div>
-              <h4 className="text-sm font-medium text-muted-foreground mb-3">Quality Ratings</h4>
+              <h4 className="text-sm font-medium text-muted-foreground mb-3">
+                Quality Ratings
+                <span className="text-xs font-normal ml-2">(click to rate)</span>
+              </h4>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Entry Quality</span>
                   <StarRating
-                    value={displayData.entry_rating ?? null}
-                    onChange={isEditing ? (v) => updateField("entry_rating", v) : undefined}
-                    disabled={!isEditing}
+                    value={isEditing ? (editData.entry_rating ?? null) : (trade?.entry_rating ?? null)}
+                    onChange={(v) => {
+                      if (isEditing) {
+                        updateField("entry_rating", v);
+                      } else {
+                        handleQuickRating("entry_rating", v);
+                      }
+                    }}
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Exit Quality</span>
                   <StarRating
-                    value={displayData.exit_rating ?? null}
-                    onChange={isEditing ? (v) => updateField("exit_rating", v) : undefined}
-                    disabled={!isEditing}
+                    value={isEditing ? (editData.exit_rating ?? null) : (trade?.exit_rating ?? null)}
+                    onChange={(v) => {
+                      if (isEditing) {
+                        updateField("exit_rating", v);
+                      } else {
+                        handleQuickRating("exit_rating", v);
+                      }
+                    }}
                   />
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-sm">Trade Management</span>
                   <StarRating
-                    value={displayData.management_rating ?? null}
-                    onChange={isEditing ? (v) => updateField("management_rating", v) : undefined}
-                    disabled={!isEditing}
+                    value={isEditing ? (editData.management_rating ?? null) : (trade?.management_rating ?? null)}
+                    onChange={(v) => {
+                      if (isEditing) {
+                        updateField("management_rating", v);
+                      } else {
+                        handleQuickRating("management_rating", v);
+                      }
+                    }}
                   />
                 </div>
               </div>

@@ -13,6 +13,7 @@ import {
   FileText,
   ChevronDown,
   ChevronUp,
+  Pencil,
 } from "lucide-react";
 import {
   Card,
@@ -64,11 +65,13 @@ interface Setup {
 
 function SetupCard({
   setup,
+  onEdit,
   onArchive,
   onRestore,
   onDelete,
 }: {
   setup: Setup;
+  onEdit: () => void;
   onArchive: () => void;
   onRestore: () => void;
   onDelete: () => void;
@@ -102,6 +105,11 @@ function SetupCard({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={onEdit}>
+                <Pencil className="mr-2 h-4 w-4" />
+                Edit
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               {isArchived ? (
                 <DropdownMenuItem onClick={onRestore}>
                   <RotateCcw className="mr-2 h-4 w-4" />
@@ -278,11 +286,101 @@ Stop loss below swing low"
   );
 }
 
+function EditSetupDialog({
+  open,
+  onOpenChange,
+  setup,
+  onSave,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  setup: Setup | null;
+  onSave: (id: string, updates: { name: string; description: string; rules: string }) => void;
+}) {
+  const [name, setName] = React.useState("");
+  const [description, setDescription] = React.useState("");
+  const [rules, setRules] = React.useState("");
+
+  // Update local state when setup changes
+  React.useEffect(() => {
+    if (setup) {
+      setName(setup.name);
+      setDescription(setup.description || "");
+      setRules(setup.rules || "");
+    }
+  }, [setup]);
+
+  const handleSubmit = () => {
+    if (!setup) return;
+    onSave(setup.id, {
+      name,
+      description,
+      rules,
+    });
+    onOpenChange(false);
+  };
+
+  return (
+    <CustomDialog open={open} onOpenChange={onOpenChange}>
+      <CustomDialogHeader>
+        <CustomDialogTitle>Edit Setup</CustomDialogTitle>
+        <CustomDialogDescription>
+          Update your trading setup details
+        </CustomDialogDescription>
+      </CustomDialogHeader>
+      <CustomDialogContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="edit-setup-name">Setup Name</Label>
+          <Input
+            id="edit-setup-name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g., Opening Range Breakout"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-setup-description">Description</Label>
+          <Input
+            id="edit-setup-description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+            placeholder="Brief description of the setup"
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="edit-setup-rules">Trading Rules</Label>
+          <Textarea
+            id="edit-setup-rules"
+            value={rules}
+            onChange={(e) => setRules(e.target.value)}
+            placeholder="Enter each rule on a new line, e.g.:
+Wait for price above VWAP
+Entry on pullback to EMA
+Stop loss below swing low"
+            rows={5}
+          />
+          <p className="text-xs text-muted-foreground">Enter each rule on a separate line</p>
+        </div>
+      </CustomDialogContent>
+      <CustomDialogFooter>
+        <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+          Cancel
+        </Button>
+        <Button type="button" onClick={handleSubmit} disabled={!name}>
+          Save Changes
+        </Button>
+      </CustomDialogFooter>
+    </CustomDialog>
+  );
+}
+
 export default function SetupsPage() {
   const [setups, setSetups] = React.useState<Setup[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [addDialogOpen, setAddDialogOpen] = React.useState(false);
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [editingSetup, setEditingSetup] = React.useState<Setup | null>(null);
 
   React.useEffect(() => {
     async function fetchData() {
@@ -401,6 +499,38 @@ export default function SetupsPage() {
     } catch { toast.error("Failed to delete setup"); }
   };
 
+  const handleEdit = (setup: Setup) => {
+    setEditingSetup(setup);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async (id: string, updates: { name: string; description: string; rules: string }) => {
+    try {
+      const supabase = createClient();
+      const { error } = await (supabase.from("setups") as any)
+        .update({
+          name: updates.name,
+          description: updates.description || null,
+          rules: updates.rules || null,
+        })
+        .eq("id", id);
+
+      if (error) {
+        toast.error("Failed to update setup");
+        return;
+      }
+
+      setSetups(setups.map((s) =>
+        s.id === id
+          ? { ...s, name: updates.name, description: updates.description || null, rules: updates.rules || null }
+          : s
+      ));
+      toast.success("Setup updated");
+    } catch {
+      toast.error("Failed to update setup");
+    }
+  };
+
   const totalTrades = activeSetups.reduce((sum, s) => sum + (s.total_trades || 0), 0);
   const avgWinRate = activeSetups.length > 0
     ? activeSetups.reduce((sum, s) => sum + (s.win_rate || 0), 0) / activeSetups.length
@@ -506,7 +636,7 @@ export default function SetupsPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {filterSetups(activeSetups).map((setup) => (
-                <SetupCard key={setup.id} setup={setup} onArchive={() => handleArchive(setup.id)} onRestore={() => handleRestore(setup.id)} onDelete={() => handleDelete(setup.id)} />
+                <SetupCard key={setup.id} setup={setup} onEdit={() => handleEdit(setup)} onArchive={() => handleArchive(setup.id)} onRestore={() => handleRestore(setup.id)} onDelete={() => handleDelete(setup.id)} />
               ))}
             </div>
           )}
@@ -524,7 +654,7 @@ export default function SetupsPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2">
               {filterSetups(archivedSetups).map((setup) => (
-                <SetupCard key={setup.id} setup={setup} onArchive={() => handleArchive(setup.id)} onRestore={() => handleRestore(setup.id)} onDelete={() => handleDelete(setup.id)} />
+                <SetupCard key={setup.id} setup={setup} onEdit={() => handleEdit(setup)} onArchive={() => handleArchive(setup.id)} onRestore={() => handleRestore(setup.id)} onDelete={() => handleDelete(setup.id)} />
               ))}
             </div>
           )}
@@ -532,6 +662,7 @@ export default function SetupsPage() {
       </Tabs>
 
       <AddSetupDialog open={addDialogOpen} onOpenChange={setAddDialogOpen} onAdd={handleAddSetup} />
+      <EditSetupDialog open={editDialogOpen} onOpenChange={setEditDialogOpen} setup={editingSetup} onSave={handleSaveEdit} />
     </div>
   );
 }

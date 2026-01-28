@@ -74,6 +74,13 @@ export interface Account {
   starting_balance: number;
   current_balance: number;
   is_default: boolean;
+  // Per-account trading settings
+  prop_firm: string | null;
+  commission_per_contract: number | null;
+  commission_per_trade: number | null;
+  default_risk_per_trade: number | null;
+  daily_loss_limit: number | null;
+  weekly_loss_limit: number | null;
   created_at: string;
   updated_at: string;
 }
@@ -87,6 +94,13 @@ export interface AccountInsert {
   starting_balance?: number;
   current_balance?: number;
   is_default?: boolean;
+  // Per-account trading settings
+  prop_firm?: string | null;
+  commission_per_contract?: number | null;
+  commission_per_trade?: number | null;
+  default_risk_per_trade?: number | null;
+  daily_loss_limit?: number | null;
+  weekly_loss_limit?: number | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -100,6 +114,13 @@ export interface AccountUpdate {
   starting_balance?: number;
   current_balance?: number;
   is_default?: boolean;
+  // Per-account trading settings
+  prop_firm?: string | null;
+  commission_per_contract?: number | null;
+  commission_per_trade?: number | null;
+  default_risk_per_trade?: number | null;
+  daily_loss_limit?: number | null;
+  weekly_loss_limit?: number | null;
   updated_at?: string;
 }
 

@@ -3,7 +3,7 @@
 import * as React from "react";
 import { Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Upload, FileSpreadsheet, ArrowRight, ArrowLeft, Check, AlertCircle, X, CalendarDays, Loader2, HelpCircle, ExternalLink } from "lucide-react";
+import { Upload, FileSpreadsheet, ArrowRight, ArrowLeft, Check, AlertCircle, X, CalendarDays, Loader2, HelpCircle, ExternalLink, Wallet } from "lucide-react";
 import { format, parseISO, isSameDay } from "date-fns";
 import {
   Button,
@@ -34,8 +34,9 @@ import {
 } from "@/components/ui";
 import { SUPPORTED_BROKERS, DEFAULT_FUTURES_INSTRUMENTS } from "@/lib/constants";
 import { createClient } from "@/lib/supabase/client";
-import { TradeInsert } from "@/types/database";
+import { TradeInsert, Account } from "@/types/database";
 import Papa from "papaparse";
+import { useAccount } from "@/components/providers/account-provider";
 
 // Types
 interface ParsedRow {
@@ -271,7 +272,20 @@ function ImportPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const dateFilter = searchParams.get("date"); // YYYY-MM-DD format from journal
+  const { selectedAccount, accounts, isLoading: accountsLoading } = useAccount();
+  const [selectedAccountId, setSelectedAccountId] = React.useState<string | null>(null);
   const [step, setStep] = React.useState<1 | 2 | 3 | 4>(1);
+
+  // Set initial account when accounts load
+  React.useEffect(() => {
+    if (!accountsLoading && accounts.length > 0 && !selectedAccountId) {
+      // Use the globally selected account, or find default, or use first account
+      const defaultAccount = selectedAccount || accounts.find(a => a.is_default) || accounts[0];
+      if (defaultAccount) {
+        setSelectedAccountId(defaultAccount.id);
+      }
+    }
+  }, [accountsLoading, accounts, selectedAccount, selectedAccountId]);
   const [broker, setBroker] = React.useState<string>("");
   const [file, setFile] = React.useState<File | null>(null);
   const [parsedData, setParsedData] = React.useState<ParsedRow[]>([]);
@@ -287,28 +301,19 @@ function ImportPageContent() {
   });
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Fetch commission settings on mount
+  // Update commission settings when selected account changes
   React.useEffect(() => {
-    const fetchCommissionSettings = async () => {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data: profile } = await (supabase.from("profiles") as any)
-        .select("commission_per_contract, commission_per_trade")
-        .eq("id", user.id)
-        .single();
-
-      if (profile) {
+    // Get commission settings from the selected account
+    if (selectedAccountId && accounts.length > 0) {
+      const account = accounts.find(a => a.id === selectedAccountId);
+      if (account) {
         setCommissionSettings({
-          commission_per_contract: profile.commission_per_contract || 0,
-          commission_per_trade: profile.commission_per_trade || 0,
+          commission_per_contract: account.commission_per_contract || 0,
+          commission_per_trade: account.commission_per_trade || 0,
         });
       }
-    };
-
-    fetchCommissionSettings();
-  }, []);
+    }
+  }, [selectedAccountId, accounts]);
 
   // Parse the date filter for comparison
   const filterDate = React.useMemo(() => {
@@ -731,6 +736,7 @@ function ImportPageContent() {
 
         const tradeData: TradeInsert = {
           user_id: user.id,
+          account_id: selectedAccountId,
           symbol: normalizeSymbol(getMappedValue(row, "symbol")),
           side: side,
           status: "closed",
@@ -789,11 +795,14 @@ function ImportPageContent() {
 
   return (
     <div className="container max-w-6xl py-6 px-4 sm:px-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">Import Trades</h1>
-        <p className="text-muted-foreground mt-2">
-          Import your trading history from a CSV file
-        </p>
+      <div className="mb-8 flex items-start justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">Import Trades</h1>
+          <p className="text-muted-foreground mt-2">
+            Import your trading history from a CSV file
+          </p>
+        </div>
+
       </div>
 
       {/* Date Filter Notice */}
@@ -861,24 +870,54 @@ function ImportPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Broker Selection */}
-            <div className="space-y-2">
-              <label className="text-sm font-medium">Broker (Optional)</label>
-              <Select value={broker} onValueChange={setBroker}>
-                <SelectTrigger className="w-full max-w-xs">
-                  <SelectValue placeholder="Select your broker" />
-                </SelectTrigger>
-                <SelectContent>
-                  {SUPPORTED_BROKERS.map((b) => (
-                    <SelectItem key={b.value} value={b.value}>
-                      {b.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <p className="text-sm text-muted-foreground">
-                Selecting your broker helps us auto-detect column mappings
-              </p>
+            {/* Broker & Account Selection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Broker (Optional)</label>
+                <Select value={broker} onValueChange={setBroker}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select your broker" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {SUPPORTED_BROKERS.map((b) => (
+                      <SelectItem key={b.value} value={b.value}>
+                        {b.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-sm text-muted-foreground">
+                  Selecting your broker helps us auto-detect column mappings
+                </p>
+              </div>
+
+              {accounts.length > 0 && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium flex items-center gap-2">
+                    <Wallet className="h-4 w-4" />
+                    Import to Account
+                  </label>
+                  <Select
+                    value={selectedAccountId || ""}
+                    onValueChange={setSelectedAccountId}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Select account" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {accounts.map((account) => (
+                        <SelectItem key={account.id} value={account.id}>
+                          {account.name}
+                          {account.is_default && " (Default)"}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-sm text-muted-foreground">
+                    All imported trades will be assigned to this account
+                  </p>
+                </div>
+              )}
             </div>
 
             {/* Tradovate Import Instructions */}

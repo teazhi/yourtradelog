@@ -34,13 +34,12 @@ import {
   Switch,
   Separator,
   Badge,
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
+  CustomDialog,
+  CustomDialogContent,
+  CustomDialogDescription,
+  CustomDialogFooter,
+  CustomDialogHeader,
+  CustomDialogTitle,
   Spinner,
   cn,
   toast,
@@ -49,6 +48,7 @@ import { formatCurrency } from "@/lib/calculations/formatters";
 import { createClient } from "@/lib/supabase/client";
 import { dispatchProfileUpdate } from "@/components/layout/profile-completion-banner";
 import { PROP_FIRMS } from "@/lib/constants";
+import { useAccount } from "@/components/providers/account-provider";
 
 const timezones = [
   { value: "America/New_York", label: "Eastern Time (ET)" },
@@ -82,6 +82,13 @@ interface Account {
   starting_balance: number;
   current_balance: number;
   is_default: boolean;
+  // Per-account trading settings
+  prop_firm: string | null;
+  commission_per_contract: number | null;
+  commission_per_trade: number | null;
+  default_risk_per_trade: number | null;
+  daily_loss_limit: number | null;
+  weekly_loss_limit: number | null;
 }
 
 interface Instrument {
@@ -250,68 +257,64 @@ function DangerZone() {
             <p className="text-sm text-muted-foreground mt-1">
               Permanently delete your account and all associated data. This action cannot be undone.
             </p>
-            <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-              <DialogTrigger asChild>
-                <Button variant="destructive" size="sm" className="mt-4">
+            <Button variant="destructive" size="sm" className="mt-4" onClick={() => setDialogOpen(true)}>
+              Delete Account
+            </Button>
+            <CustomDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+              <CustomDialogHeader>
+                <CustomDialogTitle className="flex items-center gap-2 text-destructive">
+                  <AlertTriangle className="h-5 w-5" />
                   Delete Account
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DialogHeader>
-                  <DialogTitle className="flex items-center gap-2 text-destructive">
-                    <AlertTriangle className="h-5 w-5" />
-                    Delete Account
-                  </DialogTitle>
-                  <DialogDescription>
-                    This action is permanent and cannot be undone.
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="space-y-4">
-                  <div className="rounded-lg bg-muted p-4">
-                    <p className="text-sm font-medium mb-2">All your data will be permanently deleted:</p>
-                    <ul className="text-sm text-muted-foreground space-y-1">
-                      <li>• All trades and trade history</li>
-                      <li>• All journal entries and notes</li>
-                      <li>• All screenshots and attachments</li>
-                      <li>• Your profile and settings</li>
-                      <li>• Partner connections and data</li>
-                    </ul>
-                  </div>
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label htmlFor="confirm">
-                      Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm
-                    </Label>
-                    <Input
-                      id="confirm"
-                      value={confirmText}
-                      onChange={(e) => setConfirmText(e.target.value)}
-                      placeholder="DELETE"
-                      className="font-mono"
-                    />
-                  </div>
+                </CustomDialogTitle>
+                <CustomDialogDescription>
+                  This action is permanent and cannot be undone.
+                </CustomDialogDescription>
+              </CustomDialogHeader>
+              <CustomDialogContent className="space-y-4">
+                <div className="rounded-lg bg-muted p-4">
+                  <p className="text-sm font-medium mb-2">All your data will be permanently deleted:</p>
+                  <ul className="text-sm text-muted-foreground space-y-1">
+                    <li>• All trades and trade history</li>
+                    <li>• All journal entries and notes</li>
+                    <li>• All screenshots and attachments</li>
+                    <li>• Your profile and settings</li>
+                    <li>• Partner connections and data</li>
+                  </ul>
                 </div>
-                <DialogFooter>
-                  <Button variant="outline" onClick={() => setDialogOpen(false)}>
-                    Cancel
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    onClick={handleDeleteAccount}
-                    disabled={confirmText !== "DELETE" || isDeleting}
-                  >
-                    {isDeleting ? (
-                      <>
-                        <Spinner className="mr-2 h-4 w-4" />
-                        Deleting...
-                      </>
-                    ) : (
-                      "Delete My Account"
-                    )}
-                  </Button>
-                </DialogFooter>
-              </DialogContent>
-            </Dialog>
+                <Separator />
+                <div className="space-y-2">
+                  <Label htmlFor="confirm">
+                    Type <span className="font-mono font-bold text-destructive">DELETE</span> to confirm
+                  </Label>
+                  <Input
+                    id="confirm"
+                    value={confirmText}
+                    onChange={(e) => setConfirmText(e.target.value)}
+                    placeholder="DELETE"
+                    className="font-mono"
+                  />
+                </div>
+              </CustomDialogContent>
+              <CustomDialogFooter>
+                <Button variant="outline" onClick={() => setDialogOpen(false)}>
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDeleteAccount}
+                  disabled={confirmText !== "DELETE" || isDeleting}
+                >
+                  {isDeleting ? (
+                    <>
+                      <Spinner className="mr-2 h-4 w-4" />
+                      Deleting...
+                    </>
+                  ) : (
+                    "Delete My Account"
+                  )}
+                </Button>
+              </CustomDialogFooter>
+            </CustomDialog>
           </div>
         </div>
       </div>
@@ -436,34 +439,41 @@ function GeneralSettings({
   );
 }
 
-// Trading Settings Section
+// Trading Settings Section - Now works with selected account
 function TradingSettings({
-  profile,
-  onUpdate
+  accounts,
+  onRefresh
 }: {
-  profile: Profile | null;
-  onUpdate: (p: Partial<Profile>) => void;
+  accounts: Account[];
+  onRefresh: () => void;
 }) {
-  const [riskPercent, setRiskPercent] = React.useState(profile?.default_risk_per_trade || 1);
-  const [dailyLimit, setDailyLimit] = React.useState(profile?.daily_loss_limit || 500);
-  const [weeklyLimit, setWeeklyLimit] = React.useState(profile?.weekly_loss_limit || 1500);
-  const [accountSize, setAccountSize] = React.useState(profile?.account_size || 50000);
-  const [propFirm, setPropFirm] = React.useState(profile?.prop_firm || "custom");
-  const [commissionPerContract, setCommissionPerContract] = React.useState(profile?.commission_per_contract || 0);
-  const [commissionPerTrade, setCommissionPerTrade] = React.useState(profile?.commission_per_trade || 0);
+  const { selectedAccountId, showAllAccounts, selectAccount } = useAccount();
+
+  // Find the currently selected account from the local accounts array
+  const currentAccount = React.useMemo(() => {
+    if (showAllAccounts || !selectedAccountId) return null;
+    return accounts.find(a => a.id === selectedAccountId) || null;
+  }, [accounts, selectedAccountId, showAllAccounts]);
+
+  const [riskPercent, setRiskPercent] = React.useState(1);
+  const [dailyLimit, setDailyLimit] = React.useState<number | null>(null);
+  const [weeklyLimit, setWeeklyLimit] = React.useState<number | null>(null);
+  const [propFirm, setPropFirm] = React.useState("custom");
+  const [commissionPerContract, setCommissionPerContract] = React.useState(0);
+  const [commissionPerTrade, setCommissionPerTrade] = React.useState(0);
   const [isSaving, setIsSaving] = React.useState(false);
 
+  // Update form when selected account changes
   React.useEffect(() => {
-    if (profile) {
-      setRiskPercent(profile.default_risk_per_trade || 1);
-      setDailyLimit(profile.daily_loss_limit || 500);
-      setWeeklyLimit(profile.weekly_loss_limit || 1500);
-      setAccountSize(profile.account_size || 50000);
-      setPropFirm(profile.prop_firm || "custom");
-      setCommissionPerContract(profile.commission_per_contract || 0);
-      setCommissionPerTrade(profile.commission_per_trade || 0);
+    if (currentAccount) {
+      setRiskPercent(currentAccount.default_risk_per_trade || 1);
+      setDailyLimit(currentAccount.daily_loss_limit);
+      setWeeklyLimit(currentAccount.weekly_loss_limit);
+      setPropFirm(currentAccount.prop_firm || "custom");
+      setCommissionPerContract(currentAccount.commission_per_contract || 0);
+      setCommissionPerTrade(currentAccount.commission_per_trade || 0);
     }
-  }, [profile]);
+  }, [currentAccount]);
 
   // Handle prop firm selection - auto-fill commission rates
   const handlePropFirmChange = (firmId: string) => {
@@ -477,35 +487,28 @@ function TradingSettings({
   };
 
   const handleSave = async () => {
+    if (!currentAccount) return;
+
     setIsSaving(true);
     try {
       const supabase = createClient();
       const { error } = await (supabase
-        .from("profiles") as any)
+        .from("accounts") as any)
         .update({
           default_risk_per_trade: riskPercent,
           daily_loss_limit: dailyLimit,
           weekly_loss_limit: weeklyLimit,
-          account_size: accountSize,
           prop_firm: propFirm,
           commission_per_contract: commissionPerContract,
           commission_per_trade: commissionPerTrade,
         })
-        .eq("id", profile?.id);
+        .eq("id", currentAccount.id);
 
       if (error) {
         toast.error("Failed to save settings");
       } else {
-        onUpdate({
-          default_risk_per_trade: riskPercent,
-          daily_loss_limit: dailyLimit,
-          weekly_loss_limit: weeklyLimit,
-          account_size: accountSize,
-          prop_firm: propFirm,
-          commission_per_contract: commissionPerContract,
-          commission_per_trade: commissionPerTrade,
-        });
-        toast.success("Settings saved");
+        toast.success("Account settings saved");
+        onRefresh();
         dispatchProfileUpdate();
       }
     } catch {
@@ -518,34 +521,100 @@ function TradingSettings({
   // Get the current selected prop firm details
   const selectedPropFirm = PROP_FIRMS.find(f => f.id === propFirm);
 
+  // Show account selector if no account is selected
+  if (!currentAccount) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h2 className="text-xl font-semibold">Trading Settings</h2>
+          <p className="text-sm text-muted-foreground mt-1">
+            Configure trading parameters and risk limits for each account
+          </p>
+        </div>
+
+        <Card>
+          <CardContent className="py-8">
+            <div className="text-center space-y-4">
+              <Settings2 className="h-12 w-12 mx-auto text-muted-foreground/50" />
+              <div>
+                <p className="font-medium">Select an Account</p>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Trading settings are now per-account. Please select a specific account to configure its settings.
+                </p>
+              </div>
+              {accounts.length > 0 ? (
+                <div className="flex flex-wrap justify-center gap-2 mt-4">
+                  {accounts.map((account) => (
+                    <Button
+                      key={account.id}
+                      variant="outline"
+                      size="sm"
+                      onClick={() => selectAccount(account.id)}
+                    >
+                      {account.name}
+                      {account.is_default && (
+                        <Badge variant="secondary" className="ml-2 text-xs">Default</Badge>
+                      )}
+                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  No accounts found. Create an account in the Accounts section first.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-xl font-semibold">Trading Settings</h2>
         <p className="text-sm text-muted-foreground mt-1">
-          Configure your default trading parameters and risk limits
+          Configure trading parameters and risk limits for each account
         </p>
       </div>
 
+      {/* Account Selector */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Account Size</CardTitle>
-          <CardDescription>Your total trading capital</CardDescription>
+          <CardTitle className="text-base">Selected Account</CardTitle>
+          <CardDescription>Configure settings for this trading account</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2 max-w-sm">
-            <Label htmlFor="accountSize">Account Size ($)</Label>
-            <Input
-              id="accountSize"
-              type="number"
-              value={accountSize}
-              onChange={(e) => setAccountSize(Number(e.target.value))}
-              min={0}
-              step={1000}
-            />
-            <p className="text-xs text-muted-foreground">
-              Used to calculate risk percentages
-            </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                <CreditCard className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <p className="font-medium">{currentAccount.name}</p>
+                  {currentAccount.is_default && (
+                    <Badge variant="secondary" className="text-xs">Default</Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  {currentAccount.broker || "No broker"} · Balance: {formatCurrency(currentAccount.current_balance)}
+                </p>
+              </div>
+            </div>
+            <Select value={currentAccount.id} onValueChange={(id) => selectAccount(id)}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Switch account" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -553,7 +622,7 @@ function TradingSettings({
       <Card>
         <CardHeader>
           <CardTitle className="text-base">Risk Management</CardTitle>
-          <CardDescription>Set your risk limits to protect your capital</CardDescription>
+          <CardDescription>Set risk limits for this account to protect your capital</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid gap-4 sm:grid-cols-3">
@@ -577,10 +646,11 @@ function TradingSettings({
               <Input
                 id="dailyLimit"
                 type="number"
-                value={dailyLimit}
-                onChange={(e) => setDailyLimit(Number(e.target.value))}
+                value={dailyLimit || ""}
+                onChange={(e) => setDailyLimit(e.target.value ? Number(e.target.value) : null)}
                 min={0}
                 step={50}
+                placeholder="Optional"
               />
               <p className="text-xs text-muted-foreground">
                 Stop trading for the day
@@ -591,10 +661,11 @@ function TradingSettings({
               <Input
                 id="weeklyLimit"
                 type="number"
-                value={weeklyLimit}
-                onChange={(e) => setWeeklyLimit(Number(e.target.value))}
+                value={weeklyLimit || ""}
+                onChange={(e) => setWeeklyLimit(e.target.value ? Number(e.target.value) : null)}
                 min={0}
                 step={100}
+                placeholder="Optional"
               />
               <p className="text-xs text-muted-foreground">
                 Stop trading for the week
@@ -608,7 +679,7 @@ function TradingSettings({
         <CardHeader>
           <CardTitle className="text-base">Commission & Fees</CardTitle>
           <CardDescription>
-            Set your default commission structure for accurate P&L calculations on imported trades
+            Set commission structure for this account for accurate P&L calculations on imported trades
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -797,15 +868,38 @@ function AppearanceSettings() {
 // Accounts Settings Section
 function AccountsSettings({
   accounts,
-  onRefresh
+  onRefresh,
+  onNavigateToTrading
 }: {
   accounts: Account[];
   onRefresh: () => void;
+  onNavigateToTrading: () => void;
 }) {
+  const { selectAccount } = useAccount();
   const [newName, setNewName] = React.useState("");
   const [newBroker, setNewBroker] = React.useState("");
   const [newBalance, setNewBalance] = React.useState("");
+  const [newPropFirm, setNewPropFirm] = React.useState("custom");
   const [dialogOpen, setDialogOpen] = React.useState(false);
+
+  // Edit account state
+  const [editDialogOpen, setEditDialogOpen] = React.useState(false);
+  const [editingAccount, setEditingAccount] = React.useState<Account | null>(null);
+  const [editName, setEditName] = React.useState("");
+  const [editBroker, setEditBroker] = React.useState("");
+  const [editBalance, setEditBalance] = React.useState("");
+
+  // Handle prop firm selection for new account - get commission rates
+  const getCommissionFromPropFirm = (firmId: string) => {
+    const firm = PROP_FIRMS.find(f => f.id === firmId);
+    if (firm && firmId !== "custom") {
+      return {
+        commissionPerContract: firm.commissionPerContract,
+        commissionPerTrade: firm.commissionPerTrade,
+      };
+    }
+    return { commissionPerContract: 0, commissionPerTrade: 0 };
+  };
 
   const handleAdd = async () => {
     try {
@@ -816,27 +910,94 @@ function AccountsSettings({
         return;
       }
 
-      const { error } = await (supabase.from("accounts") as any).insert({
+      const commissions = getCommissionFromPropFirm(newPropFirm);
+
+      // Build the insert object - include new fields only if they exist in the schema
+      const insertData: Record<string, unknown> = {
         user_id: user.id,
         name: newName,
         broker: newBroker || null,
         starting_balance: parseFloat(newBalance) || 0,
         current_balance: parseFloat(newBalance) || 0,
         is_default: accounts.length === 0,
-      });
+      };
+
+      // Try to add new per-account settings fields (will work after migration is run)
+      // These fields are optional for backwards compatibility
+      if (newPropFirm !== "custom") {
+        insertData.prop_firm = newPropFirm;
+        insertData.commission_per_contract = commissions.commissionPerContract;
+        insertData.commission_per_trade = commissions.commissionPerTrade;
+        insertData.default_risk_per_trade = 1;
+      }
+
+      const { error } = await (supabase.from("accounts") as any).insert(insertData);
 
       if (error) {
-        toast.error("Failed to add account");
-        return;
+        // If error mentions unknown columns, try without the new fields
+        if (error.message?.includes("column") || error.code === "42703") {
+          const { error: fallbackError } = await (supabase.from("accounts") as any).insert({
+            user_id: user.id,
+            name: newName,
+            broker: newBroker || null,
+            starting_balance: parseFloat(newBalance) || 0,
+            current_balance: parseFloat(newBalance) || 0,
+            is_default: accounts.length === 0,
+          });
+          if (fallbackError) {
+            console.error("Failed to add account:", fallbackError);
+            toast.error("Failed to add account");
+            return;
+          }
+        } else {
+          console.error("Failed to add account:", error);
+          toast.error("Failed to add account");
+          return;
+        }
       }
       toast.success("Account added");
       setNewName("");
       setNewBroker("");
       setNewBalance("");
+      setNewPropFirm("custom");
       setDialogOpen(false);
       onRefresh();
     } catch {
       toast.error("Failed to add account");
+    }
+  };
+
+  const handleEdit = (account: Account) => {
+    setEditingAccount(account);
+    setEditName(account.name);
+    setEditBroker(account.broker || "");
+    setEditBalance(account.starting_balance.toString());
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingAccount) return;
+
+    try {
+      const supabase = createClient();
+      const { error } = await (supabase.from("accounts") as any)
+        .update({
+          name: editName,
+          broker: editBroker || null,
+          starting_balance: parseFloat(editBalance) || 0,
+        })
+        .eq("id", editingAccount.id);
+
+      if (error) {
+        toast.error("Failed to update account");
+        return;
+      }
+      toast.success("Account updated");
+      setEditDialogOpen(false);
+      setEditingAccount(null);
+      onRefresh();
+    } catch {
+      toast.error("Failed to update account");
     }
   };
 
@@ -869,6 +1030,12 @@ function AccountsSettings({
     }
   };
 
+  // Get prop firm name helper
+  const getPropFirmName = (firmId: string | null) => {
+    if (!firmId || firmId === "custom") return null;
+    return PROP_FIRMS.find(f => f.id === firmId)?.name || null;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-start justify-between gap-4">
@@ -878,58 +1045,122 @@ function AccountsSettings({
             Manage your connected trading accounts and brokers
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Account
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Trading Account</DialogTitle>
-              <DialogDescription>
-                Add a new trading account to track your performance
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="accountName">Account Name</Label>
-                <Input
-                  id="accountName"
-                  value={newName}
-                  onChange={(e) => setNewName(e.target.value)}
-                  placeholder="e.g., Main Trading Account"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="broker">Broker/Platform</Label>
-                <Input
-                  id="broker"
-                  value={newBroker}
-                  onChange={(e) => setNewBroker(e.target.value)}
-                  placeholder="e.g., NinjaTrader"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="balance">Starting Balance</Label>
-                <Input
-                  id="balance"
-                  type="number"
-                  value={newBalance}
-                  onChange={(e) => setNewBalance(e.target.value)}
-                  placeholder="50000"
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleAdd} disabled={!newName}>
-                Add Account
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button size="sm" onClick={() => setDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Account
+        </Button>
       </div>
+
+      {/* Add Account Dialog */}
+      <CustomDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <CustomDialogHeader>
+          <CustomDialogTitle>Add Trading Account</CustomDialogTitle>
+          <CustomDialogDescription>
+            Add a new trading account to track your performance
+          </CustomDialogDescription>
+        </CustomDialogHeader>
+        <CustomDialogContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="accountName">Account Name</Label>
+            <Input
+              id="accountName"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="e.g., Main Trading Account"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="broker">Broker/Platform</Label>
+            <Input
+              id="broker"
+              value={newBroker}
+              onChange={(e) => setNewBroker(e.target.value)}
+              placeholder="e.g., NinjaTrader"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="balance">Starting Balance</Label>
+            <Input
+              id="balance"
+              type="number"
+              value={newBalance}
+              onChange={(e) => setNewBalance(e.target.value)}
+              placeholder="50000"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="newPropFirm">Prop Firm (Optional)</Label>
+            <Select value={newPropFirm} onValueChange={setNewPropFirm}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select prop firm" />
+              </SelectTrigger>
+              <SelectContent>
+                {PROP_FIRMS.map((firm) => (
+                  <SelectItem key={firm.id} value={firm.id}>
+                    {firm.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              Selecting a prop firm will auto-configure commission rates
+            </p>
+          </div>
+        </CustomDialogContent>
+        <CustomDialogFooter>
+          <Button onClick={handleAdd} disabled={!newName}>
+            Add Account
+          </Button>
+        </CustomDialogFooter>
+      </CustomDialog>
+
+      {/* Edit Account Dialog */}
+      <CustomDialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <CustomDialogHeader>
+          <CustomDialogTitle>Edit Account</CustomDialogTitle>
+          <CustomDialogDescription>
+            Update account details. For trading settings like commissions and risk limits, go to the Trading section.
+          </CustomDialogDescription>
+        </CustomDialogHeader>
+        <CustomDialogContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="editName">Account Name</Label>
+            <Input
+              id="editName"
+              value={editName}
+              onChange={(e) => setEditName(e.target.value)}
+              placeholder="e.g., Main Trading Account"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="editBroker">Broker/Platform</Label>
+            <Input
+              id="editBroker"
+              value={editBroker}
+              onChange={(e) => setEditBroker(e.target.value)}
+              placeholder="e.g., NinjaTrader"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="editBalance">Starting Balance</Label>
+            <Input
+              id="editBalance"
+              type="number"
+              value={editBalance}
+              onChange={(e) => setEditBalance(e.target.value)}
+              placeholder="50000"
+            />
+          </div>
+        </CustomDialogContent>
+        <CustomDialogFooter>
+          <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+            Cancel
+          </Button>
+          <Button onClick={handleSaveEdit} disabled={!editName}>
+            Save Changes
+          </Button>
+        </CustomDialogFooter>
+      </CustomDialog>
 
       {accounts.length === 0 ? (
         <Card>
@@ -943,51 +1174,96 @@ function AccountsSettings({
         </Card>
       ) : (
         <div className="space-y-3">
-          {accounts.map((account) => (
-            <Card key={account.id}>
-              <CardContent className="py-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                      <CreditCard className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium">{account.name}</p>
-                        {account.is_default && (
-                          <Badge variant="secondary" className="text-xs">Default</Badge>
-                        )}
+          {accounts.map((account) => {
+            const propFirmName = getPropFirmName(account.prop_firm);
+            return (
+              <Card key={account.id}>
+                <CardContent className="py-4">
+                  <div className="flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-4 min-w-0">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 shrink-0">
+                        <CreditCard className="h-5 w-5 text-primary" />
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {account.broker || "No broker"} · {formatCurrency(account.current_balance)}
-                      </p>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-medium">{account.name}</p>
+                          {account.is_default && (
+                            <Badge variant="secondary" className="text-xs">Default</Badge>
+                          )}
+                          {propFirmName && (
+                            <Badge variant="outline" className="text-xs">{propFirmName}</Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {account.broker || "No broker"} · {formatCurrency(account.current_balance)}
+                        </p>
+                        {(account.commission_per_contract || account.commission_per_trade) ? (
+                          <p className="text-xs text-muted-foreground mt-0.5">
+                            Fees: ${account.commission_per_contract || 0}/contract + ${account.commission_per_trade || 0}/trade per side
+                          </p>
+                        ) : null}
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {!account.is_default && (
+                    <div className="flex items-center gap-1 shrink-0">
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => handleSetDefault(account.id)}
+                        onClick={() => handleEdit(account)}
                       >
-                        Set Default
+                        Edit
                       </Button>
-                    )}
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-destructive hover:text-destructive"
-                      onClick={() => handleDelete(account.id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          selectAccount(account.id);
+                          onNavigateToTrading();
+                        }}
+                      >
+                        <Settings2 className="h-4 w-4 mr-1" />
+                        Settings
+                      </Button>
+                      {!account.is_default && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => handleSetDefault(account.id)}
+                        >
+                          Set Default
+                        </Button>
+                      )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-destructive hover:text-destructive"
+                        onClick={() => handleDelete(account.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
+
+      <Card className="bg-muted/50">
+        <CardContent className="py-4">
+          <div className="flex items-start gap-3">
+            <Settings2 className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium">Account-Specific Trading Settings</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Each account can have its own prop firm, commission rates, and risk limits.
+                Click the &ldquo;Settings&rdquo; button on an account to configure, or go to the Trading section
+                and select an account.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
@@ -1080,70 +1356,68 @@ function InstrumentsSettings({
             Configure the instruments you trade with tick sizes and values
           </p>
         </div>
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button size="sm">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Instrument
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add Instrument</DialogTitle>
-              <DialogDescription>Add a new instrument to trade</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="symbol">Symbol</Label>
-                  <Input
-                    id="symbol"
-                    value={newSymbol}
-                    onChange={(e) => setNewSymbol(e.target.value)}
-                    placeholder="e.g., ES"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
-                  <Input
-                    id="name"
-                    value={newName}
-                    onChange={(e) => setNewName(e.target.value)}
-                    placeholder="e.g., E-mini S&P 500"
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="tickSize">Tick Size</Label>
-                  <Input
-                    id="tickSize"
-                    type="number"
-                    value={newTickSize}
-                    onChange={(e) => setNewTickSize(e.target.value)}
-                    placeholder="0.25"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tickValue">Tick Value ($)</Label>
-                  <Input
-                    id="tickValue"
-                    type="number"
-                    value={newTickValue}
-                    onChange={(e) => setNewTickValue(e.target.value)}
-                    placeholder="12.5"
-                  />
-                </div>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button onClick={handleAdd} disabled={!newSymbol || !newName}>
-                Add Instrument
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+        <Button size="sm" onClick={() => setDialogOpen(true)}>
+          <Plus className="mr-2 h-4 w-4" />
+          Add Instrument
+        </Button>
       </div>
+
+      {/* Add Instrument Dialog */}
+      <CustomDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <CustomDialogHeader>
+          <CustomDialogTitle>Add Instrument</CustomDialogTitle>
+          <CustomDialogDescription>Add a new instrument to trade</CustomDialogDescription>
+        </CustomDialogHeader>
+        <CustomDialogContent className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="symbol">Symbol</Label>
+              <Input
+                id="symbol"
+                value={newSymbol}
+                onChange={(e) => setNewSymbol(e.target.value)}
+                placeholder="e.g., ES"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="name">Name</Label>
+              <Input
+                id="name"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="e.g., E-mini S&P 500"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="tickSize">Tick Size</Label>
+              <Input
+                id="tickSize"
+                type="number"
+                value={newTickSize}
+                onChange={(e) => setNewTickSize(e.target.value)}
+                placeholder="0.25"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="tickValue">Tick Value ($)</Label>
+              <Input
+                id="tickValue"
+                type="number"
+                value={newTickValue}
+                onChange={(e) => setNewTickValue(e.target.value)}
+                placeholder="12.5"
+              />
+            </div>
+          </div>
+        </CustomDialogContent>
+        <CustomDialogFooter>
+          <Button onClick={handleAdd} disabled={!newSymbol || !newName}>
+            Add Instrument
+          </Button>
+        </CustomDialogFooter>
+      </CustomDialog>
 
       {instruments.length === 0 ? (
         <Card>
@@ -1263,9 +1537,9 @@ export default function SettingsPage() {
       case "general":
         return <GeneralSettings profile={profile} onUpdate={handleProfileUpdate} />;
       case "trading":
-        return <TradingSettings profile={profile} onUpdate={handleProfileUpdate} />;
+        return <TradingSettings accounts={accounts} onRefresh={fetchData} />;
       case "accounts":
-        return <AccountsSettings accounts={accounts} onRefresh={fetchData} />;
+        return <AccountsSettings accounts={accounts} onRefresh={fetchData} onNavigateToTrading={() => setActiveSection("trading")} />;
       case "instruments":
         return <InstrumentsSettings instruments={instruments} onRefresh={fetchData} />;
       case "appearance":

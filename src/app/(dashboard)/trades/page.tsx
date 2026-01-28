@@ -9,11 +9,13 @@ import { TradeTable } from "@/components/trades/trade-table";
 import { TradeCardList } from "@/components/trades/trade-card";
 import { Trade } from "@/types/database";
 import { createClient } from "@/lib/supabase/client";
+import { useAccount } from "@/components/providers/account-provider";
 
 type ViewMode = "table" | "cards";
 
 export default function TradesPage() {
   const isMobile = useIsMobile();
+  const { selectedAccountId, accounts, showAllAccounts } = useAccount();
   const [viewMode, setViewMode] = React.useState<ViewMode>(
     isMobile ? "cards" : "table"
   );
@@ -25,7 +27,17 @@ export default function TradesPage() {
     setup: "",
     status: "",
     search: "",
+    accountId: "",
   });
+
+  // Sync account filter with global account selector
+  React.useEffect(() => {
+    if (showAllAccounts) {
+      setFilters(prev => ({ ...prev, accountId: "" }));
+    } else if (selectedAccountId) {
+      setFilters(prev => ({ ...prev, accountId: selectedAccountId }));
+    }
+  }, [selectedAccountId, showAllAccounts]);
   const [currentPage, setCurrentPage] = React.useState(1);
   const [pageSize, setPageSize] = React.useState(25);
 
@@ -83,6 +95,11 @@ export default function TradesPage() {
   // Filter trades based on current filters
   const filteredTrades = React.useMemo(() => {
     return trades.filter((trade) => {
+      // Account filter
+      if (filters.accountId && trade.account_id !== filters.accountId) {
+        return false;
+      }
+
       // Date filter
       if (filters.dateFrom) {
         const entryDate = new Date(trade.entry_date);
@@ -267,7 +284,7 @@ export default function TradesPage() {
       </div>
 
       {/* Filters */}
-      <TradeFilters filters={filters} onFiltersChange={setFilters} />
+      <TradeFilters filters={filters} onFiltersChange={setFilters} accounts={accounts} />
 
       {/* View toggle (desktop only) */}
       {!isMobile && (
@@ -303,6 +320,22 @@ export default function TradesPage() {
           onPageSizeChange={(size) => {
             setPageSize(size);
             setCurrentPage(1);
+          }}
+          accounts={accounts}
+          onBulkAccountAssign={async (tradeIds, accountId) => {
+            const supabase = createClient();
+            const { error } = await (supabase
+              .from("trades") as any)
+              .update({ account_id: accountId, updated_at: new Date().toISOString() })
+              .in("id", tradeIds);
+
+            if (error) {
+              throw error;
+            }
+            // Update local state
+            setTrades(prev => prev.map(t =>
+              tradeIds.includes(t.id) ? { ...t, account_id: accountId } : t
+            ));
           }}
         />
       ) : (

@@ -58,6 +58,7 @@ import {
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
+import { useAccount } from "@/components/providers/account-provider";
 import { JournalScreenshots } from "@/components/journal/journal-screenshots";
 import { JournalDailyScreenshots } from "@/components/journal/journal-daily-screenshots";
 import { UnlinkedScreenshots } from "@/components/journal/unlinked-screenshots";
@@ -253,6 +254,7 @@ interface JournalData {
 function JournalPageContent() {
   const searchParams = useSearchParams();
   const dateParam = searchParams.get("date");
+  const { selectedAccountId, showAllAccounts, accounts } = useAccount();
 
   // Initialize with today's date
   const [selectedDate, setSelectedDate] = React.useState<Date>(() => startOfDay(new Date()));
@@ -670,8 +672,24 @@ function JournalPageContent() {
     }
   };
 
-  // Calculate daily stats
-  const closedTrades = trades.filter((t) => t.status === "closed");
+  // Filter trades by selected account
+  const accountFilteredTrades = React.useMemo(() => {
+    if (showAllAccounts || !selectedAccountId) {
+      return trades;
+    }
+    return trades.filter(t => t.account_id === selectedAccountId);
+  }, [trades, selectedAccountId, showAllAccounts]);
+
+  // Filter weekly trades by selected account
+  const accountFilteredWeeklyTrades = React.useMemo(() => {
+    if (showAllAccounts || !selectedAccountId) {
+      return weeklyTrades;
+    }
+    return weeklyTrades.filter(t => t.account_id === selectedAccountId);
+  }, [weeklyTrades, selectedAccountId, showAllAccounts]);
+
+  // Calculate daily stats using account-filtered trades
+  const closedTrades = accountFilteredTrades.filter((t) => t.status === "closed");
   const dailyPnL = closedTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
   const winCount = closedTrades.filter((t) => (t.net_pnl || 0) > 0).length;
   const lossCount = closedTrades.filter((t) => (t.net_pnl || 0) < 0).length;
@@ -685,9 +703,9 @@ function JournalPageContent() {
   const largestWin = closedTrades.length > 0 ? Math.max(...closedTrades.map(t => t.net_pnl || 0), 0) : 0;
   const largestLoss = closedTrades.length > 0 ? Math.min(...closedTrades.map(t => t.net_pnl || 0), 0) : 0;
 
-  // Weekly stats (for Saturday review)
+  // Weekly stats (for Saturday review) - using account filtered trades
   // Include trades that are closed OR have a net_pnl (in case status isn't set)
-  const weeklyClosedTrades = weeklyTrades.filter((t) => t.status === "closed" || t.net_pnl !== null);
+  const weeklyClosedTrades = accountFilteredWeeklyTrades.filter((t) => t.status === "closed" || t.net_pnl !== null);
   const weeklyPnL = weeklyClosedTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
   const weeklyWinCount = weeklyClosedTrades.filter((t) => (t.net_pnl || 0) > 0).length;
   const weeklyLossCount = weeklyClosedTrades.filter((t) => (t.net_pnl || 0) < 0).length;
@@ -702,8 +720,8 @@ function JournalPageContent() {
     : 0;
   const weeklyProfitFactor = weeklyAvgLoss > 0 ? (weeklyAvgWin * weeklyWinCount) / (weeklyAvgLoss * weeklyLossCount) : 0;
 
-  // Group weekly trades by day
-  const tradesByDay = weeklyTrades.reduce((acc, trade) => {
+  // Group weekly trades by day (using account filtered trades)
+  const tradesByDay = accountFilteredWeeklyTrades.reduce((acc, trade) => {
     const day = format(new Date(trade.entry_date), "EEEE");
     if (!acc[day]) acc[day] = [];
     acc[day].push(trade);
@@ -842,7 +860,7 @@ function JournalPageContent() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Total Trades</p>
-                  <p className="text-xl font-semibold">{weeklyTrades.length}</p>
+                  <p className="text-xl font-semibold">{accountFilteredWeeklyTrades.length}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Win Rate</p>
@@ -998,7 +1016,7 @@ function JournalPageContent() {
                   </div>
                 </CardHeader>
                 <CardContent>
-                  {weeklyTrades.length === 0 ? (
+                  {accountFilteredWeeklyTrades.length === 0 ? (
                     <p className="text-muted-foreground text-center py-4">No trades this week</p>
                   ) : (
                     <div className="space-y-3">
@@ -1140,7 +1158,7 @@ function JournalPageContent() {
               <ShareToX
                 weeklyPnL={weeklyPnL}
                 weeklyWinRate={weeklyWinRate}
-                weeklyTradeCount={weeklyTrades.length}
+                weeklyTradeCount={accountFilteredWeeklyTrades.length}
                 date={format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "MMM d") + " - " + format(subDays(selectedDate, 1), "MMM d")}
                 isWeekendReview={true}
                 lessonsLearned={weeklyReviewNotes}
@@ -1181,7 +1199,7 @@ function JournalPageContent() {
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Trades</p>
-                  <p className="text-xl font-semibold">{trades.length}</p>
+                  <p className="text-xl font-semibold">{accountFilteredTrades.length}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground mb-1">Win Rate</p>
@@ -1229,7 +1247,7 @@ function JournalPageContent() {
             </TabsTrigger>
             <TabsTrigger value="trades" className="gap-2">
               <BarChart3 className="h-4 w-4" />
-              Trades ({trades.length})
+              Trades ({accountFilteredTrades.length})
             </TabsTrigger>
             <TabsTrigger value="screenshots" className="gap-2">
               <ImageIcon className="h-4 w-4" />
@@ -1572,7 +1590,7 @@ function JournalPageContent() {
 
         {/* Trades Tab */}
         <TabsContent value="trades" className="space-y-4">
-          {trades.length === 0 ? (
+          {accountFilteredTrades.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
@@ -1601,7 +1619,7 @@ function JournalPageContent() {
               {/* Header with Add Trade button */}
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {trades.length} trade{trades.length !== 1 ? "s" : ""} on {format(selectedDate, "MMMM d, yyyy")}
+                  {accountFilteredTrades.length} trade{accountFilteredTrades.length !== 1 ? "s" : ""} on {format(selectedDate, "MMMM d, yyyy")}
                 </p>
                 <div className="flex gap-2">
                   <Link href={`/import?date=${dateKey}`}>
@@ -1621,13 +1639,14 @@ function JournalPageContent() {
 
               {/* Full Trade Table */}
               <TradeTable
-                trades={trades}
+                trades={accountFilteredTrades}
                 onDelete={handleDeleteTrade}
                 onShare={handleShareTrade}
                 onUnshare={handleUnshareTrade}
-                pageSize={trades.length}
+                pageSize={accountFilteredTrades.length}
                 currentPage={1}
-                totalCount={trades.length}
+                totalCount={accountFilteredTrades.length}
+                accounts={accounts}
               />
             </div>
           )}

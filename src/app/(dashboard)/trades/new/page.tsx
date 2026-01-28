@@ -3,11 +3,19 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, Wallet } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui";
 import { Button, toast, Spinner } from "@/components/ui";
 import { TradeForm } from "@/components/trades/trade-form";
 import { createClient } from "@/lib/supabase/client";
-import type { Trade } from "@/types/database";
+import type { Trade, Account } from "@/types/database";
+import { useAccount } from "@/components/providers/account-provider";
 
 interface Setup {
   id: string;
@@ -17,9 +25,22 @@ interface Setup {
 
 export default function NewTradePage() {
   const router = useRouter();
+  const { selectedAccount, accounts, isLoading: accountsLoading } = useAccount();
   const [setups, setSetups] = React.useState<Setup[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isSaving, setIsSaving] = React.useState(false);
+  const [selectedAccountId, setSelectedAccountId] = React.useState<string | null>(null);
+
+  // Set initial account when accounts load
+  React.useEffect(() => {
+    if (!accountsLoading && accounts.length > 0 && !selectedAccountId) {
+      // Use the globally selected account, or find default, or use first account
+      const defaultAccount = selectedAccount || accounts.find(a => a.is_default) || accounts[0];
+      if (defaultAccount) {
+        setSelectedAccountId(defaultAccount.id);
+      }
+    }
+  }, [accountsLoading, accounts, selectedAccount, selectedAccountId]);
 
   // Fetch user's setups for the form dropdown
   React.useEffect(() => {
@@ -118,6 +139,7 @@ export default function NewTradePage() {
 
       const tradeData = {
         user_id: user.id,
+        account_id: selectedAccountId,
         symbol: data.symbol,
         side: data.side,
         entry_date: entryDateTime.toISOString(),
@@ -185,12 +207,35 @@ export default function NewTradePage() {
             <span className="sr-only">Back to trades</span>
           </Link>
         </Button>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">New Trade</h1>
           <p className="text-muted-foreground">
             Enter the details of your trade
           </p>
         </div>
+
+        {/* Account Selector */}
+        {accounts.length > 0 && (
+          <div className="flex items-center gap-2">
+            <Wallet className="h-4 w-4 text-muted-foreground" />
+            <Select
+              value={selectedAccountId || ""}
+              onValueChange={setSelectedAccountId}
+            >
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Select account" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                    {account.is_default && " (Default)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Trade Form */}

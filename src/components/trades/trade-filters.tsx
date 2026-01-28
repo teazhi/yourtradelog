@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { format } from "date-fns";
-import { CalendarIcon, FilterX, Search } from "lucide-react";
+import { CalendarIcon, FilterX, Search, Wallet } from "lucide-react";
 import {
   Button,
   Input,
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui";
 import { DEFAULT_FUTURES_INSTRUMENTS, SESSION_LABELS } from "@/lib/constants";
 import { Session } from "@/types/trade";
+import { Account } from "@/types/database";
 
 export interface TradeFiltersState {
   dateFrom: Date | undefined;
@@ -30,18 +31,21 @@ export interface TradeFiltersState {
   setup: string;
   status: string;
   search: string;
+  accountId: string; // Empty string = all accounts
 }
 
 interface TradeFiltersProps {
   filters: TradeFiltersState;
   onFiltersChange: (filters: TradeFiltersState) => void;
   setups?: { id: string; name: string }[];
+  accounts?: Account[];
 }
 
 export function TradeFilters({
   filters,
   onFiltersChange,
   setups = [],
+  accounts = [],
 }: TradeFiltersProps) {
   const activeFilterCount = React.useMemo(() => {
     let count = 0;
@@ -52,6 +56,7 @@ export function TradeFilters({
     if (filters.setup) count++;
     if (filters.status) count++;
     if (filters.search) count++;
+    if (filters.accountId) count++;
     return count;
   }, [filters]);
 
@@ -71,6 +76,7 @@ export function TradeFilters({
       setup: "",
       status: "",
       search: "",
+      accountId: "",
     });
   };
 
@@ -106,6 +112,34 @@ export function TradeFilters({
 
       {/* Filter controls */}
       <div className="flex flex-wrap gap-3">
+        {/* Account Filter */}
+        {accounts.length > 0 && (
+          <div className="flex flex-col gap-1.5">
+            <Label className="text-xs text-muted-foreground">Account</Label>
+            <Select
+              value={filters.accountId || "all"}
+              onValueChange={(value) =>
+                handleFilterChange("accountId", value === "all" ? "" : value)
+              }
+            >
+              <SelectTrigger className="w-[160px]">
+                <div className="flex items-center gap-2">
+                  <Wallet className="h-3.5 w-3.5" />
+                  <SelectValue placeholder="All accounts" />
+                </div>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All accounts</SelectItem>
+                {accounts.map((account) => (
+                  <SelectItem key={account.id} value={account.id}>
+                    {account.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
         {/* Date From */}
         <div className="flex flex-col gap-1.5">
           <Label className="text-xs text-muted-foreground">From</Label>

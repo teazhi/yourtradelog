@@ -59,3 +59,11 @@ export { toast } from "sonner";
 
 // Custom components
 export { Confetti, CelebrationModal, CelebrationBurst } from "./confetti";
+export {
+  CustomDialog,
+  CustomDialogContent,
+  CustomDialogDescription,
+  CustomDialogFooter,
+  CustomDialogHeader,
+  CustomDialogTitle,
+} from "./custom-dialog";

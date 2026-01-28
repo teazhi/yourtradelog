@@ -6,8 +6,10 @@ import { DaySummary } from "@/components/calendar/day-summary";
 import { Spinner } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
+import { useAccount } from "@/components/providers/account-provider";
 
 export default function CalendarPage() {
+  const { selectedAccountId, showAllAccounts } = useAccount();
   const [selectedDate, setSelectedDate] = React.useState<Date | null>(null);
   const [dialogOpen, setDialogOpen] = React.useState(false);
   const [trades, setTrades] = React.useState<Trade[]>([]);
@@ -50,6 +52,14 @@ export default function CalendarPage() {
     fetchTrades();
   }, []);
 
+  // Filter trades by selected account
+  const accountFilteredTrades = React.useMemo(() => {
+    if (showAllAccounts || !selectedAccountId) {
+      return trades;
+    }
+    return trades.filter(t => t.account_id === selectedAccountId);
+  }, [trades, selectedAccountId, showAllAccounts]);
+
   // Helper to extract date parts from ISO string without timezone conversion
   const extractLocalDate = (isoString: string): { year: number; month: number; day: number } => {
     // Parse the date part directly from the ISO string to avoid timezone issues
@@ -63,7 +73,7 @@ export default function CalendarPage() {
   const tradeData: DayTradeData[] = React.useMemo(() => {
     const dayMap: Record<string, DayTradeData> = {};
 
-    trades.filter(t => t.status === "closed").forEach((trade) => {
+    accountFilteredTrades.filter(t => t.status === "closed").forEach((trade) => {
       const dateStr = trade.exit_date || trade.entry_date;
       const { year, month, day } = extractLocalDate(dateStr);
       const dateKey = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
@@ -89,7 +99,7 @@ export default function CalendarPage() {
     });
 
     return Object.values(dayMap);
-  }, [trades]);
+  }, [accountFilteredTrades]);
 
   // Get trades for selected day
   const selectedDayTrades = React.useMemo(() => {
@@ -98,7 +108,7 @@ export default function CalendarPage() {
     const selectedMonth = selectedDate.getMonth();
     const selectedDay = selectedDate.getDate();
 
-    return trades
+    return accountFilteredTrades
       .filter((trade) => {
         const dateStr = trade.exit_date || trade.entry_date;
         const { year, month, day } = extractLocalDate(dateStr);
@@ -114,7 +124,7 @@ export default function CalendarPage() {
         rMultiple: trade.r_multiple || 0,
         setup: trade.setup_id || undefined,
       }));
-  }, [trades, selectedDate]);
+  }, [accountFilteredTrades, selectedDate]);
 
   const handleDayClick = (date: Date, data?: DayTradeData) => {
     setSelectedDate(date);

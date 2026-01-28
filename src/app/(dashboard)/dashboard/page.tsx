@@ -11,8 +11,10 @@ import { PositionSizer } from "@/components/dashboard/position-sizer";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { Spinner, Button } from "@/components/ui";
+import { useAccount } from "@/components/providers/account-provider";
 
 export default function DashboardPage() {
+  const { selectedAccountId, showAllAccounts } = useAccount();
   const [trades, setTrades] = React.useState<Trade[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
 
@@ -52,9 +54,17 @@ export default function DashboardPage() {
     fetchTrades();
   }, []);
 
+  // Filter trades by selected account
+  const filteredTrades = React.useMemo(() => {
+    if (showAllAccounts || !selectedAccountId) {
+      return trades;
+    }
+    return trades.filter(t => t.account_id === selectedAccountId);
+  }, [trades, selectedAccountId, showAllAccounts]);
+
   // Transform trades for dashboard components
   const recentTrades = React.useMemo(() => {
-    return trades
+    return filteredTrades
       .filter(t => t.status === "closed")
       .slice(0, 8)
       .map(t => ({
@@ -66,11 +76,11 @@ export default function DashboardPage() {
         pnl: t.net_pnl || 0,
         status: (t.net_pnl || 0) > 0 ? "win" as const : (t.net_pnl || 0) < 0 ? "loss" as const : "breakeven" as const,
       }));
-  }, [trades]);
+  }, [filteredTrades]);
 
   // Calculate stats
   const stats = React.useMemo(() => {
-    const closedTrades = trades.filter(t => t.status === "closed");
+    const closedTrades = filteredTrades.filter(t => t.status === "closed");
     const totalPnL = closedTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
     const wins = closedTrades.filter(t => (t.net_pnl || 0) > 0);
     const losses = closedTrades.filter(t => (t.net_pnl || 0) < 0);
@@ -85,12 +95,12 @@ export default function DashboardPage() {
       totalTrades: closedTrades.length,
       profitFactor: isFinite(profitFactor) ? profitFactor : 0,
     };
-  }, [trades]);
+  }, [filteredTrades]);
 
   // Calculate daily P&L for chart
   const dailyPnL = React.useMemo(() => {
     // Include trades that are closed OR have a net_pnl value
-    const closedTrades = trades.filter(t => t.status === "closed" || t.net_pnl !== null);
+    const closedTrades = filteredTrades.filter(t => t.status === "closed" || t.net_pnl !== null);
     const pnlByDate: Record<string, number> = {};
 
     closedTrades.forEach(trade => {
@@ -106,11 +116,11 @@ export default function DashboardPage() {
       date,
       pnl: pnlByDate[date],
     }));
-  }, [trades]);
+  }, [filteredTrades]);
 
   // Calculate equity curve
   const equityCurve = React.useMemo(() => {
-    const closedTrades = trades
+    const closedTrades = filteredTrades
       .filter(t => t.status === "closed" && t.exit_date)
       .sort((a, b) => new Date(a.exit_date!).getTime() - new Date(b.exit_date!).getTime());
 
@@ -130,7 +140,7 @@ export default function DashboardPage() {
     });
 
     return Object.entries(byDate).map(([date, equity]) => ({ date, equity }));
-  }, [trades]);
+  }, [filteredTrades]);
 
   if (isLoading) {
     return (

@@ -43,13 +43,14 @@ interface Challenge {
 }
 
 interface ChallengeStats {
-  tradesToday: number;
-  tradesThisWeek: number;
   journalToday: boolean;
   journalsThisWeek: number;
   reviewedTrades: number;
   notesAddedToday: number;
-  greenDaysThisWeek: number;
+  hasPreMarketNote: boolean;
+  weeklyReviewCompleted: boolean;
+  lessonsDocumented: number;
+  allTradesHaveNotes: boolean;
 }
 
 interface ActiveChallenge extends Challenge {
@@ -58,28 +59,6 @@ interface ActiveChallenge extends Challenge {
 }
 
 const DAILY_CHALLENGES: Challenge[] = [
-  {
-    id: "log_trade",
-    name: "Active Trader",
-    description: "Log at least 1 trade today",
-    icon: Target,
-    type: "daily",
-    target: 1,
-    unit: "trade",
-    xp: 10,
-    checkProgress: (stats) => stats.tradesToday,
-  },
-  {
-    id: "log_3_trades",
-    name: "Busy Day",
-    description: "Log 3 trades today",
-    icon: Zap,
-    type: "daily",
-    target: 3,
-    unit: "trades",
-    xp: 25,
-    checkProgress: (stats) => stats.tradesToday,
-  },
   {
     id: "write_journal",
     name: "Reflective Trader",
@@ -94,39 +73,39 @@ const DAILY_CHALLENGES: Challenge[] = [
   {
     id: "add_notes",
     name: "Detailed Logger",
-    description: "Add notes to at least 2 trades today",
+    description: "Add notes to your trades today",
     icon: BookOpen,
     type: "daily",
-    target: 2,
-    unit: "trades with notes",
+    target: 1,
+    unit: "trade with notes",
     xp: 20,
-    checkProgress: (stats) => stats.notesAddedToday,
+    checkProgress: (stats) => Math.min(stats.notesAddedToday, 1),
+  },
+  {
+    id: "review_trade",
+    name: "Trade Analyst",
+    description: "Rate a past trade's entry, exit, or management",
+    icon: Target,
+    type: "daily",
+    target: 1,
+    unit: "trade reviewed",
+    xp: 15,
+    checkProgress: (stats) => Math.min(stats.reviewedTrades, 1),
+  },
+  {
+    id: "pre_market_prep",
+    name: "Prepared Trader",
+    description: "Complete your pre-market preparation",
+    icon: Zap,
+    type: "daily",
+    target: 1,
+    unit: "pre-market note",
+    xp: 20,
+    checkProgress: (stats) => stats.hasPreMarketNote ? 1 : 0,
   },
 ];
 
 const WEEKLY_CHALLENGES: Challenge[] = [
-  {
-    id: "weekly_5_trades",
-    name: "Consistent Trader",
-    description: "Log at least 5 trades this week",
-    icon: Calendar,
-    type: "weekly",
-    target: 5,
-    unit: "trades",
-    xp: 50,
-    checkProgress: (stats) => stats.tradesThisWeek,
-  },
-  {
-    id: "weekly_10_trades",
-    name: "Power Week",
-    description: "Log 10 trades this week",
-    icon: TrendingUp,
-    type: "weekly",
-    target: 10,
-    unit: "trades",
-    xp: 75,
-    checkProgress: (stats) => stats.tradesThisWeek,
-  },
   {
     id: "weekly_journal",
     name: "Weekly Reflection",
@@ -139,26 +118,48 @@ const WEEKLY_CHALLENGES: Challenge[] = [
     checkProgress: (stats) => stats.journalsThisWeek,
   },
   {
-    id: "green_week",
-    name: "Green Streak",
-    description: "Have 3 profitable days this week",
-    icon: BarChart3,
+    id: "weekly_review",
+    name: "Week in Review",
+    description: "Complete your weekly review on the weekend",
+    icon: Calendar,
     type: "weekly",
-    target: 3,
-    unit: "green days",
-    xp: 100,
-    checkProgress: (stats) => stats.greenDaysThisWeek,
+    target: 1,
+    unit: "weekly review",
+    xp: 50,
+    checkProgress: (stats) => stats.weeklyReviewCompleted ? 1 : 0,
   },
   {
     id: "review_trades",
     name: "Trade Analyst",
-    description: "Review and rate 5 past trades",
+    description: "Review and rate 3 past trades",
     icon: Award,
     type: "weekly",
-    target: 5,
+    target: 3,
     unit: "trades reviewed",
-    xp: 60,
+    xp: 45,
     checkProgress: (stats) => stats.reviewedTrades,
+  },
+  {
+    id: "document_lessons",
+    name: "Continuous Learner",
+    description: "Document lessons learned from your trades",
+    icon: TrendingUp,
+    type: "weekly",
+    target: 2,
+    unit: "lessons documented",
+    xp: 35,
+    checkProgress: (stats) => stats.lessonsDocumented,
+  },
+  {
+    id: "consistent_logging",
+    name: "Disciplined Logger",
+    description: "Log notes on all your trades this week",
+    icon: BarChart3,
+    type: "weekly",
+    target: 1,
+    unit: "week complete",
+    xp: 60,
+    checkProgress: (stats) => stats.allTradesHaveNotes ? 1 : 0,
   },
 ];
 
@@ -166,13 +167,14 @@ export default function ChallengesPage() {
   const [mounted, setMounted] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(true);
   const [stats, setStats] = React.useState<ChallengeStats>({
-    tradesToday: 0,
-    tradesThisWeek: 0,
     journalToday: false,
     journalsThisWeek: 0,
     reviewedTrades: 0,
     notesAddedToday: 0,
-    greenDaysThisWeek: 0,
+    hasPreMarketNote: false,
+    weeklyReviewCompleted: false,
+    lessonsDocumented: 0,
+    allTradesHaveNotes: false,
   });
   const [totalXP, setTotalXP] = React.useState(0);
 
@@ -205,29 +207,28 @@ export default function ChallengesPage() {
       // Fetch today's trades
       const { data: todayTrades } = await supabase
         .from("trades")
-        .select("id, notes, net_pnl, entry_date")
+        .select("id, notes, lessons")
         .eq("user_id", user.id)
         .gte("created_at", todayStr);
 
       // Fetch this week's trades
       const { data: weekTrades } = await supabase
         .from("trades")
-        .select("id, net_pnl, entry_date")
+        .select("id, notes, lessons")
         .eq("user_id", user.id)
-        .eq("status", "closed")
         .gte("entry_date", weekStartStr);
 
-      // Fetch today's journal
-      const { data: todayJournal } = await supabase
-        .from("daily_journals")
-        .select("id")
+      // Fetch today's journal with content check
+      const { data: todayJournal } = await (supabase
+        .from("daily_journals") as any)
+        .select("id, pre_market_notes, post_market_notes, lessons_learned")
         .eq("user_id", user.id)
         .eq("date", today.toISOString().split('T')[0]);
 
       // Fetch this week's journals
-      const { count: weekJournals } = await supabase
-        .from("daily_journals")
-        .select("*", { count: "exact", head: true })
+      const { data: weekJournals } = await (supabase
+        .from("daily_journals") as any)
+        .select("id, pre_market_notes, weekly_review_notes, weekly_wins, weekly_improvements")
         .eq("user_id", user.id)
         .gte("date", weekStart.toISOString().split('T')[0]);
 
@@ -238,39 +239,62 @@ export default function ChallengesPage() {
         .eq("user_id", user.id)
         .not("entry_rating", "is", null);
 
-      // Calculate green days this week
-      const dailyPnl: Record<string, number> = {};
-      (weekTrades || []).forEach((t: any) => {
-        const date = new Date(t.entry_date).toISOString().split('T')[0];
-        dailyPnl[date] = (dailyPnl[date] || 0) + (t.net_pnl || 0);
-      });
-      const greenDaysThisWeek = Object.values(dailyPnl).filter(pnl => pnl > 0).length;
+      // Check if today's journal has pre-market notes
+      const hasPreMarketNote = todayJournal?.some((j: any) =>
+        j.pre_market_notes && j.pre_market_notes.trim().length > 0
+      ) || false;
+
+      // Check if journal has content (for journalToday)
+      const journalToday = todayJournal?.some((j: any) =>
+        (j.pre_market_notes && j.pre_market_notes.trim().length > 0) ||
+        (j.post_market_notes && j.post_market_notes.trim().length > 0) ||
+        (j.lessons_learned && j.lessons_learned.trim().length > 0)
+      ) || false;
+
+      // Count journals with content this week
+      const journalsThisWeek = (weekJournals || []).filter((j: any) =>
+        (j.pre_market_notes && j.pre_market_notes.trim().length > 0) ||
+        j.weekly_review_notes || j.weekly_wins || j.weekly_improvements
+      ).length;
+
+      // Check if weekly review is completed (weekend journal with review content)
+      const weeklyReviewCompleted = (weekJournals || []).some((j: any) =>
+        (j.weekly_review_notes && j.weekly_review_notes.trim().length > 0) ||
+        (j.weekly_wins && j.weekly_wins.trim().length > 0) ||
+        (j.weekly_improvements && j.weekly_improvements.trim().length > 0)
+      );
 
       // Count trades with notes today
-      const notesAddedToday = (todayTrades || []).filter((t: any) => t.notes && t.notes.trim() !== "").length;
+      const notesAddedToday = (todayTrades || []).filter((t: any) =>
+        t.notes && t.notes.trim() !== ""
+      ).length;
 
-      setStats({
-        tradesToday: todayTrades?.length || 0,
-        tradesThisWeek: weekTrades?.length || 0,
-        journalToday: (todayJournal?.length || 0) > 0,
-        journalsThisWeek: weekJournals || 0,
+      // Count trades with lessons documented this week
+      const lessonsDocumented = (weekTrades || []).filter((t: any) =>
+        t.lessons && t.lessons.trim() !== ""
+      ).length;
+
+      // Check if all trades this week have notes
+      const allTradesHaveNotes = (weekTrades || []).length > 0 &&
+        (weekTrades || []).every((t: any) => t.notes && t.notes.trim() !== "");
+
+      const newStats: ChallengeStats = {
+        journalToday,
+        journalsThisWeek,
         reviewedTrades: reviewedCount || 0,
         notesAddedToday,
-        greenDaysThisWeek,
-      });
+        hasPreMarketNote,
+        weeklyReviewCompleted,
+        lessonsDocumented,
+        allTradesHaveNotes,
+      };
+
+      setStats(newStats);
 
       // Calculate total XP from completed challenges
       let xp = 0;
       [...DAILY_CHALLENGES, ...WEEKLY_CHALLENGES].forEach(challenge => {
-        const progress = challenge.checkProgress({
-          tradesToday: todayTrades?.length || 0,
-          tradesThisWeek: weekTrades?.length || 0,
-          journalToday: (todayJournal?.length || 0) > 0,
-          journalsThisWeek: weekJournals || 0,
-          reviewedTrades: reviewedCount || 0,
-          notesAddedToday,
-          greenDaysThisWeek,
-        });
+        const progress = challenge.checkProgress(newStats);
         if (progress >= challenge.target) {
           xp += challenge.xp;
         }

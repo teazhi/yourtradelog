@@ -16,6 +16,8 @@ import {
   ChevronRight,
   Share2,
   Check,
+  Wallet,
+  X,
 } from "lucide-react";
 import {
   Table,
@@ -36,8 +38,12 @@ import {
   SelectItem,
   SelectTrigger,
   SelectValue,
+  Checkbox,
   cn,
+  toast,
 } from "@/components/ui";
+import { Account } from "@/types/database";
+import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import {
   formatCurrency,
@@ -75,6 +81,8 @@ interface TradeTableProps {
   totalCount?: number;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
+  accounts?: Account[];
+  onBulkAccountAssign?: (tradeIds: string[], accountId: string) => Promise<void>;
 }
 
 export function TradeTable({
@@ -90,15 +98,81 @@ export function TradeTable({
   totalCount,
   onPageChange,
   onPageSizeChange,
+  accounts = [],
+  onBulkAccountAssign,
 }: TradeTableProps) {
   const [localSortConfig, setLocalSortConfig] = React.useState<SortConfig>({
     field: "entry_date",
     direction: "desc",
   });
+  const [selectedTrades, setSelectedTrades] = React.useState<Set<string>>(new Set());
+  const [isAssigning, setIsAssigning] = React.useState(false);
 
   const activeSortConfig = sortConfig || localSortConfig;
   const effectiveTotalCount = totalCount ?? trades.length;
   const totalPages = Math.ceil(effectiveTotalCount / pageSize);
+
+  // Selection handlers
+  const toggleSelectAll = () => {
+    if (selectedTrades.size === trades.length) {
+      setSelectedTrades(new Set());
+    } else {
+      setSelectedTrades(new Set(trades.map((t) => t.id)));
+    }
+  };
+
+  const toggleSelectTrade = (tradeId: string) => {
+    const newSelection = new Set(selectedTrades);
+    if (newSelection.has(tradeId)) {
+      newSelection.delete(tradeId);
+    } else {
+      newSelection.add(tradeId);
+    }
+    setSelectedTrades(newSelection);
+  };
+
+  const clearSelection = () => {
+    setSelectedTrades(new Set());
+  };
+
+  const handleBulkAccountAssign = async (accountId: string) => {
+    if (selectedTrades.size === 0) return;
+
+    setIsAssigning(true);
+    try {
+      if (onBulkAccountAssign) {
+        await onBulkAccountAssign(Array.from(selectedTrades), accountId);
+      } else {
+        // Default implementation
+        const supabase = createClient();
+        const { error } = await (supabase
+          .from("trades") as any)
+          .update({ account_id: accountId, updated_at: new Date().toISOString() })
+          .in("id", Array.from(selectedTrades));
+
+        if (error) {
+          throw error;
+        }
+      }
+      toast.success(`Assigned ${selectedTrades.size} trade${selectedTrades.size !== 1 ? "s" : ""} to account`);
+      clearSelection();
+    } catch (err) {
+      console.error("Error assigning trades to account:", err);
+      toast.error("Failed to assign trades to account");
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  const isAllSelected = trades.length > 0 && selectedTrades.size === trades.length;
+  const isSomeSelected = selectedTrades.size > 0 && selectedTrades.size < trades.length;
+
+  // Helper to get account name for a trade
+  const getAccountName = (accountId: string | null | undefined) => {
+    if (!accountId) return null;
+    const account = accounts.find(a => a.id === accountId);
+    return account ? account.name : null;
+  };
 
   const handleSort = (field: SortField) => {
     const newDirection: SortDirection =
@@ -181,6 +255,7 @@ export function TradeTable({
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[50px]"></TableHead>
                 <TableHead>Date</TableHead>
                 <TableHead>Time</TableHead>
                 <TableHead>Symbol</TableHead>
@@ -192,6 +267,7 @@ export function TradeTable({
                 <TableHead>Net P&L</TableHead>
                 <TableHead>R-Multiple</TableHead>
                 <TableHead>Setup</TableHead>
+                <TableHead>Account</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
@@ -199,7 +275,7 @@ export function TradeTable({
             <TableBody>
               {Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 13 }).map((_, j) => (
+                  {Array.from({ length: 15 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-pulse rounded bg-muted" />
                     </TableCell>
@@ -226,10 +302,57 @@ export function TradeTable({
 
   return (
     <div className="space-y-4">
+      {/* Bulk Action Bar */}
+      {selectedTrades.size > 0 && (
+        <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">
+              {selectedTrades.size} trade{selectedTrades.size !== 1 ? "s" : ""} selected
+            </span>
+            <Button variant="ghost" size="sm" onClick={clearSelection}>
+              <X className="h-4 w-4 mr-1" />
+              Clear
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            {accounts.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Wallet className="h-4 w-4 text-muted-foreground" />
+                <Select
+                  disabled={isAssigning}
+                  onValueChange={handleBulkAccountAssign}
+                >
+                  <SelectTrigger className="w-[180px] h-8">
+                    <SelectValue placeholder="Assign to account..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {accounts.map((account) => (
+                      <SelectItem key={account.id} value={account.id}>
+                        {account.name} {account.broker ? `(${account.broker})` : ""}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-[50px]">
+                <Checkbox
+                  checked={isAllSelected}
+                  ref={(el) => {
+                    if (el) (el as any).indeterminate = isSomeSelected;
+                  }}
+                  onCheckedChange={toggleSelectAll}
+                  aria-label="Select all trades"
+                />
+              </TableHead>
               <SortableHeader field="entry_date">Date</SortableHeader>
               <TableHead>Time</TableHead>
               <SortableHeader field="symbol">Symbol</SortableHeader>
@@ -245,6 +368,7 @@ export function TradeTable({
                 R-Multiple
               </SortableHeader>
               <TableHead>Setup</TableHead>
+              <TableHead>Account</TableHead>
               <SortableHeader field="status">Status</SortableHeader>
               <TableHead className="w-[50px]"></TableHead>
             </TableRow>
@@ -252,6 +376,13 @@ export function TradeTable({
           <TableBody>
             {trades.map((trade) => (
               <TableRow key={trade.id} className="group">
+                <TableCell>
+                  <Checkbox
+                    checked={selectedTrades.has(trade.id)}
+                    onCheckedChange={() => toggleSelectTrade(trade.id)}
+                    aria-label={`Select trade ${trade.symbol}`}
+                  />
+                </TableCell>
                 <TableCell>
                   <Link
                     href={`/trades/${trade.id}`}
@@ -307,6 +438,13 @@ export function TradeTable({
                     <Badge variant="outline">{trade.setup_id}</Badge>
                   ) : (
                     <span className="text-muted-foreground">-</span>
+                  )}
+                </TableCell>
+                <TableCell>
+                  {getAccountName(trade.account_id) ? (
+                    <span className="text-sm">{getAccountName(trade.account_id)}</span>
+                  ) : (
+                    <span className="text-muted-foreground text-sm">-</span>
                   )}
                 </TableCell>
                 <TableCell>{getStatusBadge(trade.status)}</TableCell>
