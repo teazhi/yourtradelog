@@ -62,18 +62,24 @@ interface ValidatedTrade {
 }
 
 // App fields that can be mapped
-// For Tradovate Performance exports: buyPrice=entry, sellPrice=exit, boughtTimestamp=entry_date, soldTimestamp=exit_date
 const APP_FIELDS = [
   { value: "symbol", label: "Symbol/Contract", required: true },
-  { value: "side", label: "Side (Buy/Sell)", required: false }, // Not required - can be inferred from prices
-  { value: "entry_date", label: "Entry Date/Time", required: false }, // boughtTimestamp
+  { value: "side", label: "Side (Long/Short)", required: false },
+  { value: "entry_date", label: "Entry Date/Time", required: false },
   { value: "entry_time", label: "Entry Time (if separate)", required: false },
-  { value: "entry_price", label: "Entry/Buy Price", required: false }, // buyPrice
+  { value: "entry_price", label: "Entry Price", required: false },
   { value: "entry_contracts", label: "Quantity/Contracts", required: true },
-  { value: "exit_date", label: "Exit Date/Time", required: false }, // soldTimestamp
+  { value: "exit_date", label: "Exit Date/Time", required: false },
   { value: "exit_time", label: "Exit Time (if separate)", required: false },
-  { value: "exit_price", label: "Exit/Sell Price", required: false }, // sellPrice
+  { value: "exit_price", label: "Exit Price", required: false },
   { value: "exit_contracts", label: "Exit Contracts", required: false },
+  // Tradovate Performance specific fields
+  { value: "buy_fill_id", label: "Buy Fill ID (Tradovate)", required: false },
+  { value: "sell_fill_id", label: "Sell Fill ID (Tradovate)", required: false },
+  { value: "bought_timestamp", label: "Bought Timestamp (Tradovate)", required: false },
+  { value: "sold_timestamp", label: "Sold Timestamp (Tradovate)", required: false },
+  { value: "buy_price", label: "Buy Price (Tradovate)", required: false },
+  { value: "sell_price", label: "Sell Price (Tradovate)", required: false },
   { value: "stop_loss", label: "Stop Loss", required: false },
   { value: "take_profit", label: "Take Profit/Limit", required: false },
   { value: "commission", label: "Commission", required: false },
@@ -91,18 +97,24 @@ const APP_FIELDS = [
 const COLUMN_NAME_MAPPINGS: Record<string, string[]> = {
   symbol: ["symbol", "instrument", "ticker", "contract", "product", "productdescription", "product description"],
   side: ["side", "direction", "action", "buy/sell", "b/s", "buysell"],
-  // Tradovate Performance: boughtTimestamp = entry date
-  entry_date: ["entry date", "date", "trade date", "entry_date", "entrydate", "open date", "boughttimestamp", "bought timestamp", "filltime", "fill time", "timestamp", "time", "entrytime"],
+  // Generic entry/exit dates (non-Tradovate)
+  entry_date: ["entry date", "date", "trade date", "entry_date", "entrydate", "open date", "filltime", "fill time", "timestamp", "time", "entrytime"],
   entry_time: ["entry time", "entry_time", "entrytime", "open time"],
-  // Tradovate Performance: buyPrice = entry price
-  entry_price: ["entry price", "entry", "entry_price", "entryprice", "open price", "avg entry", "buyprice", "buy price", "avgprice", "avg fill price", "avgfillprice", "avg price", "fillprice", "fill price"],
+  // Generic entry/exit prices (non-Tradovate)
+  entry_price: ["entry price", "entry", "entry_price", "entryprice", "open price", "avg entry", "avgprice", "avg fill price", "avgfillprice", "avg price", "fillprice", "fill price"],
   entry_contracts: ["quantity", "qty", "contracts", "size", "lots", "entry_contracts", "volume", "filledqty", "filled qty", "filledquantity"],
-  // Tradovate Performance: soldTimestamp = exit date
-  exit_date: ["exit date", "close date", "exit_date", "exitdate", "soldtimestamp", "sold timestamp", "closetime", "close time"],
+  exit_date: ["exit date", "close date", "exit_date", "exitdate", "closetime", "close time"],
   exit_time: ["exit time", "close time", "exit_time", "exittime"],
-  // Tradovate Performance: sellPrice = exit price
-  exit_price: ["exit price", "exit", "exit_price", "exitprice", "close price", "avg exit", "sellprice", "sell price", "closeprice"],
+  exit_price: ["exit price", "exit", "exit_price", "exitprice", "close price", "avg exit", "closeprice"],
   exit_contracts: ["exit qty", "close qty", "exit_contracts", "exit quantity"],
+  // Tradovate Performance specific fields
+  // Fill IDs are used to determine side (lower ID was executed first)
+  buy_fill_id: ["buyfillid", "buy fill id", "buyfill"],
+  sell_fill_id: ["sellfillid", "sell fill id", "sellfill"],
+  bought_timestamp: ["boughttimestamp", "bought timestamp"],
+  sold_timestamp: ["soldtimestamp", "sold timestamp"],
+  buy_price: ["buyprice", "buy price"],
+  sell_price: ["sellprice", "sell price"],
   stop_loss: ["stop loss", "stop", "sl", "stop_loss", "stoploss", "stopprice", "stop price"],
   take_profit: ["take profit", "target", "tp", "take_profit", "takeprofit", "profit target", "limitprice", "limit price"],
   commission: ["commission", "comm", "trading fees"],
@@ -217,25 +229,33 @@ function validateTrade(row: ParsedRow, mappings: ColumnMapping[], rowIndex: numb
     errors.push("Missing required field: Quantity/Contracts");
   }
 
-  // We need at least one price (entry or exit) or a P&L
+  // Check for Tradovate-specific fields
+  const hasBuyFillId = mappedData.buy_fill_id && mappedData.buy_fill_id.trim() !== "";
+  const hasSellFillId = mappedData.sell_fill_id && mappedData.sell_fill_id.trim() !== "";
+  const hasBoughtTimestamp = mappedData.bought_timestamp && mappedData.bought_timestamp.trim() !== "";
+  const hasSoldTimestamp = mappedData.sold_timestamp && mappedData.sold_timestamp.trim() !== "";
+  const hasBuyPrice = mappedData.buy_price && mappedData.buy_price.trim() !== "";
+  const hasSellPrice = mappedData.sell_price && mappedData.sell_price.trim() !== "";
+
+  // We need at least one price (entry or exit, or Tradovate buy/sell) or a P&L
   const hasEntryPrice = mappedData.entry_price && mappedData.entry_price.trim() !== "";
   const hasExitPrice = mappedData.exit_price && mappedData.exit_price.trim() !== "";
   const hasPnL = mappedData.pnl && mappedData.pnl.trim() !== "";
 
-  if (!hasEntryPrice && !hasExitPrice && !hasPnL) {
-    errors.push("Need at least one price (entry or exit) or P&L");
+  if (!hasEntryPrice && !hasExitPrice && !hasBuyPrice && !hasSellPrice && !hasPnL) {
+    errors.push("Need at least one price (entry/exit or buy/sell) or P&L");
   }
 
-  // We need at least one date
+  // We need at least one date (or Tradovate timestamps)
   const hasEntryDate = mappedData.entry_date && mappedData.entry_date.trim() !== "";
   const hasExitDate = mappedData.exit_date && mappedData.exit_date.trim() !== "";
 
-  if (!hasEntryDate && !hasExitDate) {
-    errors.push("Need at least one date (entry or exit)");
+  if (!hasEntryDate && !hasExitDate && !hasBoughtTimestamp && !hasSoldTimestamp) {
+    errors.push("Need at least one date (entry/exit or bought/sold timestamp)");
   }
 
   // Numeric validation - handles formats like: 123.45, $123.45, $(123.45), (123.45), -123.45
-  const numericFields = ["entry_price", "exit_price", "entry_contracts", "exit_contracts", "stop_loss", "take_profit", "commission", "fees", "pnl"];
+  const numericFields = ["entry_price", "exit_price", "entry_contracts", "exit_contracts", "stop_loss", "take_profit", "commission", "fees", "pnl", "buy_price", "sell_price"];
   for (const field of numericFields) {
     if (mappedData[field] && mappedData[field].trim() !== "") {
       // Remove $, commas, parentheses for parsing
@@ -247,11 +267,17 @@ function validateTrade(row: ParsedRow, mappings: ColumnMapping[], rowIndex: numb
     }
   }
 
-  // Side validation - only validate if a side column is explicitly mapped
-  if (mappedData.side && mappedData.side.trim() !== "") {
+  // Side validation
+  // Side can be determined from: explicit side column OR Tradovate fill IDs
+  const hasSideColumn = mappedData.side !== undefined && mappedData.side.trim() !== "";
+  const canInferSideFromFillIds = hasBuyFillId && hasSellFillId;
+
+  if (!hasSideColumn && !canInferSideFromFillIds) {
+    errors.push("Missing side/direction: need either a Side column or both Buy/Sell Fill IDs");
+  } else if (hasSideColumn) {
     const side = mappedData.side.toLowerCase().trim();
-    if (!["long", "short", "buy", "sell", "b", "s", "1", "-1"].includes(side)) {
-      // Don't error, just ignore invalid side values - we can infer from prices
+    if (!["long", "short", "buy", "sell", "b", "s", "1", "-1", "ss"].includes(side)) {
+      errors.push(`Invalid side value: "${mappedData.side}" (expected: long, short, buy, sell, b, s)`);
     }
   }
 
@@ -619,23 +645,35 @@ function ImportPageContent() {
     }
   };
 
-  // Determine trade side from prices (for Tradovate Performance format)
-  const determineSide = (row: ParsedRow): "long" | "short" => {
-    // If we have explicit side mapped, use it
+  // Determine trade side from mapped columns
+  const determineSide = (row: ParsedRow): "long" | "short" | null => {
+    // 1. Check for explicit side column first
     const sideValue = getMappedValue(row, "side").toLowerCase().trim();
     if (["long", "buy", "b", "1"].includes(sideValue)) return "long";
-    if (["short", "sell", "s", "-1"].includes(sideValue)) return "short";
+    if (["short", "sell", "s", "-1", "ss"].includes(sideValue)) return "short";
 
-    // For Tradovate Performance: if buyPrice < sellPrice, it was a long trade
-    const buyPrice = parseNumber(getMappedValue(row, "entry_price"));
-    const sellPrice = parseNumber(getMappedValue(row, "exit_price"));
+    // 2. For Tradovate Performance exports: determine side by comparing fill IDs
+    // The lower fill ID was executed first
+    // Long = buyFillId < sellFillId (bought first, sold later)
+    // Short = sellFillId < buyFillId (sold first, bought back later)
+    const buyFillId = getMappedValue(row, "buy_fill_id").trim();
+    const sellFillId = getMappedValue(row, "sell_fill_id").trim();
 
-    if (buyPrice !== null && sellPrice !== null) {
-      return buyPrice < sellPrice ? "long" : "short";
+    if (buyFillId && sellFillId) {
+      const buyId = parseInt(buyFillId, 10);
+      const sellId = parseInt(sellFillId, 10);
+
+      if (!isNaN(buyId) && !isNaN(sellId)) {
+        if (buyId < sellId) {
+          return "long"; // Bought first, sold later
+        } else if (sellId < buyId) {
+          return "short"; // Sold first, bought back later
+        }
+      }
     }
 
-    // Default to long if we can't determine
-    return "long";
+    // Cannot determine side
+    return null;
   };
 
   // Perform the import
@@ -663,38 +701,56 @@ function ImportPageContent() {
       const row = trade.data;
 
       try {
-        // Build the trade object
-        // For Tradovate Performance exports:
-        // - boughtTimestamp = when bought, soldTimestamp = when sold
-        // - For LONG trades: bought first (entry), sold later (exit)
-        // - For SHORT trades: sold first (entry), bought later (exit)
-        // The side determination uses price comparison, then we swap dates accordingly
-
-        let entryDate = parseDate(getMappedValue(row, "entry_date"));
-        let exitDate = parseDate(getMappedValue(row, "exit_date"));
-        const pnlValue = parseNumber(getMappedValue(row, "pnl"));
-
-        let entryPrice = parseNumber(getMappedValue(row, "entry_price")) || 0;
-        let exitPrice = parseNumber(getMappedValue(row, "exit_price"));
-        const contracts = parseNumber(getMappedValue(row, "entry_contracts")) || 0;
-        const stopLoss = parseNumber(getMappedValue(row, "stop_loss"));
+        // Determine side first - this affects how we interpret other fields
         const side = determineSide(row);
 
-        // For Tradovate Performance exports with short trades:
-        // boughtTimestamp maps to entry_date and soldTimestamp maps to exit_date by default
-        // But for shorts, we need to swap them because:
-        // - Short entry = sell (soldTimestamp should be entry)
-        // - Short exit = buy (boughtTimestamp should be exit)
-        if (side === "short" && entryDate && exitDate) {
-          // Swap the dates for short trades
-          const tempDate = entryDate;
-          entryDate = exitDate;
-          exitDate = tempDate;
+        // Skip trades without a determinable side
+        if (side === null) {
+          errorCount++;
+          continue;
+        }
 
-          // Also swap the prices - for shorts, sellPrice is entry, buyPrice is exit
-          const tempPrice = entryPrice;
-          entryPrice = exitPrice || 0;
-          exitPrice = tempPrice;
+        const pnlValue = parseNumber(getMappedValue(row, "pnl"));
+        const contracts = parseNumber(getMappedValue(row, "entry_contracts")) || 0;
+        const stopLoss = parseNumber(getMappedValue(row, "stop_loss"));
+
+        // Determine entry/exit dates and prices
+        // Check for Tradovate-specific fields first, then fall back to generic fields
+        let entryDate: string | null = null;
+        let exitDate: string | null = null;
+        let entryPrice: number = 0;
+        let exitPrice: number | null = null;
+
+        const boughtTimestamp = getMappedValue(row, "bought_timestamp").trim();
+        const soldTimestamp = getMappedValue(row, "sold_timestamp").trim();
+        const buyPrice = parseNumber(getMappedValue(row, "buy_price"));
+        const sellPrice = parseNumber(getMappedValue(row, "sell_price"));
+
+        // Check if we have Tradovate-specific fields
+        const hasTradovateFields = boughtTimestamp || soldTimestamp || buyPrice !== null || sellPrice !== null;
+
+        if (hasTradovateFields) {
+          // Tradovate format: assign based on side
+          // Long: entry = bought, exit = sold
+          // Short: entry = sold, exit = bought
+          if (side === "long") {
+            entryDate = parseDate(boughtTimestamp);
+            exitDate = parseDate(soldTimestamp);
+            entryPrice = buyPrice || 0;
+            exitPrice = sellPrice;
+          } else {
+            // Short trade
+            entryDate = parseDate(soldTimestamp);
+            exitDate = parseDate(boughtTimestamp);
+            entryPrice = sellPrice || 0;
+            exitPrice = buyPrice;
+          }
+        } else {
+          // Generic format: use entry/exit fields directly
+          entryDate = parseDate(getMappedValue(row, "entry_date"));
+          exitDate = parseDate(getMappedValue(row, "exit_date"));
+          entryPrice = parseNumber(getMappedValue(row, "entry_price")) || 0;
+          exitPrice = parseNumber(getMappedValue(row, "exit_price"));
         }
 
         // Calculate commission and fees
@@ -1115,6 +1171,22 @@ function ImportPageContent() {
                 <div className="text-sm text-muted-foreground">Invalid</div>
               </div>
             </div>
+
+            {/* Error if no way to determine side */}
+            {!mappings.some(m => m.appField === "side") &&
+             !(mappings.some(m => m.appField === "buy_fill_id") && mappings.some(m => m.appField === "sell_fill_id")) && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Cannot Determine Trade Direction</AlertTitle>
+                <AlertDescription>
+                  To import trades, we need to know if each trade is long or short. Please go back and either:
+                  <ul className="list-disc list-inside mt-2">
+                    <li>Map a "Side/Direction" column (values: long, short, buy, sell)</li>
+                    <li>Or map both "Buy Fill ID" and "Sell Fill ID" columns (for Tradovate)</li>
+                  </ul>
+                </AlertDescription>
+              </Alert>
+            )}
 
             {/* Selection controls */}
             <div className="flex items-center gap-4 mb-4">
