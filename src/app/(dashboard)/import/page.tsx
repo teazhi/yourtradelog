@@ -129,7 +129,6 @@ const COLUMN_NAME_MAPPINGS: Record<string, string[]> = {
 // Auto-detect mapping for a column
 function autoDetectMapping(columnName: string): string {
   const normalized = columnName.toLowerCase().trim();
-  console.log(`[AutoDetect] Column: "${columnName}" -> Normalized: "${normalized}"`);
 
   // Skip internal/metadata columns that start with underscore
   if (normalized.startsWith("_")) {
@@ -147,11 +146,9 @@ function autoDetectMapping(columnName: string): string {
 
   // Fill IDs - used to determine side (lower ID = executed first)
   if (normalized === "buyfillid" || normalized === "buy fill id") {
-    console.log(`[AutoDetect] Matched buyFillId -> buy_fill_id`);
     return "buy_fill_id";
   }
   if (normalized === "sellfillid" || normalized === "sell fill id") {
-    console.log(`[AutoDetect] Matched sellFillId -> sell_fill_id`);
     return "sell_fill_id";
   }
 
@@ -173,11 +170,9 @@ function autoDetectMapping(columnName: string): string {
 
   for (const [field, aliases] of Object.entries(COLUMN_NAME_MAPPINGS)) {
     if (aliases.some(alias => normalized.includes(alias) || alias.includes(normalized))) {
-      console.log(`[AutoDetect] Matched via COLUMN_NAME_MAPPINGS -> ${field}`);
       return field;
     }
   }
-  console.log(`[AutoDetect] No match found, returning "ignore"`);
   return "ignore";
 }
 
@@ -674,26 +669,24 @@ function ImportPageContent() {
     // Short = sellFillId < buyFillId (sold first, bought back later)
     const buyFillId = getMappedValue(row, "buy_fill_id").trim();
     const sellFillId = getMappedValue(row, "sell_fill_id").trim();
-    console.log(`[determineSide] buyFillId: "${buyFillId}", sellFillId: "${sellFillId}"`);
 
     if (buyFillId && sellFillId) {
-      const buyId = parseInt(buyFillId, 10);
-      const sellId = parseInt(sellFillId, 10);
-      console.log(`[determineSide] buyId: ${buyId}, sellId: ${sellId}`);
+      // Extract last 6 digits for comparison (handles scientific notation and large numbers)
+      const buyLast = buyFillId.slice(-6);
+      const sellLast = sellFillId.slice(-6);
+      const buyId = parseInt(buyLast, 10);
+      const sellId = parseInt(sellLast, 10);
 
       if (!isNaN(buyId) && !isNaN(sellId)) {
         if (buyId < sellId) {
-          console.log(`[determineSide] -> long`);
           return "long"; // Bought first, sold later
         } else if (sellId < buyId) {
-          console.log(`[determineSide] -> short`);
           return "short"; // Sold first, bought back later
         }
       }
     }
 
     // Cannot determine side
-    console.log(`[determineSide] -> null (cannot determine)`);
     return null;
   };
 
@@ -1260,8 +1253,11 @@ function ImportPageContent() {
                     if (sideMapping) {
                       sideDisplay = trade.data[sideMapping.csvColumn] || "-";
                     } else if (buyFillMapping && sellFillMapping) {
-                      const buyId = parseInt(trade.data[buyFillMapping.csvColumn], 10);
-                      const sellId = parseInt(trade.data[sellFillMapping.csvColumn], 10);
+                      // Use last 6 digits for comparison
+                      const buyLast = (trade.data[buyFillMapping.csvColumn] || "").slice(-6);
+                      const sellLast = (trade.data[sellFillMapping.csvColumn] || "").slice(-6);
+                      const buyId = parseInt(buyLast, 10);
+                      const sellId = parseInt(sellLast, 10);
                       if (!isNaN(buyId) && !isNaN(sellId)) {
                         sideDisplay = buyId < sellId ? "Long" : "Short";
                       }
