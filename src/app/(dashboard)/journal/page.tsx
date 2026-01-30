@@ -10,7 +10,6 @@ import {
   CalendarDays,
   ChevronLeft,
   ChevronRight,
-  Save,
   Loader2,
   Sun,
   Moon,
@@ -24,10 +23,8 @@ import {
   CheckCircle2,
   Lightbulb,
   BarChart3,
-  Clock,
   Zap,
   Brain,
-  ExternalLink,
   ImageIcon,
   Trophy,
   Flame,
@@ -1176,7 +1173,7 @@ function JournalPageContent() {
             </CardContent>
           </Card>
 
-          {/* Save Button and View Trades */}
+          {/* View Trades and Share */}
           <div className="flex items-center justify-between">
             <Link href="/trades">
               <Button variant="outline" size="lg" className="px-6 py-3">
@@ -1184,29 +1181,14 @@ function JournalPageContent() {
                 View All Trades
               </Button>
             </Link>
-            <div className="flex items-center gap-3">
-              <ShareToX
-                weeklyPnL={weeklyPnL}
-                weeklyWinRate={weeklyWinRate}
-                weeklyTradeCount={accountFilteredWeeklyTrades.length}
-                date={format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "MMM d") + " - " + format(subDays(selectedDate, 1), "MMM d")}
-                isWeekendReview={true}
-                lessonsLearned={weeklyReviewNotes}
-              />
-              <Button onClick={handleSave} disabled={isSaving || !hasChanges} size="lg" className="px-6 py-3">
-                {isSaving ? (
-                  <>
-                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                    Saving...
-                  </>
-                ) : (
-                  <>
-                    <Save className="mr-2 h-5 w-5" />
-                    Save Weekly Review
-                  </>
-                )}
-              </Button>
-            </div>
+            <ShareToX
+              weeklyPnL={weeklyPnL}
+              weeklyWinRate={weeklyWinRate}
+              weeklyTradeCount={accountFilteredWeeklyTrades.length}
+              date={format(startOfWeek(selectedDate, { weekStartsOn: 1 }), "MMM d") + " - " + format(subDays(selectedDate, 1), "MMM d")}
+              isWeekendReview={true}
+              lessonsLearned={weeklyReviewNotes}
+            />
           </div>
         </>
       ) : (
@@ -1285,32 +1267,17 @@ function JournalPageContent() {
             </TabsTrigger>
           </TabsList>
 
-          <div className="flex items-center gap-2">
-            <ShareToX
-              dailyPnL={dailyPnL}
-              winRate={winRate}
-              winCount={winCount}
-              lossCount={lossCount}
-              tradeCount={closedTrades.length}
-              date={format(selectedDate, "MMM d, yyyy")}
-              isWeekendReview={false}
-              lessonsLearned={lessonsLearned}
-              whatWentWell={whatWentWell}
-            />
-            <Button onClick={handleSave} disabled={isSaving || !hasChanges}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Save className="mr-2 h-4 w-4" />
-                  Save
-                </>
-              )}
-            </Button>
-          </div>
+          <ShareToX
+            dailyPnL={dailyPnL}
+            winRate={winRate}
+            winCount={winCount}
+            lossCount={lossCount}
+            tradeCount={closedTrades.length}
+            date={format(selectedDate, "MMM d, yyyy")}
+            isWeekendReview={false}
+            lessonsLearned={lessonsLearned}
+            whatWentWell={whatWentWell}
+          />
         </div>
 
         {/* Pre-Market Tab */}
