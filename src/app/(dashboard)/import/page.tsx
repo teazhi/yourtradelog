@@ -828,17 +828,21 @@ function ImportPageContent() {
           external_id: getMappedValue(row, "order_id") || null,
         };
 
+        console.log("Inserting trade:", JSON.stringify(tradeData, null, 2));
+
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await supabase.from("trades").insert(tradeData as any);
 
         if (error) {
           console.error("Error inserting trade:", error.message, error.code, error.details, error.hint);
+          console.error("Full error object:", JSON.stringify(error, null, 2));
           errorCount++;
           // Show first error to user
           if (errorCount === 1) {
             toast(`Error: ${error.message || "Failed to insert trade. Check if database tables exist."}`);
           }
         } else {
+          console.log("Trade inserted successfully");
           successCount++;
         }
       } catch (err) {
