@@ -534,8 +534,13 @@ function ImportPageContent() {
   // Helper to get mapped value from a row
   const getMappedValue = (row: ParsedRow, fieldName: string): string => {
     const mapping = mappings.find(m => m.appField === fieldName);
-    if (!mapping) return "";
-    return row[mapping.csvColumn] || "";
+    if (!mapping) {
+      console.log(`No mapping found for field: ${fieldName}. Available mappings:`, mappings.map(m => m.appField));
+      return "";
+    }
+    const value = row[mapping.csvColumn] || "";
+    console.log(`getMappedValue(${fieldName}) -> csvColumn: ${mapping.csvColumn}, value: ${value}`);
+    return value;
   };
 
   // Helper to parse numeric value
