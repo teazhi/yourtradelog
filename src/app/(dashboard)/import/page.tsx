@@ -383,50 +383,63 @@ function ImportPageContent() {
 
   // Parse the CSV file
   const parseFile = (fileToparse: File) => {
-    Papa.parse(fileToparse, {
-      header: true,
-      skipEmptyLines: true,
-      dynamicTyping: false, // Keep all values as strings to preserve precision on large numbers
-      transformHeader: (header) => header.trim(), // Trim whitespace from headers
-      transform: (value) => value, // Ensure all values stay as strings
-      complete: (results) => {
-        const data = results.data as ParsedRow[];
-        console.log("Parsed data sample:", data[0]); // Debug: show first row
-        const columns = results.meta.fields || [];
+    // Read the file as raw text first to preserve large numbers
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target?.result as string;
+      console.log("Raw CSV first 500 chars:", text.substring(0, 500));
 
-        if (columns.length === 0) {
-          toast("No columns found in CSV. Please check the file format.");
-          return;
-        }
+      // Parse the raw text with PapaParse
+      Papa.parse(text, {
+        header: true,
+        skipEmptyLines: true,
+        dynamicTyping: false, // Keep all values as strings
+        transformHeader: (header) => header.trim(),
+        complete: (results) => {
+          const data = results.data as ParsedRow[];
+          console.log("Parsed data sample:", data[0]); // Debug: show first row
+          const columns = results.meta.fields || [];
 
-        if (data.length === 0) {
-          toast("No data rows found in CSV. Please check the file format.");
-          return;
-        }
+          if (columns.length === 0) {
+            toast("No columns found in CSV. Please check the file format.");
+            return;
+          }
 
-        setParsedData(data);
-        setCsvColumns(columns);
+          if (data.length === 0) {
+            toast("No data rows found in CSV. Please check the file format.");
+            return;
+          }
 
-        // Auto-detect mappings
-        const autoMappings: ColumnMapping[] = columns.map(col => {
-          const detected = autoDetectMapping(col);
-          return {
-            csvColumn: col,
-            appField: detected,
-          };
-        });
-        setMappings(autoMappings);
+          setParsedData(data);
+          setCsvColumns(columns);
 
-        // Move to next step
-        setStep(2);
+          // Auto-detect mappings
+          const autoMappings: ColumnMapping[] = columns.map(col => {
+            const detected = autoDetectMapping(col);
+            return {
+              csvColumn: col,
+              appField: detected,
+            };
+          });
+          setMappings(autoMappings);
 
-        toast(`Loaded ${data.length} rows from ${fileToparse.name}`);
-      },
-      error: (error) => {
-        console.error("Parse error:", error);
-        toast(`Error parsing file: ${error.message}`);
-      },
-    });
+          // Move to next step
+          setStep(2);
+
+          toast(`Loaded ${data.length} rows from ${fileToparse.name}`);
+        },
+        error: (error: Error) => {
+          console.error("Parse error:", error);
+          toast(`Error parsing file: ${error.message}`);
+        },
+      });
+    };
+
+    reader.onerror = () => {
+      toast("Error reading file");
+    };
+
+    reader.readAsText(fileToparse);
   };
 
   // Update a single mapping
@@ -678,33 +691,34 @@ function ImportPageContent() {
     const buyFillIdRaw = getMappedValue(row, "buy_fill_id").trim();
     const sellFillIdRaw = getMappedValue(row, "sell_fill_id").trim();
 
+    console.log("determineSide - buyFillIdRaw:", buyFillIdRaw, "sellFillIdRaw:", sellFillIdRaw);
+
     if (buyFillIdRaw && sellFillIdRaw) {
-      // Convert scientific notation to full number string, then get last 6 digits
-      // e.g., "3.75269E+11" -> "375269000000" -> "000000" (last 6)
-      const toFullNumber = (val: string): string => {
-        const num = parseFloat(val);
-        if (isNaN(num)) return val;
-        return num.toFixed(0); // Convert to integer string
-      };
+      // Use the last 6 digits to compare (avoids precision issues with large numbers)
+      // For "375269000567" we get "000567", for "375269000582" we get "000582"
+      const buyLast6 = buyFillIdRaw.slice(-6);
+      const sellLast6 = sellFillIdRaw.slice(-6);
 
-      const buyFillId = toFullNumber(buyFillIdRaw);
-      const sellFillId = toFullNumber(sellFillIdRaw);
+      console.log("determineSide - buyLast6:", buyLast6, "sellLast6:", sellLast6);
 
-      const buyLast = buyFillId.slice(-6);
-      const sellLast = sellFillId.slice(-6);
-      const buyId = parseInt(buyLast, 10);
-      const sellId = parseInt(sellLast, 10);
+      const buyId = parseInt(buyLast6, 10);
+      const sellId = parseInt(sellLast6, 10);
+
+      console.log("determineSide - buyId:", buyId, "sellId:", sellId);
 
       if (!isNaN(buyId) && !isNaN(sellId)) {
         if (buyId < sellId) {
+          console.log("determineSide -> long (buyId < sellId)");
           return "long"; // Bought first, sold later
         } else if (sellId < buyId) {
+          console.log("determineSide -> short (sellId < buyId)");
           return "short"; // Sold first, bought back later
         }
       }
     }
 
     // Cannot determine side
+    console.log("determineSide -> null (could not determine)");
     return null;
   };
 
@@ -1280,18 +1294,13 @@ function ImportPageContent() {
                     if (sideMapping) {
                       sideDisplay = trade.data[sideMapping.csvColumn] || "-";
                     } else if (buyFillMapping && sellFillMapping) {
-                      // Convert scientific notation to full number, then use last 6 digits
-                      const toFullNumber = (val: string): string => {
-                        const num = parseFloat(val);
-                        if (isNaN(num)) return val;
-                        return num.toFixed(0);
-                      };
-                      const buyFillId = toFullNumber(trade.data[buyFillMapping.csvColumn] || "");
-                      const sellFillId = toFullNumber(trade.data[sellFillMapping.csvColumn] || "");
-                      const buyLast = buyFillId.slice(-6);
-                      const sellLast = sellFillId.slice(-6);
-                      const buyId = parseInt(buyLast, 10);
-                      const sellId = parseInt(sellLast, 10);
+                      // Use last 6 digits to compare fill IDs
+                      const buyFillIdRaw = trade.data[buyFillMapping.csvColumn] || "";
+                      const sellFillIdRaw = trade.data[sellFillMapping.csvColumn] || "";
+                      const buyLast6 = buyFillIdRaw.slice(-6);
+                      const sellLast6 = sellFillIdRaw.slice(-6);
+                      const buyId = parseInt(buyLast6, 10);
+                      const sellId = parseInt(sellLast6, 10);
                       if (!isNaN(buyId) && !isNaN(sellId)) {
                         sideDisplay = buyId < sellId ? "Long" : "Short";
                       }
