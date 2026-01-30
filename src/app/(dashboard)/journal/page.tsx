@@ -112,17 +112,27 @@ const WHAT_WENT_WELL = [
 function StarRating({
   value,
   onChange,
+  onChangeComplete,
   disabled = false,
   label,
   icon: Icon,
 }: {
   value: number | null | undefined;
   onChange: (value: number | null) => void;
+  onChangeComplete?: () => void;
   disabled?: boolean;
   label: string;
   icon?: React.ElementType;
 }) {
   const [hovered, setHovered] = React.useState<number | null>(null);
+
+  const handleClick = (star: number) => {
+    onChange(value === star ? null : star);
+    // Trigger auto-save after rating change
+    if (onChangeComplete) {
+      setTimeout(onChangeComplete, 100);
+    }
+  };
 
   return (
     <div className="space-y-1.5">
@@ -142,7 +152,7 @@ function StarRating({
             )}
             onMouseEnter={() => setHovered(star)}
             onMouseLeave={() => setHovered(null)}
-            onClick={() => onChange(value === star ? null : star)}
+            onClick={() => handleClick(star)}
           >
             <Star
               className={cn(
@@ -168,6 +178,7 @@ function TagSelector({
   options,
   selected,
   onChange,
+  onChangeComplete,
   icon: Icon,
   variant = "default",
 }: {
@@ -175,6 +186,7 @@ function TagSelector({
   options: string[];
   selected: string[];
   onChange: (selected: string[]) => void;
+  onChangeComplete?: () => void;
   icon?: React.ElementType;
   variant?: "default" | "success" | "destructive";
 }) {
@@ -183,6 +195,10 @@ function TagSelector({
       onChange(selected.filter((t) => t !== tag));
     } else {
       onChange([...selected, tag]);
+    }
+    // Trigger auto-save after tag selection
+    if (onChangeComplete) {
+      setTimeout(onChangeComplete, 100);
     }
   };
 
@@ -473,6 +489,12 @@ function JournalPageContent() {
     isLoading
   ]);
 
+  // Auto-save on blur (only if there are changes)
+  const handleAutoSave = async () => {
+    if (!hasChanges || isSaving) return;
+    await handleSave();
+  };
+
   // Save journal entry
   const handleSave = async () => {
     setIsSaving(true);
@@ -551,12 +573,14 @@ function JournalPageContent() {
     if (newGoal.trim()) {
       setDailyGoals([...dailyGoals, newGoal.trim()]);
       setNewGoal("");
+      setTimeout(handleAutoSave, 100);
     }
   };
 
   // Remove a goal
   const handleRemoveGoal = (index: number) => {
     setDailyGoals(dailyGoals.filter((_, i) => i !== index));
+    setTimeout(handleAutoSave, 100);
   };
 
   // Add weekly goal
@@ -564,12 +588,14 @@ function JournalPageContent() {
     if (newWeeklyGoal.trim()) {
       setNextWeekGoals([...nextWeekGoals, newWeeklyGoal.trim()]);
       setNewWeeklyGoal("");
+      setTimeout(handleAutoSave, 100);
     }
   };
 
   // Remove weekly goal
   const handleRemoveWeeklyGoal = (index: number) => {
     setNextWeekGoals(nextWeekGoals.filter((_, i) => i !== index));
+    setTimeout(handleAutoSave, 100);
   };
 
   // Delete a trade
@@ -917,6 +943,7 @@ function JournalPageContent() {
                     className="min-h-[120px]"
                     value={weeklyWins}
                     onChange={(e) => setWeeklyWins(e.target.value)}
+                    onBlur={handleAutoSave}
                   />
                 </CardContent>
               </Card>
@@ -935,6 +962,7 @@ function JournalPageContent() {
                     className="min-h-[120px]"
                     value={weeklyImprovements}
                     onChange={(e) => setWeeklyImprovements(e.target.value)}
+                    onBlur={handleAutoSave}
                   />
                 </CardContent>
               </Card>
@@ -999,6 +1027,7 @@ function JournalPageContent() {
                     label="Overall Weekly Performance"
                     value={weeklyRating}
                     onChange={setWeeklyRating}
+                    onChangeComplete={handleAutoSave}
                     icon={Trophy}
                   />
                 </CardContent>
@@ -1142,6 +1171,7 @@ function JournalPageContent() {
                 className="min-h-[150px]"
                 value={weeklyReviewNotes}
                 onChange={(e) => setWeeklyReviewNotes(e.target.value)}
+                onBlur={handleAutoSave}
               />
             </CardContent>
           </Card>
@@ -1308,7 +1338,10 @@ function JournalPageContent() {
                         type="button"
                         variant={marketBias === bias ? "default" : "outline"}
                         size="sm"
-                        onClick={() => setMarketBias(marketBias === bias ? null : bias)}
+                        onClick={() => {
+                          setMarketBias(marketBias === bias ? null : bias);
+                          setTimeout(handleAutoSave, 100);
+                        }}
                         className={cn(
                           marketBias === bias && bias === "Bullish" && "bg-green-600 hover:bg-green-700",
                           marketBias === bias && bias === "Bearish" && "bg-red-600 hover:bg-red-700",
@@ -1330,6 +1363,7 @@ function JournalPageContent() {
                     className="min-h-[100px] font-mono text-sm"
                     value={keyLevels}
                     onChange={(e) => setKeyLevels(e.target.value)}
+                    onBlur={handleAutoSave}
                   />
                 </div>
 
@@ -1341,6 +1375,7 @@ function JournalPageContent() {
                     className="min-h-[120px]"
                     value={preMarketNotes}
                     onChange={(e) => setPreMarketNotes(e.target.value)}
+                    onBlur={handleAutoSave}
                   />
                 </div>
               </CardContent>
@@ -1370,6 +1405,7 @@ function JournalPageContent() {
                         className="pl-7"
                         value={maxLossLimit}
                         onChange={(e) => setMaxLossLimit(e.target.value)}
+                        onBlur={handleAutoSave}
                       />
                     </div>
                   </div>
@@ -1380,6 +1416,7 @@ function JournalPageContent() {
                       placeholder="5"
                       value={maxTradesLimit}
                       onChange={(e) => setMaxTradesLimit(e.target.value)}
+                      onBlur={handleAutoSave}
                     />
                   </div>
                 </div>
@@ -1430,6 +1467,7 @@ function JournalPageContent() {
                     label="Starting Mood"
                     value={moodRating}
                     onChange={setMoodRating}
+                    onChangeComplete={handleAutoSave}
                     icon={Brain}
                   />
                 </div>
@@ -1475,6 +1513,7 @@ function JournalPageContent() {
                   options={WHAT_WENT_WELL}
                   selected={whatWentWell}
                   onChange={setWhatWentWell}
+                  onChangeComplete={handleAutoSave}
                   icon={CheckCircle2}
                   variant="success"
                 />
@@ -1485,6 +1524,7 @@ function JournalPageContent() {
                   options={COMMON_MISTAKES}
                   selected={mistakesMade}
                   onChange={setMistakesMade}
+                  onChangeComplete={handleAutoSave}
                   icon={AlertTriangle}
                   variant="destructive"
                 />
@@ -1497,6 +1537,7 @@ function JournalPageContent() {
                     className="min-h-[120px]"
                     value={postMarketNotes}
                     onChange={(e) => setPostMarketNotes(e.target.value)}
+                    onBlur={handleAutoSave}
                   />
                 </div>
               </CardContent>
@@ -1522,6 +1563,7 @@ function JournalPageContent() {
                     className="min-h-[100px]"
                     value={lessonsLearned}
                     onChange={(e) => setLessonsLearned(e.target.value)}
+                    onBlur={handleAutoSave}
                   />
                 </div>
 
@@ -1531,24 +1573,28 @@ function JournalPageContent() {
                     label="Focus Level"
                     value={focusRating}
                     onChange={setFocusRating}
+                    onChangeComplete={handleAutoSave}
                     icon={Target}
                   />
                   <StarRating
                     label="Discipline"
                     value={disciplineRating}
                     onChange={setDisciplineRating}
+                    onChangeComplete={handleAutoSave}
                     icon={CheckCircle2}
                   />
                   <StarRating
                     label="Execution Quality"
                     value={executionRating}
                     onChange={setExecutionRating}
+                    onChangeComplete={handleAutoSave}
                     icon={Zap}
                   />
                   <StarRating
                     label="Overall Mood"
                     value={moodRating}
                     onChange={setMoodRating}
+                    onChangeComplete={handleAutoSave}
                     icon={Brain}
                   />
                 </div>
