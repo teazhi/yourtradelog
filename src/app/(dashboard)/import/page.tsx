@@ -142,19 +142,30 @@ function autoDetectMapping(columnName: string): string {
   }
 
   // Check for specific Tradovate patterns FIRST (before generic matching)
-  // This prevents "soldtimestamp" from matching "timestamp" in entry_date
-  // Handle various formats: "soldTimestamp", "SoldTimestamp", "sold timestamp", "Sold Timestamp"
+  // Map to Tradovate-specific fields so we can properly determine side from fill IDs
+
+  // Fill IDs - used to determine side (lower ID = executed first)
+  if (normalized === "buyfillid" || normalized === "buy fill id") {
+    return "buy_fill_id";
+  }
+  if (normalized === "sellfillid" || normalized === "sell fill id") {
+    return "sell_fill_id";
+  }
+
+  // Timestamps - mapped to Tradovate-specific fields
   if (normalized.includes("sold") && normalized.includes("timestamp")) {
-    return "exit_date";
+    return "sold_timestamp";
   }
   if (normalized.includes("bought") && normalized.includes("timestamp")) {
-    return "entry_date";
+    return "bought_timestamp";
   }
+
+  // Prices - mapped to Tradovate-specific fields
   if (normalized === "sellprice" || normalized === "sell price" || (normalized.includes("sell") && normalized.includes("price"))) {
-    return "exit_price";
+    return "sell_price";
   }
   if (normalized === "buyprice" || normalized === "buy price" || (normalized.includes("buy") && normalized.includes("price"))) {
-    return "entry_price";
+    return "buy_price";
   }
 
   for (const [field, aliases] of Object.entries(COLUMN_NAME_MAPPINGS)) {
