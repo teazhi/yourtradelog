@@ -667,11 +667,21 @@ function ImportPageContent() {
     // The lower fill ID was executed first
     // Long = buyFillId < sellFillId (bought first, sold later)
     // Short = sellFillId < buyFillId (sold first, bought back later)
-    const buyFillId = getMappedValue(row, "buy_fill_id").trim();
-    const sellFillId = getMappedValue(row, "sell_fill_id").trim();
+    const buyFillIdRaw = getMappedValue(row, "buy_fill_id").trim();
+    const sellFillIdRaw = getMappedValue(row, "sell_fill_id").trim();
 
-    if (buyFillId && sellFillId) {
-      // Extract last 6 digits for comparison (handles scientific notation and large numbers)
+    if (buyFillIdRaw && sellFillIdRaw) {
+      // Convert scientific notation to full number string, then get last 6 digits
+      // e.g., "3.75269E+11" -> "375269000000" -> "000000" (last 6)
+      const toFullNumber = (val: string): string => {
+        const num = parseFloat(val);
+        if (isNaN(num)) return val;
+        return num.toFixed(0); // Convert to integer string
+      };
+
+      const buyFillId = toFullNumber(buyFillIdRaw);
+      const sellFillId = toFullNumber(sellFillIdRaw);
+
       const buyLast = buyFillId.slice(-6);
       const sellLast = sellFillId.slice(-6);
       const buyId = parseInt(buyLast, 10);
@@ -1257,9 +1267,16 @@ function ImportPageContent() {
                     if (sideMapping) {
                       sideDisplay = trade.data[sideMapping.csvColumn] || "-";
                     } else if (buyFillMapping && sellFillMapping) {
-                      // Use last 6 digits for comparison
-                      const buyLast = (trade.data[buyFillMapping.csvColumn] || "").slice(-6);
-                      const sellLast = (trade.data[sellFillMapping.csvColumn] || "").slice(-6);
+                      // Convert scientific notation to full number, then use last 6 digits
+                      const toFullNumber = (val: string): string => {
+                        const num = parseFloat(val);
+                        if (isNaN(num)) return val;
+                        return num.toFixed(0);
+                      };
+                      const buyFillId = toFullNumber(trade.data[buyFillMapping.csvColumn] || "");
+                      const sellFillId = toFullNumber(trade.data[sellFillMapping.csvColumn] || "");
+                      const buyLast = buyFillId.slice(-6);
+                      const sellLast = sellFillId.slice(-6);
                       const buyId = parseInt(buyLast, 10);
                       const sellId = parseInt(sellLast, 10);
                       if (!isNaN(buyId) && !isNaN(sellId)) {
