@@ -405,10 +405,18 @@ export const PROP_FIRMS: PropFirm[] = [
   },
   {
     id: 'topstep',
-    name: 'Topstep',
-    commissionPerContract: 1.02, // ~$1.02 per side (varies by platform, TopstepX is lower)
+    name: 'Topstep (Standard)',
+    commissionPerContract: 1.85, // $1.85 per side ($3.70 round turn) on standard platforms
     commissionPerTrade: 0,
-    description: '~$1.02/side for ES/NQ (varies by platform)',
+    description: '$1.85/side ($3.70 RT) - standard Tradovate/Rithmic',
+    website: 'https://topstep.com',
+  },
+  {
+    id: 'topstep-x',
+    name: 'Topstep (TopstepX - Commission Free)',
+    commissionPerContract: 0, // TopstepX platform is commission-free
+    commissionPerTrade: 0,
+    description: 'Commission-free on TopstepX platform',
     website: 'https://topstep.com',
   },
   {
@@ -445,10 +453,18 @@ export const PROP_FIRMS: PropFirm[] = [
   },
   {
     id: 'lucidtrading',
-    name: 'Lucid Trading',
-    commissionPerContract: 1.55, // Uses Rithmic/Tradovate standard rates
+    name: 'Lucid Trading (E-mini)',
+    commissionPerContract: 1.75, // $1.75 per side for ES, NQ, RTY, YM
     commissionPerTrade: 0,
-    description: '~$1.55/side (uses Rithmic/Tradovate rates)',
+    description: '$1.75/side for E-mini (ES, NQ, RTY, YM)',
+    website: 'https://lucidtrading.com',
+  },
+  {
+    id: 'lucidtrading-micro',
+    name: 'Lucid Trading (Micro)',
+    commissionPerContract: 0.50, // $0.50 per side for MES, MNQ, M2K, MYM
+    commissionPerTrade: 0,
+    description: '$0.50/side for Micros (MES, MNQ, M2K, MYM)',
     website: 'https://lucidtrading.com',
   },
   {

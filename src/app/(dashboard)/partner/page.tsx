@@ -803,7 +803,7 @@ export default function PartnerPage() {
                     </Avatar>
                     <div className={cn(
                       "absolute -bottom-1 -right-1 w-4 h-4 rounded-full border-2 border-background",
-                      "bg-green-500" // Would show partner's online/check-in status
+                      (todayStatus.partner_pre_market_done || todayStatus.partner_post_market_done) ? "bg-green-500" : "bg-gray-400"
                     )} />
                   </div>
                   <div>
@@ -819,6 +819,44 @@ export default function PartnerPage() {
                   <MessageCircle className="h-4 w-4 mr-1" />
                   Nudge
                 </Button>
+              </div>
+
+              {/* Partner's Journal Status */}
+              <div className="mt-3 pt-3 border-t border-blue-500/20">
+                <div className="text-xs font-medium text-muted-foreground mb-2">{partnerName}'s Journal Today</div>
+                <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-1.5">
+                    {todayStatus.partner_pre_market_done ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Sun className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className={cn(
+                      "text-sm",
+                      todayStatus.partner_pre_market_done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                    )}>
+                      Pre-market
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {todayStatus.partner_post_market_done ? (
+                      <CheckCircle2 className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Moon className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className={cn(
+                      "text-sm",
+                      todayStatus.partner_post_market_done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                    )}>
+                      Post-market
+                    </span>
+                  </div>
+                </div>
+                {!todayStatus.partner_pre_market_done && !todayStatus.partner_post_market_done && (
+                  <div className="text-xs text-muted-foreground mt-2">
+                    {partnerName} hasn't journaled today yet
+                  </div>
+                )}
               </div>
 
               {/* Both checked in today indicator */}

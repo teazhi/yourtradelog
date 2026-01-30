@@ -76,6 +76,8 @@ const initialStats: PartnerStats = {
 const initialTodayStatus: TodayStatus = {
   pre_market_done: false,
   post_market_done: false,
+  partner_pre_market_done: false,
+  partner_post_market_done: false,
 };
 
 export function usePartner(): [UsePartnerState, UsePartnerActions] {

@@ -556,6 +556,8 @@ export async function getTodayCheckIns(partnershipId: string, userId: string): P
   return {
     pre_market_done: myCheckIns.some(c => c.check_in_type === 'pre_market'),
     post_market_done: myCheckIns.some(c => c.check_in_type === 'post_market'),
+    partner_pre_market_done: partnerCheckIns.some(c => c.check_in_type === 'pre_market'),
+    partner_post_market_done: partnerCheckIns.some(c => c.check_in_type === 'post_market'),
     my_check_in: myCheckIns[0] as unknown as PartnerCheckIn | undefined,
     partner_check_in: partnerCheckIns[0] as unknown as PartnerCheckIn | undefined,
   };

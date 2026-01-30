@@ -356,6 +356,8 @@ export interface PartnerStats {
 export interface TodayStatus {
   pre_market_done: boolean;
   post_market_done: boolean;
+  partner_pre_market_done: boolean;
+  partner_post_market_done: boolean;
   my_check_in?: PartnerCheckIn;
   partner_check_in?: PartnerCheckIn;
 }
