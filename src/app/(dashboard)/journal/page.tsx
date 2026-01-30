@@ -125,9 +125,9 @@ function StarRating({
 
   const handleClick = (star: number) => {
     onChange(value === star ? null : star);
-    // Trigger auto-save after rating change
+    // Trigger save after rating change (use direct callback, not auto-save)
     if (onChangeComplete) {
-      setTimeout(onChangeComplete, 100);
+      setTimeout(onChangeComplete, 150);
     }
   };
 
@@ -193,9 +193,9 @@ function TagSelector({
     } else {
       onChange([...selected, tag]);
     }
-    // Trigger auto-save after tag selection
+    // Trigger save after tag selection (use direct callback, not auto-save)
     if (onChangeComplete) {
-      setTimeout(onChangeComplete, 100);
+      setTimeout(onChangeComplete, 150);
     }
   };
 
@@ -570,14 +570,14 @@ function JournalPageContent() {
     if (newGoal.trim()) {
       setDailyGoals([...dailyGoals, newGoal.trim()]);
       setNewGoal("");
-      setTimeout(handleAutoSave, 100);
+      setTimeout(() => handleSave(), 150);
     }
   };
 
   // Remove a goal
   const handleRemoveGoal = (index: number) => {
     setDailyGoals(dailyGoals.filter((_, i) => i !== index));
-    setTimeout(handleAutoSave, 100);
+    setTimeout(() => handleSave(), 150);
   };
 
   // Add weekly goal
@@ -585,14 +585,14 @@ function JournalPageContent() {
     if (newWeeklyGoal.trim()) {
       setNextWeekGoals([...nextWeekGoals, newWeeklyGoal.trim()]);
       setNewWeeklyGoal("");
-      setTimeout(handleAutoSave, 100);
+      setTimeout(() => handleSave(), 150);
     }
   };
 
   // Remove weekly goal
   const handleRemoveWeeklyGoal = (index: number) => {
     setNextWeekGoals(nextWeekGoals.filter((_, i) => i !== index));
-    setTimeout(handleAutoSave, 100);
+    setTimeout(() => handleSave(), 150);
   };
 
   // Delete a trade
@@ -1024,7 +1024,7 @@ function JournalPageContent() {
                     label="Overall Weekly Performance"
                     value={weeklyRating}
                     onChange={setWeeklyRating}
-                    onChangeComplete={handleAutoSave}
+                    onChangeComplete={() => handleSave()}
                     icon={Trophy}
                   />
                 </CardContent>
@@ -1307,7 +1307,9 @@ function JournalPageContent() {
                         size="sm"
                         onClick={() => {
                           setMarketBias(marketBias === bias ? null : bias);
-                          setTimeout(handleAutoSave, 100);
+                          // Use handleSave directly since we know a change just happened
+                          // handleAutoSave won't work reliably due to hasChanges state timing
+                          setTimeout(() => handleSave(), 100);
                         }}
                         className={cn(
                           marketBias === bias && bias === "Bullish" && "bg-green-600 hover:bg-green-700",
@@ -1434,7 +1436,7 @@ function JournalPageContent() {
                     label="Starting Mood"
                     value={moodRating}
                     onChange={setMoodRating}
-                    onChangeComplete={handleAutoSave}
+                    onChangeComplete={() => handleSave()}
                     icon={Brain}
                   />
                 </div>
@@ -1480,7 +1482,7 @@ function JournalPageContent() {
                   options={WHAT_WENT_WELL}
                   selected={whatWentWell}
                   onChange={setWhatWentWell}
-                  onChangeComplete={handleAutoSave}
+                  onChangeComplete={() => handleSave()}
                   icon={CheckCircle2}
                   variant="success"
                 />
@@ -1491,7 +1493,7 @@ function JournalPageContent() {
                   options={COMMON_MISTAKES}
                   selected={mistakesMade}
                   onChange={setMistakesMade}
-                  onChangeComplete={handleAutoSave}
+                  onChangeComplete={() => handleSave()}
                   icon={AlertTriangle}
                   variant="destructive"
                 />
@@ -1540,28 +1542,28 @@ function JournalPageContent() {
                     label="Focus Level"
                     value={focusRating}
                     onChange={setFocusRating}
-                    onChangeComplete={handleAutoSave}
+                    onChangeComplete={() => handleSave()}
                     icon={Target}
                   />
                   <StarRating
                     label="Discipline"
                     value={disciplineRating}
                     onChange={setDisciplineRating}
-                    onChangeComplete={handleAutoSave}
+                    onChangeComplete={() => handleSave()}
                     icon={CheckCircle2}
                   />
                   <StarRating
                     label="Execution Quality"
                     value={executionRating}
                     onChange={setExecutionRating}
-                    onChangeComplete={handleAutoSave}
+                    onChangeComplete={() => handleSave()}
                     icon={Zap}
                   />
                   <StarRating
                     label="Overall Mood"
                     value={moodRating}
                     onChange={setMoodRating}
-                    onChangeComplete={handleAutoSave}
+                    onChangeComplete={() => handleSave()}
                     icon={Brain}
                   />
                 </div>
