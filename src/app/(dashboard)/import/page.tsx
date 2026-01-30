@@ -388,8 +388,10 @@ function ImportPageContent() {
       skipEmptyLines: true,
       dynamicTyping: false, // Keep all values as strings to preserve precision on large numbers
       transformHeader: (header) => header.trim(), // Trim whitespace from headers
+      transform: (value) => value, // Ensure all values stay as strings
       complete: (results) => {
         const data = results.data as ParsedRow[];
+        console.log("Parsed data sample:", data[0]); // Debug: show first row
         const columns = results.meta.fields || [];
 
         if (columns.length === 0) {
