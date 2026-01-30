@@ -279,12 +279,12 @@ function validateTrade(row: ParsedRow, mappings: ColumnMapping[], rowIndex: numb
   }
 
   // Side validation
-  // Side can be determined from: explicit side column OR Tradovate timestamps
+  // Side can be determined from: explicit side column OR Tradovate fill IDs
   const hasSideColumn = mappedData.side !== undefined && mappedData.side.trim() !== "";
-  const canInferSideFromTimestamps = hasBoughtTimestamp && hasSoldTimestamp;
+  const canInferSideFromFillIds = hasBuyFillId && hasSellFillId;
 
-  if (!hasSideColumn && !canInferSideFromTimestamps) {
-    errors.push("Missing side/direction: need either a Side column or both Bought/Sold Timestamps");
+  if (!hasSideColumn && !canInferSideFromFillIds) {
+    errors.push("Missing side/direction: need either a Side column or both Buy/Sell Fill IDs");
   } else if (hasSideColumn) {
     const side = mappedData.side.toLowerCase().trim();
     if (!["long", "short", "buy", "sell", "b", "s", "1", "-1", "ss"].includes(side)) {
@@ -381,23 +381,22 @@ function ImportPageContent() {
     }
   };
 
-  // Parse the CSV file
+  // Check if any fill IDs contain scientific notation (indicates Excel corruption)
+  const [scientificNotationError, setScientificNotationError] = React.useState<boolean>(false);
+
+  // Parse CSV file
   const parseFile = (fileToparse: File) => {
-    // Read the file as raw text first to preserve large numbers
     const reader = new FileReader();
     reader.onload = (event) => {
       const text = event.target?.result as string;
-      console.log("Raw CSV first 500 chars:", text.substring(0, 500));
 
-      // Parse the raw text with PapaParse
       Papa.parse(text, {
         header: true,
         skipEmptyLines: true,
-        dynamicTyping: false, // Keep all values as strings
+        dynamicTyping: false,
         transformHeader: (header) => header.trim(),
         complete: (results) => {
           const data = results.data as ParsedRow[];
-          console.log("Parsed data sample:", data[0]); // Debug: show first row
           const columns = results.meta.fields || [];
 
           if (columns.length === 0) {
@@ -410,6 +409,23 @@ function ImportPageContent() {
             return;
           }
 
+          // Check for scientific notation in fill ID columns (indicates Excel corruption)
+          const buyFillIdCol = columns.find(col => col.toLowerCase().replace(/\s/g, "") === "buyfillid");
+          const sellFillIdCol = columns.find(col => col.toLowerCase().replace(/\s/g, "") === "sellfillid");
+
+          let hasScientificNotation = false;
+          if (buyFillIdCol || sellFillIdCol) {
+            for (const row of data) {
+              const buyFillId = buyFillIdCol ? row[buyFillIdCol] : "";
+              const sellFillId = sellFillIdCol ? row[sellFillIdCol] : "";
+              if ((buyFillId && /[eE]\+/.test(buyFillId)) || (sellFillId && /[eE]\+/.test(sellFillId))) {
+                hasScientificNotation = true;
+                break;
+              }
+            }
+          }
+
+          setScientificNotationError(hasScientificNotation);
           setParsedData(data);
           setCsvColumns(columns);
 
@@ -551,12 +567,9 @@ function ImportPageContent() {
   const getMappedValue = (row: ParsedRow, fieldName: string): string => {
     const mapping = mappings.find(m => m.appField === fieldName);
     if (!mapping) {
-      console.log(`No mapping found for field: ${fieldName}. Available mappings:`, mappings.map(m => m.appField));
       return "";
     }
-    const value = row[mapping.csvColumn] || "";
-    console.log(`getMappedValue(${fieldName}) -> csvColumn: ${mapping.csvColumn}, value: ${value}`);
-    return value;
+    return row[mapping.csvColumn] || "";
   };
 
   // Helper to parse numeric value
@@ -684,50 +697,47 @@ function ImportPageContent() {
     if (["long", "buy", "b", "1"].includes(sideValue)) return "long";
     if (["short", "sell", "s", "-1", "ss"].includes(sideValue)) return "short";
 
-    // 2. For Tradovate Performance exports: determine side by comparing timestamps
-    // The earlier timestamp indicates which action happened first
-    // Long = bought first (boughtTimestamp < soldTimestamp)
-    // Short = sold first (soldTimestamp < boughtTimestamp)
-    const boughtTimestamp = getMappedValue(row, "bought_timestamp").trim();
-    const soldTimestamp = getMappedValue(row, "sold_timestamp").trim();
+    // 2. For Tradovate Performance exports: determine side by comparing fill IDs
+    // The lower fill ID was executed first
+    // Long = buyFillId < sellFillId (bought first, sold later)
+    // Short = sellFillId < buyFillId (sold first, bought back later)
+    const buyFillIdRaw = getMappedValue(row, "buy_fill_id").trim();
+    const sellFillIdRaw = getMappedValue(row, "sell_fill_id").trim();
 
-    console.log("determineSide - boughtTimestamp:", boughtTimestamp, "soldTimestamp:", soldTimestamp);
+    if (buyFillIdRaw && sellFillIdRaw) {
+      // Compare the fill IDs - use BigInt for very large numbers to avoid precision loss
+      try {
+        // Remove any decimal points (shouldn't have any, but just in case)
+        const buyClean = buyFillIdRaw.split(".")[0];
+        const sellClean = sellFillIdRaw.split(".")[0];
 
-    if (boughtTimestamp && soldTimestamp) {
-      const boughtDate = new Date(boughtTimestamp);
-      const soldDate = new Date(soldTimestamp);
+        const buyId = BigInt(buyClean);
+        const sellId = BigInt(sellClean);
 
-      console.log("determineSide - boughtDate:", boughtDate.getTime(), "soldDate:", soldDate.getTime());
-
-      if (!isNaN(boughtDate.getTime()) && !isNaN(soldDate.getTime())) {
-        if (boughtDate.getTime() < soldDate.getTime()) {
-          console.log("determineSide -> long (bought before sold)");
+        if (buyId < sellId) {
           return "long"; // Bought first, sold later
-        } else if (soldDate.getTime() < boughtDate.getTime()) {
-          console.log("determineSide -> short (sold before bought)");
+        } else if (sellId < buyId) {
           return "short"; // Sold first, bought back later
         }
+      } catch {
+        // BigInt parse error - fall through to return null
       }
     }
 
     // Cannot determine side
-    console.log("determineSide -> null (could not determine)");
     return null;
   };
 
   // Perform the import
   const performImport = async () => {
-    console.log("=== IMPORT STARTED ===");
     setIsImporting(true);
     setStep(4);
 
     const supabase = createClient();
     const tradesToImport = validatedTrades.filter(t => selectedRows.has(t.rowIndex));
-    console.log("Trades to import:", tradesToImport.length);
 
     // Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
-    console.log("User:", user?.id);
 
     if (!user) {
       toast("Please log in to import trades");
@@ -741,12 +751,10 @@ function ImportPageContent() {
     for (let i = 0; i < tradesToImport.length; i++) {
       const trade = tradesToImport[i];
       const row = trade.data;
-      console.log(`Processing trade ${i + 1}:`, row);
 
       try {
         // Determine side first - this affects how we interpret other fields
         const side = determineSide(row);
-        console.log("Determined side:", side);
 
         // Skip trades without a determinable side
         if (side === null) {
@@ -858,25 +866,19 @@ function ImportPageContent() {
           external_id: getMappedValue(row, "order_id") || null,
         };
 
-        console.log("Inserting trade:", JSON.stringify(tradeData, null, 2));
-
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { error } = await supabase.from("trades").insert(tradeData as any);
 
         if (error) {
-          console.error("Error inserting trade:", error.message, error.code, error.details, error.hint);
-          console.error("Full error object:", JSON.stringify(error, null, 2));
           errorCount++;
           // Show first error to user
           if (errorCount === 1) {
             toast(`Error: ${error.message || "Failed to insert trade. Check if database tables exist."}`);
           }
         } else {
-          console.log("Trade inserted successfully");
           successCount++;
         }
-      } catch (err) {
-        console.error("Exception inserting trade:", err);
+      } catch {
         errorCount++;
       }
 
@@ -1114,6 +1116,29 @@ function ImportPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {/* Scientific Notation Error - Blocks Import */}
+            {scientificNotationError && (
+              <Alert variant="destructive" className="mb-6">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Data Corrupted by Excel</AlertTitle>
+                <AlertDescription className="mt-2">
+                  <p className="mb-3">
+                    The Fill ID numbers in your CSV have been converted to scientific notation (e.g., &quot;3.75269E+11&quot;),
+                    which loses precision and prevents us from determining trade direction.
+                  </p>
+                  <p className="font-medium mb-2">To fix this, please:</p>
+                  <ol className="list-decimal list-inside space-y-1 mb-3">
+                    <li>Download a fresh CSV export from Tradovate</li>
+                    <li><strong>Do not open it in Excel</strong> — Excel automatically corrupts large numbers</li>
+                    <li>Import the CSV directly into this app</li>
+                  </ol>
+                  <p className="text-sm">
+                    If you need to view the CSV, use a text editor like Notepad instead of Excel.
+                  </p>
+                </AlertDescription>
+              </Alert>
+            )}
+
             <div className="space-y-4">
               {/* Preview of first few rows */}
               <div className="mb-6">
@@ -1181,11 +1206,14 @@ function ImportPageContent() {
 
             {/* Navigation */}
             <div className="flex justify-between mt-8">
-              <Button variant="outline" onClick={() => setStep(1)}>
+              <Button variant="outline" onClick={() => {
+                setStep(1);
+                setScientificNotationError(false);
+              }}>
                 <ArrowLeft className="h-4 w-4 mr-2" />
                 Back
               </Button>
-              <Button onClick={validateAllTrades}>
+              <Button onClick={validateAllTrades} disabled={scientificNotationError}>
                 Continue
                 <ArrowRight className="h-4 w-4 ml-2" />
               </Button>
@@ -1222,7 +1250,7 @@ function ImportPageContent() {
 
             {/* Error if no way to determine side */}
             {!mappings.some(m => m.appField === "side") &&
-             !(mappings.some(m => m.appField === "bought_timestamp") && mappings.some(m => m.appField === "sold_timestamp")) && (
+             !(mappings.some(m => m.appField === "buy_fill_id") && mappings.some(m => m.appField === "sell_fill_id")) && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Cannot Determine Trade Direction</AlertTitle>
@@ -1230,7 +1258,7 @@ function ImportPageContent() {
                   To import trades, we need to know if each trade is long or short. Please go back and either:
                   <ul className="list-disc list-inside mt-2">
                     <li>Map a "Side/Direction" column (values: long, short, buy, sell)</li>
-                    <li>Or map both "Bought Timestamp" and "Sold Timestamp" columns (for Tradovate)</li>
+                    <li>Or map both "Buy Fill ID" and "Sell Fill ID" columns (for Tradovate)</li>
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -1286,19 +1314,19 @@ function ImportPageContent() {
                     let sideDisplay = "-";
                     if (sideMapping) {
                       sideDisplay = trade.data[sideMapping.csvColumn] || "-";
-                    } else {
-                      // Use timestamps to determine side
-                      const boughtMapping = mappings.find(m => m.appField === "bought_timestamp");
-                      const soldMapping = mappings.find(m => m.appField === "sold_timestamp");
-                      if (boughtMapping && soldMapping) {
-                        const boughtTimestamp = trade.data[boughtMapping.csvColumn] || "";
-                        const soldTimestamp = trade.data[soldMapping.csvColumn] || "";
-                        if (boughtTimestamp && soldTimestamp) {
-                          const boughtDate = new Date(boughtTimestamp);
-                          const soldDate = new Date(soldTimestamp);
-                          if (!isNaN(boughtDate.getTime()) && !isNaN(soldDate.getTime())) {
-                            sideDisplay = boughtDate.getTime() < soldDate.getTime() ? "Long" : "Short";
-                          }
+                    } else if (buyFillMapping && sellFillMapping) {
+                      // Use fill IDs to determine side
+                      const buyFillIdRaw = trade.data[buyFillMapping.csvColumn] || "";
+                      const sellFillIdRaw = trade.data[sellFillMapping.csvColumn] || "";
+                      if (buyFillIdRaw && sellFillIdRaw) {
+                        try {
+                          const buyClean = buyFillIdRaw.split(".")[0];
+                          const sellClean = sellFillIdRaw.split(".")[0];
+                          const buyId = BigInt(buyClean);
+                          const sellId = BigInt(sellClean);
+                          sideDisplay = buyId < sellId ? "Long" : "Short";
+                        } catch {
+                          sideDisplay = "-";
                         }
                       }
                     }
