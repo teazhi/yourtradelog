@@ -386,6 +386,7 @@ function ImportPageContent() {
     Papa.parse(fileToparse, {
       header: true,
       skipEmptyLines: true,
+      dynamicTyping: false, // Keep all values as strings to preserve precision on large numbers
       transformHeader: (header) => header.trim(), // Trim whitespace from headers
       complete: (results) => {
         const data = results.data as ParsedRow[];
