@@ -702,14 +702,17 @@ function ImportPageContent() {
 
   // Perform the import
   const performImport = async () => {
+    console.log("=== IMPORT STARTED ===");
     setIsImporting(true);
     setStep(4);
 
     const supabase = createClient();
     const tradesToImport = validatedTrades.filter(t => selectedRows.has(t.rowIndex));
+    console.log("Trades to import:", tradesToImport.length);
 
     // Check if user is authenticated
     const { data: { user } } = await supabase.auth.getUser();
+    console.log("User:", user?.id);
 
     if (!user) {
       toast("Please log in to import trades");
@@ -723,10 +726,12 @@ function ImportPageContent() {
     for (let i = 0; i < tradesToImport.length; i++) {
       const trade = tradesToImport[i];
       const row = trade.data;
+      console.log(`Processing trade ${i + 1}:`, row);
 
       try {
         // Determine side first - this affects how we interpret other fields
         const side = determineSide(row);
+        console.log("Determined side:", side);
 
         // Skip trades without a determinable side
         if (side === null) {
