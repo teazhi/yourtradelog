@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { CalendarDays, ChevronDown } from "lucide-react";
+import { CalendarDays, ChevronDown, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Clock, Scale, Zap, Flame } from "lucide-react";
 import {
   Button,
   Card,
@@ -19,7 +19,7 @@ import {
   Calendar as CalendarComponent,
   Spinner,
 } from "@/components/ui";
-import { formatCurrency, formatPercentage } from "@/lib/calculations/formatters";
+import { formatCurrency, formatPercentage, formatDuration } from "@/lib/calculations/formatters";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { useAccount } from "@/components/providers/account-provider";
@@ -295,6 +295,207 @@ function calculateAnalytics(trades: Trade[]) {
     }))
     .sort((a, b) => b.pnl - a.pnl);
 
+  // ============================================================================
+  // NEW ANALYTICS: Streak Analysis
+  // ============================================================================
+  let currentStreak = 0;
+  let currentStreakType: 'win' | 'loss' | null = null;
+  let longestWinStreak = 0;
+  let longestLossStreak = 0;
+  let tempWinStreak = 0;
+  let tempLossStreak = 0;
+
+  sortedByDate.forEach(trade => {
+    const isWin = (trade.net_pnl || 0) > 0;
+    const isLoss = (trade.net_pnl || 0) < 0;
+
+    if (isWin) {
+      tempWinStreak++;
+      tempLossStreak = 0;
+      if (tempWinStreak > longestWinStreak) longestWinStreak = tempWinStreak;
+    } else if (isLoss) {
+      tempLossStreak++;
+      tempWinStreak = 0;
+      if (tempLossStreak > longestLossStreak) longestLossStreak = tempLossStreak;
+    } else {
+      // Breakeven doesn't break streaks
+    }
+  });
+
+  // Calculate current streak from most recent trades
+  for (let i = sortedByDate.length - 1; i >= 0; i--) {
+    const trade = sortedByDate[i];
+    const isWin = (trade.net_pnl || 0) > 0;
+    const isLoss = (trade.net_pnl || 0) < 0;
+
+    if (currentStreakType === null) {
+      if (isWin) {
+        currentStreakType = 'win';
+        currentStreak = 1;
+      } else if (isLoss) {
+        currentStreakType = 'loss';
+        currentStreak = 1;
+      }
+    } else if (currentStreakType === 'win' && isWin) {
+      currentStreak++;
+    } else if (currentStreakType === 'loss' && isLoss) {
+      currentStreak++;
+    } else if (isWin || isLoss) {
+      break;
+    }
+  }
+
+  const streakAnalysis = {
+    currentStreak,
+    currentStreakType,
+    longestWinStreak,
+    longestLossStreak,
+    avgWinStreak: wins.length > 0 ? longestWinStreak / Math.max(1, Math.ceil(wins.length / longestWinStreak)) : 0,
+    avgLossStreak: losses.length > 0 ? longestLossStreak / Math.max(1, Math.ceil(losses.length / longestLossStreak)) : 0,
+  };
+
+  // ============================================================================
+  // NEW ANALYTICS: Hold Time Analysis
+  // ============================================================================
+  const tradesWithHoldTime = closedTrades.filter(t => t.exit_date && t.entry_date);
+
+  const calculateHoldTimeMs = (trade: Trade) => {
+    if (!trade.exit_date || !trade.entry_date) return 0;
+    return new Date(trade.exit_date).getTime() - new Date(trade.entry_date).getTime();
+  };
+
+  const winnersWithHoldTime = tradesWithHoldTime.filter(t => (t.net_pnl || 0) > 0);
+  const losersWithHoldTime = tradesWithHoldTime.filter(t => (t.net_pnl || 0) < 0);
+
+  const avgHoldTimeWinners = winnersWithHoldTime.length > 0
+    ? winnersWithHoldTime.reduce((sum, t) => sum + calculateHoldTimeMs(t), 0) / winnersWithHoldTime.length
+    : 0;
+
+  const avgHoldTimeLosers = losersWithHoldTime.length > 0
+    ? losersWithHoldTime.reduce((sum, t) => sum + calculateHoldTimeMs(t), 0) / losersWithHoldTime.length
+    : 0;
+
+  const avgHoldTimeAll = tradesWithHoldTime.length > 0
+    ? tradesWithHoldTime.reduce((sum, t) => sum + calculateHoldTimeMs(t), 0) / tradesWithHoldTime.length
+    : 0;
+
+  // Hold time buckets (in minutes)
+  const holdTimeBuckets: Record<string, { pnl: number; trades: number; wins: number }> = {
+    '< 5m': { pnl: 0, trades: 0, wins: 0 },
+    '5-15m': { pnl: 0, trades: 0, wins: 0 },
+    '15-30m': { pnl: 0, trades: 0, wins: 0 },
+    '30m-1h': { pnl: 0, trades: 0, wins: 0 },
+    '1-2h': { pnl: 0, trades: 0, wins: 0 },
+    '2h+': { pnl: 0, trades: 0, wins: 0 },
+  };
+
+  tradesWithHoldTime.forEach(trade => {
+    const holdTimeMinutes = calculateHoldTimeMs(trade) / 60000;
+    let bucket: string;
+
+    if (holdTimeMinutes < 5) bucket = '< 5m';
+    else if (holdTimeMinutes < 15) bucket = '5-15m';
+    else if (holdTimeMinutes < 30) bucket = '15-30m';
+    else if (holdTimeMinutes < 60) bucket = '30m-1h';
+    else if (holdTimeMinutes < 120) bucket = '1-2h';
+    else bucket = '2h+';
+
+    holdTimeBuckets[bucket].pnl += trade.net_pnl || 0;
+    holdTimeBuckets[bucket].trades += 1;
+    if ((trade.net_pnl || 0) > 0) holdTimeBuckets[bucket].wins += 1;
+  });
+
+  const holdTimeAnalysis = {
+    avgHoldTimeAll,
+    avgHoldTimeWinners,
+    avgHoldTimeLosers,
+    buckets: Object.entries(holdTimeBuckets).map(([bucket, data]) => ({
+      bucket,
+      pnl: data.pnl,
+      trades: data.trades,
+      winRate: data.trades > 0 ? (data.wins / data.trades) * 100 : 0,
+      avgPnL: data.trades > 0 ? data.pnl / data.trades : 0,
+    })),
+  };
+
+  // ============================================================================
+  // NEW ANALYTICS: Trade Size Analysis
+  // ============================================================================
+  const sizeMap: Record<string, { pnl: number; trades: number; wins: number }> = {};
+
+  closedTrades.forEach(trade => {
+    const contracts = trade.entry_contracts || 1;
+    const sizeKey = contracts === 1 ? '1' : contracts <= 2 ? '2' : contracts <= 5 ? '3-5' : contracts <= 10 ? '6-10' : '10+';
+
+    if (!sizeMap[sizeKey]) {
+      sizeMap[sizeKey] = { pnl: 0, trades: 0, wins: 0 };
+    }
+    sizeMap[sizeKey].pnl += trade.net_pnl || 0;
+    sizeMap[sizeKey].trades += 1;
+    if ((trade.net_pnl || 0) > 0) sizeMap[sizeKey].wins += 1;
+  });
+
+  const tradeSizeAnalysis = Object.entries(sizeMap)
+    .map(([size, data]) => ({
+      size,
+      pnl: data.pnl,
+      trades: data.trades,
+      winRate: data.trades > 0 ? (data.wins / data.trades) * 100 : 0,
+      avgPnL: data.trades > 0 ? data.pnl / data.trades : 0,
+    }))
+    .sort((a, b) => {
+      const order = ['1', '2', '3-5', '6-10', '10+'];
+      return order.indexOf(a.size) - order.indexOf(b.size);
+    });
+
+  // Average contracts for winners vs losers
+  const avgContractsWinners = wins.length > 0
+    ? wins.reduce((sum, t) => sum + (t.entry_contracts || 1), 0) / wins.length
+    : 0;
+
+  const avgContractsLosers = losses.length > 0
+    ? losses.reduce((sum, t) => sum + (t.entry_contracts || 1), 0) / losses.length
+    : 0;
+
+  // ============================================================================
+  // NEW ANALYTICS: Side Analysis (Long vs Short)
+  // ============================================================================
+  const longTrades = closedTrades.filter(t => t.side === 'long');
+  const shortTrades = closedTrades.filter(t => t.side === 'short');
+
+  const longWins = longTrades.filter(t => (t.net_pnl || 0) > 0);
+  const shortWins = shortTrades.filter(t => (t.net_pnl || 0) > 0);
+
+  const longPnL = longTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
+  const shortPnL = shortTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
+
+  const sideAnalysis = {
+    long: {
+      trades: longTrades.length,
+      wins: longWins.length,
+      losses: longTrades.filter(t => (t.net_pnl || 0) < 0).length,
+      pnl: longPnL,
+      winRate: longTrades.length > 0 ? (longWins.length / longTrades.length) * 100 : 0,
+      avgPnL: longTrades.length > 0 ? longPnL / longTrades.length : 0,
+      avgWin: longWins.length > 0 ? longWins.reduce((sum, t) => sum + (t.net_pnl || 0), 0) / longWins.length : 0,
+      avgLoss: longTrades.filter(t => (t.net_pnl || 0) < 0).length > 0
+        ? Math.abs(longTrades.filter(t => (t.net_pnl || 0) < 0).reduce((sum, t) => sum + (t.net_pnl || 0), 0)) / longTrades.filter(t => (t.net_pnl || 0) < 0).length
+        : 0,
+    },
+    short: {
+      trades: shortTrades.length,
+      wins: shortWins.length,
+      losses: shortTrades.filter(t => (t.net_pnl || 0) < 0).length,
+      pnl: shortPnL,
+      winRate: shortTrades.length > 0 ? (shortWins.length / shortTrades.length) * 100 : 0,
+      avgPnL: shortTrades.length > 0 ? shortPnL / shortTrades.length : 0,
+      avgWin: shortWins.length > 0 ? shortWins.reduce((sum, t) => sum + (t.net_pnl || 0), 0) / shortWins.length : 0,
+      avgLoss: shortTrades.filter(t => (t.net_pnl || 0) < 0).length > 0
+        ? Math.abs(shortTrades.filter(t => (t.net_pnl || 0) < 0).reduce((sum, t) => sum + (t.net_pnl || 0), 0)) / shortTrades.filter(t => (t.net_pnl || 0) < 0).length
+        : 0,
+    },
+  };
+
   // Performance metrics for stats summary
   const performanceMetrics = {
     totalTrades: closedTrades.length,
@@ -333,6 +534,13 @@ function calculateAnalytics(trades: Trade[]) {
     performanceMetrics,
     monthlyPerformance,
     instrumentPerformance,
+    // New analytics
+    streakAnalysis,
+    holdTimeAnalysis,
+    tradeSizeAnalysis,
+    avgContractsWinners,
+    avgContractsLosers,
+    sideAnalysis,
   };
 }
 
@@ -630,8 +838,9 @@ export default function AnalyticsPage() {
 
       {/* Main Analytics Content */}
       <Tabs defaultValue="overview" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-7 lg:w-auto lg:inline-grid">
+        <TabsList className="grid w-full grid-cols-4 lg:grid-cols-9 lg:w-auto lg:inline-grid">
           <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="advanced">Advanced</TabsTrigger>
           <TabsTrigger value="monthly">Monthly</TabsTrigger>
           <TabsTrigger value="instruments">Instruments</TabsTrigger>
           <TabsTrigger value="time">Time</TabsTrigger>
@@ -650,6 +859,277 @@ export default function AnalyticsPage() {
             <PnLByDay data={analytics.pnlByDay} />
             <PnLByTime data={analytics.pnlByTime} />
           </div>
+        </TabsContent>
+
+        {/* Advanced Analytics Tab */}
+        <TabsContent value="advanced" className="space-y-6">
+          {/* Streak Analysis */}
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Current Streak</CardTitle>
+                <Flame className={`h-4 w-4 ${analytics.streakAnalysis.currentStreakType === 'win' ? 'text-green-500' : analytics.streakAnalysis.currentStreakType === 'loss' ? 'text-red-500' : 'text-muted-foreground'}`} />
+              </CardHeader>
+              <CardContent>
+                <div className={`text-2xl font-bold ${analytics.streakAnalysis.currentStreakType === 'win' ? 'text-green-500' : analytics.streakAnalysis.currentStreakType === 'loss' ? 'text-red-500' : ''}`}>
+                  {analytics.streakAnalysis.currentStreak > 0 ? (
+                    <>
+                      {analytics.streakAnalysis.currentStreak} {analytics.streakAnalysis.currentStreakType === 'win' ? 'W' : 'L'}
+                    </>
+                  ) : '—'}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {analytics.streakAnalysis.currentStreakType === 'win' ? 'Winning streak' : analytics.streakAnalysis.currentStreakType === 'loss' ? 'Losing streak' : 'No active streak'}
+                </p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Longest Win Streak</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-green-500">
+                  {analytics.streakAnalysis.longestWinStreak > 0 ? analytics.streakAnalysis.longestWinStreak : '—'}
+                </div>
+                <p className="text-xs text-muted-foreground">Consecutive wins</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Longest Loss Streak</CardTitle>
+                <TrendingDown className="h-4 w-4 text-red-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-red-500">
+                  {analytics.streakAnalysis.longestLossStreak > 0 ? analytics.streakAnalysis.longestLossStreak : '—'}
+                </div>
+                <p className="text-xs text-muted-foreground">Consecutive losses</p>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">Avg Hold Time</CardTitle>
+                <Clock className="h-4 w-4 text-blue-500" />
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  {analytics.holdTimeAnalysis.avgHoldTimeAll > 0 ? formatDuration(analytics.holdTimeAnalysis.avgHoldTimeAll) : '—'}
+                </div>
+                <p className="text-xs text-muted-foreground">All trades</p>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Side Analysis (Long vs Short) */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Scale className="h-5 w-5" />
+                Long vs Short Performance
+              </CardTitle>
+              <CardDescription>Compare your performance between long and short trades</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-6 md:grid-cols-2">
+                {/* Long Performance */}
+                <div className={`rounded-lg border p-4 ${analytics.sideAnalysis.long.pnl >= 0 ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <ArrowUpRight className="h-5 w-5 text-green-600" />
+                    <span className="text-lg font-semibold">Long Trades</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Total P&L</span>
+                      <span className={`text-xl font-bold ${analytics.sideAnalysis.long.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {analytics.sideAnalysis.long.pnl >= 0 ? '+' : ''}{formatCurrency(analytics.sideAnalysis.long.pnl)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Win Rate</span>
+                      <span className="text-xl font-bold">{analytics.sideAnalysis.long.winRate.toFixed(0)}%</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Trades</span>
+                      <span className="font-medium">{analytics.sideAnalysis.long.trades}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">W/L</span>
+                      <span className="font-medium">{analytics.sideAnalysis.long.wins}/{analytics.sideAnalysis.long.losses}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Avg Win</span>
+                      <span className="font-medium text-green-500">+{formatCurrency(analytics.sideAnalysis.long.avgWin)}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Avg Loss</span>
+                      <span className="font-medium text-red-500">-{formatCurrency(analytics.sideAnalysis.long.avgLoss)}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Short Performance */}
+                <div className={`rounded-lg border p-4 ${analytics.sideAnalysis.short.pnl >= 0 ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+                  <div className="flex items-center gap-2 mb-4">
+                    <ArrowDownRight className="h-5 w-5 text-red-600" />
+                    <span className="text-lg font-semibold">Short Trades</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Total P&L</span>
+                      <span className={`text-xl font-bold ${analytics.sideAnalysis.short.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                        {analytics.sideAnalysis.short.pnl >= 0 ? '+' : ''}{formatCurrency(analytics.sideAnalysis.short.pnl)}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Win Rate</span>
+                      <span className="text-xl font-bold">{analytics.sideAnalysis.short.winRate.toFixed(0)}%</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Trades</span>
+                      <span className="font-medium">{analytics.sideAnalysis.short.trades}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">W/L</span>
+                      <span className="font-medium">{analytics.sideAnalysis.short.wins}/{analytics.sideAnalysis.short.losses}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Avg Win</span>
+                      <span className="font-medium text-green-500">+{formatCurrency(analytics.sideAnalysis.short.avgWin)}</span>
+                    </div>
+                    <div>
+                      <span className="text-xs text-muted-foreground block">Avg Loss</span>
+                      <span className="font-medium text-red-500">-{formatCurrency(analytics.sideAnalysis.short.avgLoss)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Hold Time Analysis */}
+          <div className="grid gap-4 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Clock className="h-5 w-5" />
+                  Hold Time Comparison
+                </CardTitle>
+                <CardDescription>How long you hold winning vs losing trades</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+                    <div className="flex items-center gap-2">
+                      <TrendingUp className="h-4 w-4 text-green-500" />
+                      <span className="font-medium">Winners Avg Hold</span>
+                    </div>
+                    <span className="text-lg font-bold text-green-500">
+                      {analytics.holdTimeAnalysis.avgHoldTimeWinners > 0 ? formatDuration(analytics.holdTimeAnalysis.avgHoldTimeWinners) : '—'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-red-500/10 border border-red-500/20">
+                    <div className="flex items-center gap-2">
+                      <TrendingDown className="h-4 w-4 text-red-500" />
+                      <span className="font-medium">Losers Avg Hold</span>
+                    </div>
+                    <span className="text-lg font-bold text-red-500">
+                      {analytics.holdTimeAnalysis.avgHoldTimeLosers > 0 ? formatDuration(analytics.holdTimeAnalysis.avgHoldTimeLosers) : '—'}
+                    </span>
+                  </div>
+                  {analytics.holdTimeAnalysis.avgHoldTimeWinners > 0 && analytics.holdTimeAnalysis.avgHoldTimeLosers > 0 && (
+                    <p className="text-sm text-muted-foreground">
+                      {analytics.holdTimeAnalysis.avgHoldTimeWinners > analytics.holdTimeAnalysis.avgHoldTimeLosers
+                        ? "You hold winners longer than losers - good discipline!"
+                        : "You hold losers longer than winners - consider cutting losses faster."}
+                    </p>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>P&L by Hold Time</CardTitle>
+                <CardDescription>Performance across different hold durations</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-2">
+                  {analytics.holdTimeAnalysis.buckets.map(bucket => (
+                    <div key={bucket.bucket} className="flex items-center justify-between p-2 rounded border">
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-medium w-16">{bucket.bucket}</span>
+                        <span className="text-xs text-muted-foreground">{bucket.trades} trades</span>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <span className="text-xs">{bucket.winRate.toFixed(0)}% WR</span>
+                        <span className={`font-medium ${bucket.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {bucket.pnl >= 0 ? '+' : ''}{formatCurrency(bucket.pnl)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Trade Size Analysis */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="h-5 w-5" />
+                Trade Size Analysis
+              </CardTitle>
+              <CardDescription>Performance by position size (contracts)</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  {analytics.tradeSizeAnalysis.map(size => (
+                    <div key={size.size} className={`flex items-center justify-between p-3 rounded-lg border ${size.pnl >= 0 ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
+                      <div>
+                        <span className="font-medium">{size.size} contract{size.size !== '1' ? 's' : ''}</span>
+                        <span className="text-xs text-muted-foreground ml-2">({size.trades} trades)</span>
+                      </div>
+                      <div className="text-right">
+                        <span className={`font-bold ${size.pnl >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                          {size.pnl >= 0 ? '+' : ''}{formatCurrency(size.pnl)}
+                        </span>
+                        <span className="text-xs text-muted-foreground block">{size.winRate.toFixed(0)}% win rate</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="space-y-4">
+                  <div className="rounded-lg bg-muted/50 p-4">
+                    <h4 className="font-medium mb-3">Size Insights</h4>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Avg contracts (winners)</span>
+                        <span className="font-medium">{analytics.avgContractsWinners.toFixed(1)}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Avg contracts (losers)</span>
+                        <span className="font-medium">{analytics.avgContractsLosers.toFixed(1)}</span>
+                      </div>
+                      {analytics.tradeSizeAnalysis.length > 0 && (
+                        <div className="pt-2 border-t">
+                          <span className="text-sm text-muted-foreground">Best performing size:</span>
+                          <span className="font-medium ml-2">
+                            {analytics.tradeSizeAnalysis.sort((a, b) => b.winRate - a.winRate)[0]?.size || '—'} contracts
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Monthly Performance Tab */}

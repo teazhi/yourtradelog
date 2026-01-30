@@ -365,6 +365,11 @@ function ImportPageContent() {
   // Handle file selection
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
+    if (!broker) {
+      toast.error("Please select a broker first");
+      e.target.value = ""; // Reset file input
+      return;
+    }
     if (selectedFile) {
       setFile(selectedFile);
       parseFile(selectedFile);
@@ -374,6 +379,10 @@ function ImportPageContent() {
   // Handle drag and drop
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
     e.preventDefault();
+    if (!broker) {
+      toast.error("Please select a broker first");
+      return;
+    }
     const droppedFile = e.dataTransfer.files[0];
     if (droppedFile && (droppedFile.name.endsWith(".csv") || droppedFile.name.endsWith(".xlsx"))) {
       setFile(droppedFile);
@@ -979,9 +988,11 @@ function ImportPageContent() {
             {/* Broker & Account Selection */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div className="space-y-2">
-                <label className="text-sm font-medium">Broker (Optional)</label>
+                <label className="text-sm font-medium">
+                  Broker <span className="text-red-500">*</span>
+                </label>
                 <Select value={broker} onValueChange={setBroker}>
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className={cn("w-full", !broker && "border-red-500/50")}>
                     <SelectValue placeholder="Select your broker" />
                   </SelectTrigger>
                   <SelectContent>
@@ -993,7 +1004,7 @@ function ImportPageContent() {
                   </SelectContent>
                 </Select>
                 <p className="text-sm text-muted-foreground">
-                  Selecting your broker helps us auto-detect column mappings
+                  Required — helps us auto-detect column mappings correctly
                 </p>
               </div>
 
@@ -1058,13 +1069,13 @@ function ImportPageContent() {
             {/* File Upload */}
             <div
               className={cn(
-                "border-2 border-dashed rounded-lg p-12 text-center transition-colors cursor-pointer",
-                "hover:border-primary hover:bg-muted/50",
+                "border-2 border-dashed rounded-lg p-12 text-center transition-colors",
+                broker ? "cursor-pointer hover:border-primary hover:bg-muted/50" : "cursor-not-allowed opacity-60",
                 file && "border-primary bg-muted/30"
               )}
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => broker && fileInputRef.current?.click()}
             >
               <input
                 ref={fileInputRef}
@@ -1072,6 +1083,7 @@ function ImportPageContent() {
                 accept=".csv,.xlsx"
                 onChange={handleFileSelect}
                 className="hidden"
+                disabled={!broker}
               />
               {file ? (
                 <div className="space-y-2">
@@ -1091,9 +1103,9 @@ function ImportPageContent() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  <Upload className="h-12 w-12 mx-auto text-muted-foreground" />
+                  <Upload className={cn("h-12 w-12 mx-auto", broker ? "text-muted-foreground" : "text-muted-foreground/50")} />
                   <p className="font-medium">
-                    Drag and drop your file here, or click to browse
+                    {broker ? "Drag and drop your file here, or click to browse" : "Please select a broker first"}
                   </p>
                   <p className="text-sm text-muted-foreground">
                     Supports CSV and XLSX files
