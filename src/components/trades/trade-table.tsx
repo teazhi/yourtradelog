@@ -50,6 +50,7 @@ import {
   formatDate,
   formatTime,
   formatRMultiple,
+  formatDuration,
 } from "@/lib/calculations/formatters";
 
 type SortField =
@@ -262,6 +263,7 @@ export function TradeTable({
                 <TableHead>Side</TableHead>
                 <TableHead>Entry</TableHead>
                 <TableHead>Exit</TableHead>
+                <TableHead>Hold Time</TableHead>
                 <TableHead>Gross P&L</TableHead>
                 <TableHead>Fees</TableHead>
                 <TableHead>Net P&L</TableHead>
@@ -275,7 +277,7 @@ export function TradeTable({
             <TableBody>
               {Array.from({ length: 5 }).map((_, i) => (
                 <TableRow key={i}>
-                  {Array.from({ length: 15 }).map((_, j) => (
+                  {Array.from({ length: 16 }).map((_, j) => (
                     <TableCell key={j}>
                       <div className="h-4 w-full animate-pulse rounded bg-muted" />
                     </TableCell>
@@ -359,6 +361,7 @@ export function TradeTable({
               <SortableHeader field="side">Side</SortableHeader>
               <SortableHeader field="entry_price">Entry</SortableHeader>
               <SortableHeader field="exit_price">Exit</SortableHeader>
+              <TableHead>Hold Time</TableHead>
               <TableHead className="text-right">Gross P&L</TableHead>
               <TableHead className="text-right">Fees</TableHead>
               <SortableHeader field="net_pnl" className="text-right">
@@ -411,6 +414,11 @@ export function TradeTable({
                 <TableCell>
                   {trade.exit_price
                     ? formatCurrency(trade.exit_price).replace("$", "")
+                    : "-"}
+                </TableCell>
+                <TableCell className="text-muted-foreground">
+                  {trade.exit_date && trade.entry_date
+                    ? formatDuration(new Date(trade.exit_date).getTime() - new Date(trade.entry_date).getTime())
                     : "-"}
                 </TableCell>
                 <TableCell className={cn("text-right", getPnLColor(trade.gross_pnl))}>
