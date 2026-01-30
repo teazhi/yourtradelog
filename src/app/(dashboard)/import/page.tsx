@@ -279,12 +279,12 @@ function validateTrade(row: ParsedRow, mappings: ColumnMapping[], rowIndex: numb
   }
 
   // Side validation
-  // Side can be determined from: explicit side column OR Tradovate fill IDs
+  // Side can be determined from: explicit side column OR Tradovate timestamps
   const hasSideColumn = mappedData.side !== undefined && mappedData.side.trim() !== "";
-  const canInferSideFromFillIds = hasBuyFillId && hasSellFillId;
+  const canInferSideFromTimestamps = hasBoughtTimestamp && hasSoldTimestamp;
 
-  if (!hasSideColumn && !canInferSideFromFillIds) {
-    errors.push("Missing side/direction: need either a Side column or both Buy/Sell Fill IDs");
+  if (!hasSideColumn && !canInferSideFromTimestamps) {
+    errors.push("Missing side/direction: need either a Side column or both Bought/Sold Timestamps");
   } else if (hasSideColumn) {
     const side = mappedData.side.toLowerCase().trim();
     if (!["long", "short", "buy", "sell", "b", "s", "1", "-1", "ss"].includes(side)) {
@@ -684,34 +684,27 @@ function ImportPageContent() {
     if (["long", "buy", "b", "1"].includes(sideValue)) return "long";
     if (["short", "sell", "s", "-1", "ss"].includes(sideValue)) return "short";
 
-    // 2. For Tradovate Performance exports: determine side by comparing fill IDs
-    // The lower fill ID was executed first
-    // Long = buyFillId < sellFillId (bought first, sold later)
-    // Short = sellFillId < buyFillId (sold first, bought back later)
-    const buyFillIdRaw = getMappedValue(row, "buy_fill_id").trim();
-    const sellFillIdRaw = getMappedValue(row, "sell_fill_id").trim();
+    // 2. For Tradovate Performance exports: determine side by comparing timestamps
+    // The earlier timestamp indicates which action happened first
+    // Long = bought first (boughtTimestamp < soldTimestamp)
+    // Short = sold first (soldTimestamp < boughtTimestamp)
+    const boughtTimestamp = getMappedValue(row, "bought_timestamp").trim();
+    const soldTimestamp = getMappedValue(row, "sold_timestamp").trim();
 
-    console.log("determineSide - buyFillIdRaw:", buyFillIdRaw, "sellFillIdRaw:", sellFillIdRaw);
+    console.log("determineSide - boughtTimestamp:", boughtTimestamp, "soldTimestamp:", soldTimestamp);
 
-    if (buyFillIdRaw && sellFillIdRaw) {
-      // Use the last 6 digits to compare (avoids precision issues with large numbers)
-      // For "375269000567" we get "000567", for "375269000582" we get "000582"
-      const buyLast6 = buyFillIdRaw.slice(-6);
-      const sellLast6 = sellFillIdRaw.slice(-6);
+    if (boughtTimestamp && soldTimestamp) {
+      const boughtDate = new Date(boughtTimestamp);
+      const soldDate = new Date(soldTimestamp);
 
-      console.log("determineSide - buyLast6:", buyLast6, "sellLast6:", sellLast6);
+      console.log("determineSide - boughtDate:", boughtDate.getTime(), "soldDate:", soldDate.getTime());
 
-      const buyId = parseInt(buyLast6, 10);
-      const sellId = parseInt(sellLast6, 10);
-
-      console.log("determineSide - buyId:", buyId, "sellId:", sellId);
-
-      if (!isNaN(buyId) && !isNaN(sellId)) {
-        if (buyId < sellId) {
-          console.log("determineSide -> long (buyId < sellId)");
+      if (!isNaN(boughtDate.getTime()) && !isNaN(soldDate.getTime())) {
+        if (boughtDate.getTime() < soldDate.getTime()) {
+          console.log("determineSide -> long (bought before sold)");
           return "long"; // Bought first, sold later
-        } else if (sellId < buyId) {
-          console.log("determineSide -> short (sellId < buyId)");
+        } else if (soldDate.getTime() < boughtDate.getTime()) {
+          console.log("determineSide -> short (sold before bought)");
           return "short"; // Sold first, bought back later
         }
       }
@@ -1229,7 +1222,7 @@ function ImportPageContent() {
 
             {/* Error if no way to determine side */}
             {!mappings.some(m => m.appField === "side") &&
-             !(mappings.some(m => m.appField === "buy_fill_id") && mappings.some(m => m.appField === "sell_fill_id")) && (
+             !(mappings.some(m => m.appField === "bought_timestamp") && mappings.some(m => m.appField === "sold_timestamp")) && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Cannot Determine Trade Direction</AlertTitle>
@@ -1237,7 +1230,7 @@ function ImportPageContent() {
                   To import trades, we need to know if each trade is long or short. Please go back and either:
                   <ul className="list-disc list-inside mt-2">
                     <li>Map a "Side/Direction" column (values: long, short, buy, sell)</li>
-                    <li>Or map both "Buy Fill ID" and "Sell Fill ID" columns (for Tradovate)</li>
+                    <li>Or map both "Bought Timestamp" and "Sold Timestamp" columns (for Tradovate)</li>
                   </ul>
                 </AlertDescription>
               </Alert>
@@ -1293,16 +1286,20 @@ function ImportPageContent() {
                     let sideDisplay = "-";
                     if (sideMapping) {
                       sideDisplay = trade.data[sideMapping.csvColumn] || "-";
-                    } else if (buyFillMapping && sellFillMapping) {
-                      // Use last 6 digits to compare fill IDs
-                      const buyFillIdRaw = trade.data[buyFillMapping.csvColumn] || "";
-                      const sellFillIdRaw = trade.data[sellFillMapping.csvColumn] || "";
-                      const buyLast6 = buyFillIdRaw.slice(-6);
-                      const sellLast6 = sellFillIdRaw.slice(-6);
-                      const buyId = parseInt(buyLast6, 10);
-                      const sellId = parseInt(sellLast6, 10);
-                      if (!isNaN(buyId) && !isNaN(sellId)) {
-                        sideDisplay = buyId < sellId ? "Long" : "Short";
+                    } else {
+                      // Use timestamps to determine side
+                      const boughtMapping = mappings.find(m => m.appField === "bought_timestamp");
+                      const soldMapping = mappings.find(m => m.appField === "sold_timestamp");
+                      if (boughtMapping && soldMapping) {
+                        const boughtTimestamp = trade.data[boughtMapping.csvColumn] || "";
+                        const soldTimestamp = trade.data[soldMapping.csvColumn] || "";
+                        if (boughtTimestamp && soldTimestamp) {
+                          const boughtDate = new Date(boughtTimestamp);
+                          const soldDate = new Date(soldTimestamp);
+                          if (!isNaN(boughtDate.getTime()) && !isNaN(soldDate.getTime())) {
+                            sideDisplay = boughtDate.getTime() < soldDate.getTime() ? "Long" : "Short";
+                          }
+                        }
                       }
                     }
 
