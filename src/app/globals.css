@@ -9,6 +9,32 @@
   --destructive-foreground: oklch(0.985 0 0); /* White text on red background */
 }
 
+/* Lighter dark theme - grey instead of pure black */
+.dark {
+  --background: oklch(0.23 0.005 260); /* Lighter grey background */
+  --foreground: oklch(0.95 0 0);
+  --card: oklch(0.26 0.005 260); /* Slightly lighter than background */
+  --card-foreground: oklch(0.95 0 0);
+  --popover: oklch(0.28 0.005 260);
+  --popover-foreground: oklch(0.95 0 0);
+  --primary: oklch(0.95 0 0);
+  --primary-foreground: oklch(0.2 0 0);
+  --secondary: oklch(0.32 0.005 260);
+  --secondary-foreground: oklch(0.95 0 0);
+  --muted: oklch(0.30 0.005 260);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.32 0.005 260);
+  --accent-foreground: oklch(0.95 0 0);
+  --border: oklch(0.35 0.005 260);
+  --input: oklch(0.35 0.005 260);
+  --ring: oklch(0.55 0 0);
+  --sidebar: oklch(0.21 0.005 260);
+  --sidebar-foreground: oklch(0.95 0 0);
+  --sidebar-border: oklch(0.30 0.005 260);
+  --sidebar-accent: oklch(0.30 0.005 260);
+  --sidebar-accent-foreground: oklch(0.95 0 0);
+}
+
 /* Custom theme overrides for trading journal */
 @theme inline {
   /* Use system fonts */
