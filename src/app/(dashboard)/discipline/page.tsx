@@ -478,7 +478,7 @@ export default function DisciplinePage() {
   }
 
   return (
-    <div className="container max-w-4xl py-6 px-4 sm:px-6 space-y-6">
+    <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
       {/* Header */}
       <div className="flex flex-col gap-1">
         <h1 className="text-2xl font-semibold tracking-tight flex items-center gap-2">
@@ -864,7 +864,7 @@ export default function DisciplinePage() {
 
       {/* Add Rule Dialog */}
       <CustomDialog open={showAddRuleDialog} onOpenChange={setShowAddRuleDialog}>
-        <CustomDialogContent className="max-w-md">
+        <CustomDialogContent>
           <CustomDialogHeader>
             <CustomDialogTitle>Add Trading Rule</CustomDialogTitle>
             <CustomDialogDescription>
@@ -940,7 +940,7 @@ export default function DisciplinePage() {
 
       {/* Edit Rule Dialog */}
       <CustomDialog open={showEditRuleDialog} onOpenChange={setShowEditRuleDialog}>
-        <CustomDialogContent className="max-w-md">
+        <CustomDialogContent>
           <CustomDialogHeader>
             <CustomDialogTitle>Edit Rule</CustomDialogTitle>
           </CustomDialogHeader>
