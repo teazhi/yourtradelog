@@ -1774,20 +1774,12 @@ function JournalPageContent() {
                 <p className="text-muted-foreground text-center mb-4">
                   Trades taken on {format(selectedDate, "MMMM d, yyyy")} will appear here.
                 </p>
-                <div className="flex gap-3">
-                  <Link href="/trades/new">
-                    <Button>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Trade
-                    </Button>
-                  </Link>
-                  <Link href={`/import?date=${dateKey}`}>
-                    <Button variant="outline">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Import Trades
-                    </Button>
-                  </Link>
-                </div>
+                <Link href={`/import?date=${dateKey}`}>
+                  <Button>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import Trades
+                  </Button>
+                </Link>
               </CardContent>
             </Card>
           ) : (
@@ -1797,20 +1789,12 @@ function JournalPageContent() {
                 <p className="text-sm text-muted-foreground">
                   {accountFilteredTrades.length} trade{accountFilteredTrades.length !== 1 ? "s" : ""} on {format(selectedDate, "MMMM d, yyyy")}
                 </p>
-                <div className="flex gap-2">
-                  <Link href={`/import?date=${dateKey}`}>
-                    <Button variant="outline" size="sm">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Import
-                    </Button>
-                  </Link>
-                  <Link href="/trades/new">
-                    <Button size="sm">
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Trade
-                    </Button>
-                  </Link>
-                </div>
+                <Link href={`/import?date=${dateKey}`}>
+                  <Button size="sm">
+                    <Upload className="h-4 w-4 mr-2" />
+                    Import
+                  </Button>
+                </Link>
               </div>
 
               {/* Full Trade Table */}

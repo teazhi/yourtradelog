@@ -46,16 +46,11 @@ export function RecentTrades({ trades = [] }: RecentTradesProps) {
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <FileSpreadsheet className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground mb-4">
-              No trades yet. Get started by adding your first trade.
+              No trades yet. Get started by importing your trades.
             </p>
-            <div className="flex gap-2">
-              <Button asChild size="sm">
-                <Link href="/trades/new">Add Trade</Link>
-              </Button>
-              <Button asChild variant="outline" size="sm">
-                <Link href="/import">Import CSV</Link>
-              </Button>
-            </div>
+            <Button asChild size="sm">
+              <Link href="/import">Import Trades</Link>
+            </Button>
           </div>
         </CardContent>
       </Card>

@@ -218,9 +218,9 @@ export default function TradesPage() {
             </p>
           </div>
           <Button asChild>
-            <Link href="/trades/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Add Trade
+            <Link href="/import">
+              <Upload className="mr-2 h-4 w-4" />
+              Import Trades
             </Link>
           </Button>
         </div>
@@ -231,22 +231,15 @@ export default function TradesPage() {
             <div>
               <h3 className="font-semibold text-lg">No trades yet</h3>
               <p className="text-muted-foreground">
-                Get started by adding your first trade or importing from a CSV file.
+                Get started by importing your trades from a CSV file.
               </p>
             </div>
-            <div className="flex gap-3">
-              <Button asChild>
-                <Link href="/trades/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  Add Trade
-                </Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link href="/import">
-                  Import CSV
-                </Link>
-              </Button>
-            </div>
+            <Button asChild>
+              <Link href="/import">
+                <Upload className="mr-2 h-4 w-4" />
+                Import Trades
+              </Link>
+            </Button>
           </div>
         </div>
       </div>
@@ -267,12 +260,6 @@ export default function TradesPage() {
           <Button variant="outline" size="icon" onClick={fetchTrades} className="h-9 w-9 sm:w-auto sm:px-3">
             <RefreshCw className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Refresh</span>
-          </Button>
-          <Button variant="outline" size="icon" asChild className="h-9 w-9 sm:w-auto sm:px-3">
-            <Link href="/trades/new">
-              <Plus className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Add Trade</span>
-            </Link>
           </Button>
           <Button size="icon" asChild className="h-9 w-9 sm:w-auto sm:px-3">
             <Link href="/import">
