@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format, subDays, startOfDay, parseISO } from "date-fns";
+import { format, subDays, startOfDay, parseISO, getDay } from "date-fns";
 import {
   Shield,
   Plus,
@@ -19,6 +19,8 @@ import {
   Calendar,
   TrendingUp,
   Star,
+  Settings,
+  CalendarDays,
 } from "lucide-react";
 import {
   Button,
@@ -83,6 +85,20 @@ const XP_REWARDS = {
   monthStreak: 500,        // XP for 30-day streak
 };
 
+// Days of the week configuration
+const DAYS_OF_WEEK = [
+  { value: 0, label: "Sun", fullLabel: "Sunday" },
+  { value: 1, label: "Mon", fullLabel: "Monday" },
+  { value: 2, label: "Tue", fullLabel: "Tuesday" },
+  { value: 3, label: "Wed", fullLabel: "Wednesday" },
+  { value: 4, label: "Thu", fullLabel: "Thursday" },
+  { value: 5, label: "Fri", fullLabel: "Friday" },
+  { value: 6, label: "Sat", fullLabel: "Saturday" },
+];
+
+// Default trading days (Monday-Friday)
+const DEFAULT_TRADING_DAYS = [1, 2, 3, 4, 5];
+
 export default function DisciplinePage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [userId, setUserId] = React.useState<string | null>(null);
@@ -102,6 +118,39 @@ export default function DisciplinePage() {
   const [newRuleDescription, setNewRuleDescription] = React.useState("");
   const [newRuleCategory, setNewRuleCategory] = React.useState<string>("discipline");
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Trading days state (0=Sunday, 6=Saturday)
+  const [tradingDays, setTradingDays] = React.useState<number[]>(DEFAULT_TRADING_DAYS);
+  const [showTradingDaysSettings, setShowTradingDaysSettings] = React.useState(false);
+
+  // Load trading days from localStorage
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem("discipline_trading_days");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setTradingDays(parsed);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading trading days:", e);
+    }
+  }, []);
+
+  // Save trading days to localStorage
+  const handleToggleTradingDay = (day: number) => {
+    const newDays = tradingDays.includes(day)
+      ? tradingDays.filter((d) => d !== day)
+      : [...tradingDays, day].sort((a, b) => a - b);
+
+    setTradingDays(newDays);
+    localStorage.setItem("discipline_trading_days", JSON.stringify(newDays));
+  };
+
+  // Check if today is a trading day
+  const todayDayOfWeek = getDay(new Date());
+  const isTradingDay = tradingDays.includes(todayDayOfWeek);
 
   // Get today's date string
   const today = format(startOfDay(new Date()), "yyyy-MM-dd");
@@ -287,9 +336,10 @@ export default function DisciplinePage() {
       if (followed) {
         toast.success("Rule followed! Keep it up!");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating check:", error);
-      toast.error("Failed to update. Please try again.");
+      const message = error?.message || error?.code || 'Unknown error';
+      toast.error(`Failed to update: ${message}`);
     }
   };
 
@@ -322,9 +372,10 @@ export default function DisciplinePage() {
       setNewRuleDescription("");
       setNewRuleCategory("discipline");
       await fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding rule:", error);
-      toast.error("Failed to add rule");
+      const message = error?.message || error?.code || 'Unknown error';
+      toast.error(`Failed to add rule: ${message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -356,9 +407,10 @@ export default function DisciplinePage() {
       setShowEditRuleDialog(false);
       setSelectedRule(null);
       await fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error updating rule:", error);
-      toast.error("Failed to update rule");
+      const message = error?.message || error?.code || 'Unknown error';
+      toast.error(`Failed to update rule: ${message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -384,9 +436,10 @@ export default function DisciplinePage() {
       setShowDeleteConfirm(false);
       setSelectedRule(null);
       await fetchData();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error deleting rule:", error);
-      toast.error("Failed to remove rule");
+      const message = error?.message || error?.code || 'Unknown error';
+      toast.error(`Failed to remove rule: ${message}`);
     } finally {
       setIsSubmitting(false);
     }
@@ -482,9 +535,71 @@ export default function DisciplinePage() {
         </Card>
       </div>
 
+      {/* Trading Days Settings */}
+      <Card>
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CalendarDays className="h-5 w-5" />
+                Trading Days
+              </CardTitle>
+              <CardDescription>
+                Select which days you trade
+              </CardDescription>
+            </div>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setShowTradingDaysSettings(!showTradingDaysSettings)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
+          </div>
+        </CardHeader>
+        {showTradingDaysSettings && (
+          <CardContent className="pt-0">
+            <div className="flex flex-wrap gap-2">
+              {DAYS_OF_WEEK.map((day) => (
+                <Button
+                  key={day.value}
+                  size="sm"
+                  variant={tradingDays.includes(day.value) ? "default" : "outline"}
+                  className={cn(
+                    "w-12 h-10",
+                    tradingDays.includes(day.value) && "bg-blue-500 hover:bg-blue-600"
+                  )}
+                  onClick={() => handleToggleTradingDay(day.value)}
+                >
+                  {day.label}
+                </Button>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">
+              Streaks and check-ins only apply on your trading days. Today is {isTradingDay ? "a trading day" : "not a trading day"}.
+            </p>
+          </CardContent>
+        )}
+        {!showTradingDaysSettings && (
+          <CardContent className="pt-0">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span>Trading on:</span>
+              <div className="flex gap-1">
+                {DAYS_OF_WEEK.filter((d) => tradingDays.includes(d.value)).map((day) => (
+                  <Badge key={day.value} variant="secondary" className="text-xs">
+                    {day.label}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        )}
+      </Card>
+
       {/* Today's Check-in */}
       <Card className={cn(
-        allRulesFollowed && "border-green-500/50 bg-green-500/5"
+        allRulesFollowed && isTradingDay && "border-green-500/50 bg-green-500/5",
+        !isTradingDay && "border-muted bg-muted/30"
       )}>
         <CardHeader className="pb-2">
           <div className="flex items-center justify-between">
@@ -497,16 +612,33 @@ export default function DisciplinePage() {
                 {format(new Date(), "EEEE, MMMM d, yyyy")}
               </CardDescription>
             </div>
-            {allRulesFollowed && (
+            {!isTradingDay ? (
+              <Badge variant="secondary">
+                <CalendarDays className="h-3 w-3 mr-1" />
+                Non-Trading Day
+              </Badge>
+            ) : allRulesFollowed ? (
               <Badge className="bg-green-500">
                 <CheckCircle2 className="h-3 w-3 mr-1" />
                 Perfect Day!
               </Badge>
-            )}
+            ) : null}
           </div>
         </CardHeader>
         <CardContent>
-          {rules.length === 0 ? (
+          {!isTradingDay ? (
+            <div className="text-center py-8">
+              <CalendarDays className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
+              <div className="font-medium mb-1">Not a Trading Day</div>
+              <div className="text-sm text-muted-foreground mb-4">
+                Enjoy your day off! Your streak will continue on your next trading day.
+              </div>
+              <Button variant="outline" size="sm" onClick={() => setShowTradingDaysSettings(true)}>
+                <Settings className="h-4 w-4 mr-2" />
+                Adjust Trading Days
+              </Button>
+            </div>
+          ) : rules.length === 0 ? (
             <div className="text-center py-8">
               <Shield className="h-12 w-12 mx-auto mb-3 text-muted-foreground/50" />
               <div className="font-medium mb-1">No rules yet</div>
@@ -595,7 +727,7 @@ export default function DisciplinePage() {
             </div>
           )}
 
-          {rules.length > 0 && (
+          {rules.length > 0 && isTradingDay && (
             <div className="mt-4 pt-4 border-t">
               <div className="flex items-center justify-between text-sm mb-2">
                 <span className="text-muted-foreground">Today's Progress</span>
