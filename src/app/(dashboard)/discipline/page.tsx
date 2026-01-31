@@ -52,6 +52,14 @@ import {
 } from "@/components/ui/custom-dialog";
 import { createClient } from "@/lib/supabase/client";
 import type { UserRule, UserRuleCheck, UserRuleWithCheck } from "@/types/database";
+import {
+  getLevelFromXP,
+  getLevelProgress,
+  getXPToNextLevel,
+  getNextLevel,
+  formatXP,
+  type TraderLevel,
+} from "@/lib/leveling";
 
 // Rule category colors and labels
 const CATEGORY_CONFIG = {
@@ -106,6 +114,11 @@ export default function DisciplinePage() {
   const [todayChecks, setTodayChecks] = React.useState<Record<string, UserRuleCheck>>({});
   const [overallStreak, setOverallStreak] = React.useState(0);
   const [totalXpEarned, setTotalXpEarned] = React.useState(0);
+
+  // User's actual XP and level from profile
+  const [userTotalXP, setUserTotalXP] = React.useState(0);
+  const [currentLevel, setCurrentLevel] = React.useState<TraderLevel | null>(null);
+  const [todayXPClaimed, setTodayXPClaimed] = React.useState(false);
 
   // Dialog states
   const [showAddRuleDialog, setShowAddRuleDialog] = React.useState(false);
@@ -167,6 +180,21 @@ export default function DisciplinePage() {
       }
 
       setUserId(user.id);
+
+      // Fetch user's profile for XP data
+      const { data: profile } = await (supabase
+        .from("profiles") as any)
+        .select("total_xp")
+        .eq("id", user.id)
+        .single();
+
+      const storedXP = profile?.total_xp || 0;
+      setUserTotalXP(storedXP);
+      setCurrentLevel(getLevelFromXP(storedXP));
+
+      // Check if XP was already claimed today for discipline
+      const todayClaimKey = `discipline_xp_claimed_${today}`;
+      setTodayXPClaimed(localStorage.getItem(todayClaimKey) === "true");
 
       // Fetch active rules
       const { data: rulesData, error: rulesError } = await (supabase
@@ -301,6 +329,59 @@ export default function DisciplinePage() {
     fetchData();
   }, [fetchData]);
 
+  // Award XP to user's profile
+  const awardXP = async (xpAmount: number, reason: string) => {
+    if (!userId || xpAmount <= 0) return;
+
+    try {
+      const supabase = createClient();
+
+      // Get current XP
+      const { data: profile } = await (supabase
+        .from("profiles") as any)
+        .select("total_xp")
+        .eq("id", userId)
+        .single();
+
+      const currentXP = profile?.total_xp || 0;
+      const newTotalXP = currentXP + xpAmount;
+      const newLevel = getLevelFromXP(newTotalXP);
+
+      // Update profile with new XP
+      const { error } = await (supabase
+        .from("profiles") as any)
+        .update({
+          total_xp: newTotalXP,
+          current_level: newLevel.level,
+          trader_title: newLevel.title,
+        })
+        .eq("id", userId);
+
+      if (error) throw error;
+
+      // Update local state
+      setUserTotalXP(newTotalXP);
+      setCurrentLevel(newLevel);
+
+      // Show XP notification
+      toast.success(`+${xpAmount} XP - ${reason}!`, {
+        icon: "⚡",
+      });
+
+      // Check for level up
+      const previousLevel = getLevelFromXP(currentXP);
+      if (newLevel.level > previousLevel.level) {
+        setTimeout(() => {
+          toast.success(`🎉 Level Up! You're now a ${newLevel.title}!`, {
+            duration: 5000,
+          });
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Error awarding XP:", error);
+    }
+  };
+
   // Handle rule check toggle
   const handleToggleCheck = async (rule: UserRuleWithCheck, followed: boolean) => {
     if (!userId) return;
@@ -328,6 +409,34 @@ export default function DisciplinePage() {
           });
 
         if (error) throw error;
+      }
+
+      // Calculate if this completes the daily check-in
+      const updatedChecks = { ...todayChecks };
+      updatedChecks[rule.id] = { ...updatedChecks[rule.id], followed } as UserRuleCheck;
+
+      const allRulesChecked = rules.every((r) => updatedChecks[r.id]);
+      const allRulesFollowed = rules.every((r) => updatedChecks[r.id]?.followed);
+
+      // Award XP if this completes the daily check-in (and not already claimed)
+      if (allRulesChecked && !todayXPClaimed) {
+        const todayClaimKey = `discipline_xp_claimed_${today}`;
+
+        // Award daily check-in XP
+        let xpToAward = XP_REWARDS.dailyCheckIn;
+        let reason = "Daily discipline check-in";
+
+        // Bonus XP for perfect day (all rules followed)
+        if (allRulesFollowed) {
+          xpToAward += XP_REWARDS.perfectDay;
+          reason = "Perfect discipline day";
+        }
+
+        await awardXP(xpToAward, reason);
+
+        // Mark as claimed for today
+        localStorage.setItem(todayClaimKey, "true");
+        setTodayXPClaimed(true);
       }
 
       // Refresh data
@@ -527,10 +636,16 @@ export default function DisciplinePage() {
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
             <div className="flex items-center justify-center gap-1 mb-1">
-              <Zap className="h-5 w-5 text-yellow-500" />
+              {currentLevel ? (
+                <span className="text-lg">{currentLevel.badge}</span>
+              ) : (
+                <Zap className="h-5 w-5 text-yellow-500" />
+              )}
             </div>
-            <div className="text-2xl font-bold">{totalXpEarned}</div>
-            <div className="text-xs text-muted-foreground">XP Earned</div>
+            <div className="text-2xl font-bold">{formatXP(userTotalXP)}</div>
+            <div className="text-xs text-muted-foreground">
+              {currentLevel ? `Lvl ${currentLevel.level}` : "Total XP"}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -832,32 +947,62 @@ export default function DisciplinePage() {
         </CardContent>
       </Card>
 
-      {/* XP Rewards Info */}
+      {/* Level Progress & XP */}
       <Card className="bg-gradient-to-br from-yellow-500/10 to-orange-500/10 border-yellow-500/30">
         <CardHeader className="pb-2">
-          <CardTitle className="text-lg flex items-center gap-2">
-            <Zap className="h-5 w-5 text-yellow-500" />
-            XP Rewards
-          </CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Zap className="h-5 w-5 text-yellow-500" />
+              Your Progress
+            </CardTitle>
+            {currentLevel && (
+              <Badge className={cn("text-sm", currentLevel.color, "bg-background/50")}>
+                {currentLevel.badge} {currentLevel.title}
+              </Badge>
+            )}
+          </div>
         </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-sm">
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="font-bold text-yellow-500">+{XP_REWARDS.dailyCheckIn}</div>
-              <div className="text-xs text-muted-foreground">Daily check-in</div>
+        <CardContent className="space-y-4">
+          {/* Level Progress Bar */}
+          {currentLevel && (
+            <div>
+              <div className="flex justify-between text-sm mb-2">
+                <span className="font-medium">Level {currentLevel.level}</span>
+                <span className="text-muted-foreground">
+                  {formatXP(userTotalXP)} XP
+                  {getNextLevel(currentLevel.level) && (
+                    <> / {formatXP(getNextLevel(currentLevel.level)!.minXP)} XP</>
+                  )}
+                </span>
+              </div>
+              <Progress value={getLevelProgress(userTotalXP)} className="h-3" />
+              {getNextLevel(currentLevel.level) && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  {formatXP(getXPToNextLevel(userTotalXP))} XP to reach {getNextLevel(currentLevel.level)!.title}
+                </p>
+              )}
             </div>
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="font-bold text-yellow-500">+{XP_REWARDS.perfectDay}</div>
-              <div className="text-xs text-muted-foreground">Perfect day</div>
+          )}
+
+          {/* XP Rewards Info */}
+          <div className="pt-2 border-t">
+            <p className="text-sm font-medium mb-2">Earn XP from discipline:</p>
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+                <span className="text-muted-foreground">Daily check-in</span>
+                <span className="font-bold text-yellow-500">+{XP_REWARDS.dailyCheckIn}</span>
+              </div>
+              <div className="flex items-center justify-between p-2 rounded-lg bg-background/50">
+                <span className="text-muted-foreground">Perfect day bonus</span>
+                <span className="font-bold text-yellow-500">+{XP_REWARDS.perfectDay}</span>
+              </div>
             </div>
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="font-bold text-yellow-500">+{XP_REWARDS.weekStreak}</div>
-              <div className="text-xs text-muted-foreground">7-day streak</div>
-            </div>
-            <div className="text-center p-2 rounded-lg bg-background/50">
-              <div className="font-bold text-yellow-500">+{XP_REWARDS.monthStreak}</div>
-              <div className="text-xs text-muted-foreground">30-day streak</div>
-            </div>
+            {todayXPClaimed && (
+              <p className="text-xs text-green-500 mt-2 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" />
+                Today's discipline XP claimed!
+              </p>
+            )}
           </div>
         </CardContent>
       </Card>
