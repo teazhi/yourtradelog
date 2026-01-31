@@ -298,3 +298,54 @@ div[class*="select-content"] {
 .animate-glow-pulse {
   animation: glow-pulse 1.5s ease-in-out infinite;
 }
+
+/* ============================================================================
+   Recharts / Chart Styling for Dark Mode
+   ============================================================================ */
+
+/* Ensure all chart text is visible in dark mode */
+.dark .recharts-cartesian-axis-tick-value,
+.dark .recharts-label,
+.dark .recharts-legend-item-text,
+.dark .recharts-text {
+  fill: var(--muted-foreground) !important;
+}
+
+/* Recharts tooltip styling for dark mode */
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: var(--popover) !important;
+  border-color: var(--border) !important;
+}
+
+.dark .recharts-tooltip-label {
+  color: var(--popover-foreground) !important;
+}
+
+.dark .recharts-tooltip-item {
+  color: var(--popover-foreground) !important;
+}
+
+.dark .recharts-tooltip-item-name,
+.dark .recharts-tooltip-item-value {
+  color: var(--popover-foreground) !important;
+}
+
+/* Grid lines in dark mode */
+.dark .recharts-cartesian-grid line {
+  stroke: var(--border) !important;
+}
+
+/* Reference lines */
+.dark .recharts-reference-line line {
+  stroke: var(--border) !important;
+}
+
+/* Axis lines */
+.dark .recharts-cartesian-axis-line {
+  stroke: var(--border) !important;
+}
+
+/* Legend text */
+.dark .recharts-legend-wrapper text {
+  fill: var(--foreground) !important;
+}

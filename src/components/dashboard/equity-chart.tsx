@@ -135,8 +135,7 @@ export function EquityChart({ data = [] }: EquityChartProps) {
                 }}
                 tickLine={false}
                 axisLine={false}
-                tick={{ fontSize: 10 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 10, fill: "#9ca3af" }}
                 tickMargin={4}
                 interval="preserveStartEnd"
               />
@@ -144,8 +143,7 @@ export function EquityChart({ data = [] }: EquityChartProps) {
                 tickFormatter={(value) => `$${value >= 1000 ? `${(value / 1000).toFixed(0)}k` : Math.round(value)}`}
                 tickLine={false}
                 axisLine={false}
-                tick={{ fontSize: 10 }}
-                className="fill-muted-foreground"
+                tick={{ fontSize: 10, fill: "#9ca3af" }}
                 width={45}
                 domain={[yMin, yMax]}
                 tickCount={4}

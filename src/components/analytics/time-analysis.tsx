@@ -319,7 +319,7 @@ export function TimeAnalysis({
                     dataKey="day_name"
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                     tickMargin={8}
                     tickFormatter={(value) => value.slice(0, 3)}
                   />
@@ -327,7 +327,7 @@ export function TimeAnalysis({
                     tickFormatter={(value) => `$${value >= 0 ? "" : "-"}${Math.abs(value / 1000).toFixed(1)}k`}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                     width={55}
                   />
                   <Tooltip content={<DayTooltip />} />
@@ -363,7 +363,7 @@ export function TimeAnalysis({
                     dataKey="hour"
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                     tickMargin={8}
                     tickFormatter={(hour) => `${hour > 12 ? hour - 12 : hour}${hour >= 12 ? "p" : "a"}`}
                   />
@@ -371,7 +371,7 @@ export function TimeAnalysis({
                     tickFormatter={(value) => `$${value >= 0 ? "" : "-"}${Math.abs(value / 1000).toFixed(1)}k`}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                     width={55}
                   />
                   <Tooltip content={<HourTooltip />} />
@@ -408,14 +408,14 @@ export function TimeAnalysis({
                     dataKey="sessionLabel"
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                     tickMargin={8}
                   />
                   <YAxis
                     tickFormatter={(value) => `$${value >= 0 ? "" : "-"}${Math.abs(value / 1000).toFixed(1)}k`}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                     width={55}
                   />
                   <Tooltip content={<SessionTooltip />} />

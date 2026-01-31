@@ -215,14 +215,14 @@ export function EmotionAnalysis({ data }: EmotionAnalysisProps) {
                     }}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                   />
                   <YAxis
                     type="category"
                     dataKey="emotion"
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                     tickFormatter={(value) => formatEmotionLabel(value)}
                     width={75}
                   />

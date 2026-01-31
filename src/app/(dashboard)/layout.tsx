@@ -22,6 +22,7 @@ import {
   LogOut,
   ChevronDown,
   UserCircle,
+  Shield,
 } from "lucide-react";
 import { Button, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -41,6 +42,7 @@ const navigationItems = [
 ];
 
 const progressItems = [
+  { title: "Discipline", url: "/discipline", icon: Shield },
   { title: "Achievements", url: "/achievements", icon: Trophy },
   { title: "Challenges", url: "/challenges", icon: Target },
   { title: "Partner", url: "/partner", icon: Handshake },

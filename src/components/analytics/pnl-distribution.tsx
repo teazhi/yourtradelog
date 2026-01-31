@@ -118,13 +118,13 @@ export function PnLDistribution({ data = mockPnlDistribution }: PnLDistributionP
                 dataKey="shortLabel"
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "#9ca3af" }}
                 tickMargin={8}
               />
               <YAxis
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "#9ca3af" }}
                 width={35}
               />
               <ReferenceLine

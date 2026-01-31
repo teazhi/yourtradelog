@@ -167,7 +167,7 @@ export function DrawdownChart({
                 dataKey="date"
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "#9ca3af" }}
                 tickMargin={8}
                 tickFormatter={(date) => {
                   const d = new Date(date);
@@ -178,7 +178,7 @@ export function DrawdownChart({
                 tickFormatter={(value) => `-${value.toFixed(0)}%`}
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "#9ca3af" }}
                 width={50}
                 domain={[0, Math.max(maxDrawdown * 1.2, maxDrawdownLimit)]}
                 reversed

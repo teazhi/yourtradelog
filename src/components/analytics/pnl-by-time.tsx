@@ -140,7 +140,7 @@ export function PnLByTime({ data }: PnLByTimeProps) {
                 dataKey="hour"
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "#9ca3af" }}
                 tickMargin={8}
                 tickFormatter={(hour) => {
                   const h = parseInt(hour);
@@ -158,7 +158,7 @@ export function PnLByTime({ data }: PnLByTimeProps) {
                 }}
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "#9ca3af" }}
                 width={55}
               />
               <Tooltip content={<CustomTooltip />} />

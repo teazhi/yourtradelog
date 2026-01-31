@@ -534,6 +534,80 @@ export interface ImportHistoryUpdate {
 }
 
 // ============================================================================
+// Personal Trading Rules Types
+// ============================================================================
+
+export interface UserRule {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  category: 'risk' | 'discipline' | 'process' | 'mindset' | 'other';
+  is_active: boolean;
+  display_order: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface UserRuleInsert {
+  id?: string;
+  user_id: string;
+  title: string;
+  description?: string | null;
+  category?: 'risk' | 'discipline' | 'process' | 'mindset' | 'other';
+  is_active?: boolean;
+  display_order?: number;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface UserRuleUpdate {
+  id?: string;
+  user_id?: string;
+  title?: string;
+  description?: string | null;
+  category?: 'risk' | 'discipline' | 'process' | 'mindset' | 'other';
+  is_active?: boolean;
+  display_order?: number;
+  updated_at?: string;
+}
+
+export interface UserRuleCheck {
+  id: string;
+  user_id: string;
+  rule_id: string;
+  check_date: string;
+  followed: boolean;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface UserRuleCheckInsert {
+  id?: string;
+  user_id: string;
+  rule_id: string;
+  check_date: string;
+  followed: boolean;
+  notes?: string | null;
+  created_at?: string;
+}
+
+export interface UserRuleCheckUpdate {
+  id?: string;
+  followed?: boolean;
+  notes?: string | null;
+}
+
+// Extended type for rule with check status
+export interface UserRuleWithCheck extends UserRule {
+  todayCheck?: UserRuleCheck;
+  currentStreak: number;
+  longestStreak: number;
+  totalFollowed: number;
+  totalChecks: number;
+}
+
+// ============================================================================
 // Database Schema Type (for Supabase client)
 // ============================================================================
 
@@ -641,6 +715,19 @@ export interface Database {
         Row: PartnerNotificationRow;
         Insert: PartnerNotificationInsertDb;
         Update: PartnerNotificationUpdateDb;
+        Relationships: [];
+      };
+      // Personal Trading Rules Tables
+      user_rules: {
+        Row: UserRule;
+        Insert: UserRuleInsert;
+        Update: UserRuleUpdate;
+        Relationships: [];
+      };
+      user_rule_checks: {
+        Row: UserRuleCheck;
+        Insert: UserRuleCheckInsert;
+        Update: UserRuleCheckUpdate;
         Relationships: [];
       };
     };

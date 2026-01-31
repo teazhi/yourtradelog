@@ -138,7 +138,7 @@ export function EquityCurve({ data = [] }: EquityCurveProps) {
                 }}
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "#9ca3af" }}
                 tickMargin={8}
               />
               <YAxis
@@ -147,7 +147,7 @@ export function EquityCurve({ data = [] }: EquityCurveProps) {
                 }
                 tickLine={false}
                 axisLine={false}
-                className="text-xs fill-muted-foreground"
+                tick={{ fontSize: 12, fill: "#9ca3af" }}
                 width={50}
               />
               <Tooltip content={<CustomTooltip />} />

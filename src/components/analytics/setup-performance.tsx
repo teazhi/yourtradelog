@@ -197,14 +197,14 @@ export function SetupPerformance({ data }: SetupPerformanceProps) {
                     }}
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                   />
                   <YAxis
                     type="category"
                     dataKey="name"
                     tickLine={false}
                     axisLine={false}
-                    className="text-xs fill-muted-foreground"
+                    tick={{ fontSize: 12, fill: "#9ca3af" }}
                     width={80}
                   />
                   <Tooltip content={<ChartTooltip />} />
@@ -239,14 +239,14 @@ export function SetupPerformance({ data }: SetupPerformanceProps) {
                       dataKey="name"
                       tickLine={false}
                       axisLine={false}
-                      className="text-xs fill-muted-foreground"
+                      tick={{ fontSize: 12, fill: "#9ca3af" }}
                       tickMargin={8}
                     />
                     <YAxis
                       tickFormatter={(value) => `${value}%`}
                       tickLine={false}
                       axisLine={false}
-                      className="text-xs fill-muted-foreground"
+                      tick={{ fontSize: 12, fill: "#9ca3af" }}
                       width={40}
                       domain={[0, 100]}
                     />

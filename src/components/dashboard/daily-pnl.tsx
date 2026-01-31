@@ -110,16 +110,18 @@ export function DailyPnL({ data = [] }: DailyPnLProps) {
                 }}
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                tick={{ fill: "#9ca3af", fontSize: 10 }}
                 interval="preserveStartEnd"
+                className="text-muted-foreground"
               />
               <YAxis
                 tickFormatter={(value) => `$${value >= 1000 ? `${(value/1000).toFixed(0)}k` : value}`}
                 axisLine={false}
                 tickLine={false}
-                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }}
+                tick={{ fill: "#9ca3af", fontSize: 10 }}
                 width={45}
                 tickCount={5}
+                className="text-muted-foreground"
               />
               <Tooltip
                 formatter={(value) => [formatCurrency(value as number), "P&L"]}
