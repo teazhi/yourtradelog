@@ -30,6 +30,7 @@ import {
   Flame,
   BookOpen,
   Upload,
+  Settings,
 } from "lucide-react";
 import {
   Button,
@@ -169,7 +170,7 @@ function StarRating({
   );
 }
 
-// Tag selector component
+// Tag selector component with custom options support
 function TagSelector({
   label,
   options,
@@ -178,6 +179,8 @@ function TagSelector({
   onChangeComplete,
   icon: Icon,
   variant = "default",
+  customOptions = [],
+  onCustomOptionsChange,
 }: {
   label: string;
   options: string[];
@@ -186,7 +189,14 @@ function TagSelector({
   onChangeComplete?: () => void;
   icon?: React.ElementType;
   variant?: "default" | "success" | "destructive";
+  customOptions?: string[];
+  onCustomOptionsChange?: (options: string[]) => void;
 }) {
+  const [isEditMode, setIsEditMode] = React.useState(false);
+  const [newOption, setNewOption] = React.useState("");
+
+  const allOptions = [...options, ...customOptions];
+
   const toggleTag = (tag: string) => {
     if (selected.includes(tag)) {
       onChange(selected.filter((t) => t !== tag));
@@ -196,6 +206,33 @@ function TagSelector({
     // Trigger save after tag selection (use direct callback, not auto-save)
     if (onChangeComplete) {
       setTimeout(onChangeComplete, 150);
+    }
+  };
+
+  const addCustomOption = () => {
+    const trimmed = newOption.trim();
+    if (trimmed && !allOptions.includes(trimmed) && onCustomOptionsChange) {
+      const updated = [...customOptions, trimmed];
+      onCustomOptionsChange(updated);
+      // Also select the newly added option
+      onChange([...selected, trimmed]);
+      setNewOption("");
+      if (onChangeComplete) {
+        setTimeout(onChangeComplete, 150);
+      }
+    }
+  };
+
+  const removeCustomOption = (option: string) => {
+    if (onCustomOptionsChange) {
+      onCustomOptionsChange(customOptions.filter((o) => o !== option));
+      // Also remove from selected if it was selected
+      if (selected.includes(option)) {
+        onChange(selected.filter((s) => s !== option));
+      }
+      if (onChangeComplete) {
+        setTimeout(onChangeComplete, 150);
+      }
     }
   };
 
@@ -211,28 +248,109 @@ function TagSelector({
         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
         <span className="text-sm font-medium">{label}</span>
         {selected.length > 0 && (
-          <Badge variant="secondary" className="ml-auto">
+          <Badge variant="secondary" className="ml-1">
             {selected.length} selected
           </Badge>
         )}
+        {onCustomOptionsChange && (
+          <button
+            type="button"
+            onClick={() => setIsEditMode(!isEditMode)}
+            className={cn(
+              "ml-auto p-1.5 rounded-md transition-colors",
+              isEditMode
+                ? "bg-primary/10 text-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted"
+            )}
+            title={isEditMode ? "Done editing" : "Edit options"}
+          >
+            <Settings className="h-4 w-4" />
+          </button>
+        )}
       </div>
+
+      {/* Add new option input */}
+      {isEditMode && onCustomOptionsChange && (
+        <div className="flex gap-2">
+          <Input
+            placeholder="Add custom option..."
+            value={newOption}
+            onChange={(e) => setNewOption(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addCustomOption();
+              }
+            }}
+            className="text-sm h-8"
+          />
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={addCustomOption}
+            disabled={!newOption.trim() || allOptions.includes(newOption.trim())}
+            className="h-8"
+          >
+            <Plus className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
+
       <div className="flex flex-wrap gap-2">
+        {/* Preset options */}
         {options.map((option) => (
           <button
             key={option}
             type="button"
-            onClick={() => toggleTag(option)}
+            onClick={() => !isEditMode && toggleTag(option)}
             className={cn(
               "px-3 py-1.5 text-xs rounded-full border transition-all",
               selected.includes(option)
                 ? variantClasses[variant]
-                : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground"
+                : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+              isEditMode && "opacity-60 cursor-default"
             )}
           >
             {option}
           </button>
         ))}
+
+        {/* Custom options - show delete button in edit mode */}
+        {customOptions.map((option) => (
+          <div key={option} className="relative group">
+            <button
+              type="button"
+              onClick={() => !isEditMode && toggleTag(option)}
+              className={cn(
+                "px-3 py-1.5 text-xs rounded-full border transition-all",
+                selected.includes(option)
+                  ? variantClasses[variant]
+                  : "border-border text-muted-foreground hover:border-primary/50 hover:text-foreground",
+                isEditMode && "pr-7"
+              )}
+            >
+              {option}
+            </button>
+            {isEditMode && (
+              <button
+                type="button"
+                onClick={() => removeCustomOption(option)}
+                className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full bg-red-500/20 text-red-500 hover:bg-red-500/30"
+                title="Remove custom option"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
+        ))}
       </div>
+
+      {isEditMode && customOptions.length > 0 && (
+        <p className="text-xs text-muted-foreground">
+          Click the X on custom options to remove them. Preset options cannot be removed.
+        </p>
+      )}
     </div>
   );
 }
@@ -329,6 +447,45 @@ function JournalPageContent() {
   const [nextWeekGoals, setNextWeekGoals] = React.useState<string[]>([]);
   const [newWeeklyGoal, setNewWeeklyGoal] = React.useState("");
   const [weeklyRating, setWeeklyRating] = React.useState<number | null>(null);
+
+  // Custom options for "What Went Well" and "Mistakes Made"
+  const [customWhatWentWell, setCustomWhatWentWell] = React.useState<string[]>([]);
+  const [customMistakes, setCustomMistakes] = React.useState<string[]>([]);
+
+  // Load custom options from localStorage on mount
+  React.useEffect(() => {
+    try {
+      const savedWhatWentWell = localStorage.getItem("journal_custom_what_went_well");
+      const savedMistakes = localStorage.getItem("journal_custom_mistakes");
+      if (savedWhatWentWell) {
+        setCustomWhatWentWell(JSON.parse(savedWhatWentWell));
+      }
+      if (savedMistakes) {
+        setCustomMistakes(JSON.parse(savedMistakes));
+      }
+    } catch (e) {
+      console.error("Error loading custom options from localStorage:", e);
+    }
+  }, []);
+
+  // Save custom options to localStorage when they change
+  const handleCustomWhatWentWellChange = React.useCallback((options: string[]) => {
+    setCustomWhatWentWell(options);
+    try {
+      localStorage.setItem("journal_custom_what_went_well", JSON.stringify(options));
+    } catch (e) {
+      console.error("Error saving custom options to localStorage:", e);
+    }
+  }, []);
+
+  const handleCustomMistakesChange = React.useCallback((options: string[]) => {
+    setCustomMistakes(options);
+    try {
+      localStorage.setItem("journal_custom_mistakes", JSON.stringify(options));
+    } catch (e) {
+      console.error("Error saving custom options to localStorage:", e);
+    }
+  }, []);
 
   // Format date for database query (YYYY-MM-DD)
   const dateKey = format(selectedDate, "yyyy-MM-dd");
@@ -1485,6 +1642,8 @@ function JournalPageContent() {
                   onChangeComplete={() => handleSave()}
                   icon={CheckCircle2}
                   variant="success"
+                  customOptions={customWhatWentWell}
+                  onCustomOptionsChange={handleCustomWhatWentWellChange}
                 />
 
                 {/* Mistakes Made */}
@@ -1496,6 +1655,8 @@ function JournalPageContent() {
                   onChangeComplete={() => handleSave()}
                   icon={AlertTriangle}
                   variant="destructive"
+                  customOptions={customMistakes}
+                  onCustomOptionsChange={handleCustomMistakesChange}
                 />
 
                 {/* Post-Market Notes */}

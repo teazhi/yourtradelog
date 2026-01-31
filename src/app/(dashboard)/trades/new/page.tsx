@@ -90,6 +90,28 @@ export default function NewTradePage() {
         return;
       }
 
+      // Validate required fields
+      if (!data.symbol || data.symbol.trim() === "") {
+        toast.error("Symbol is required");
+        setIsSaving(false);
+        return;
+      }
+      if (!data.entry_price || data.entry_price <= 0) {
+        toast.error("Entry price must be greater than 0");
+        setIsSaving(false);
+        return;
+      }
+      if (!data.entry_contracts || data.entry_contracts <= 0) {
+        toast.error("Number of contracts must be at least 1");
+        setIsSaving(false);
+        return;
+      }
+      if (!selectedAccountId) {
+        toast.error("Please select an account");
+        setIsSaving(false);
+        return;
+      }
+
       // Combine date and time for entry
       let entryDateTime = new Date(data.entry_date);
       if (data.entry_time) {
@@ -166,13 +188,15 @@ export default function NewTradePage() {
         import_source: "manual",
       };
 
+      console.log("Attempting to save trade with data:", tradeData);
+
       const { error } = await (supabase
         .from("trades") as any)
         .insert(tradeData);
 
       if (error) {
         console.error("Error saving trade:", error);
-        toast.error("Failed to save trade");
+        toast.error(`Failed to save trade: ${error.message || error.code || 'Unknown error'}`);
         return;
       }
 
@@ -180,7 +204,8 @@ export default function NewTradePage() {
       router.push("/trades");
     } catch (err) {
       console.error("Exception saving trade:", err);
-      toast.error("Failed to save trade");
+      const errorMessage = err instanceof Error ? err.message : 'Unknown error';
+      toast.error(`Failed to save trade: ${errorMessage}`);
     } finally {
       setIsSaving(false);
     }
