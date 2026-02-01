@@ -5,7 +5,6 @@ import { format } from "date-fns";
 import {
   Shield,
   Users,
-  TrendingUp,
   Zap,
   Activity,
   BarChart3,
@@ -13,10 +12,6 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
-  Mail,
-  Clock,
-  Target,
-  Calendar,
   AlertCircle,
 } from "lucide-react";
 import {
@@ -59,7 +54,6 @@ export default function AdminPage() {
   const [sortField, setSortField] = React.useState<SortField>("total_xp");
   const [sortAsc, setSortAsc] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [debugInfo, setDebugInfo] = React.useState<string>("");
 
   // Summary stats
   const [totalUsers, setTotalUsers] = React.useState(0);
@@ -117,19 +111,11 @@ export default function AdminPage() {
       });
 
       // Try to fetch ALL trades (requires admin RLS policy)
-      const { data: adminTrades, error: tradesError } = await (supabase
+      const { data: adminTrades } = await (supabase
         .from("trades") as any)
-        .select("pnl, user_id, entry_date");
+        .select("net_pnl, user_id, entry_date");
 
-      const debugMsg = `Trades query: ${adminTrades?.length || 0} trades found. Error: ${tradesError?.message || 'none'}. Profiles: ${profiles?.length || 0}`;
-      console.log("Admin trades query result:", {
-        tradesCount: adminTrades?.length || 0,
-        error: tradesError,
-        sampleTrade: adminTrades?.[0]
-      });
-      setDebugInfo(debugMsg);
-
-      // If we got trades, try to aggregate by user
+      // If we got trades, aggregate by user
       if (adminTrades && adminTrades.length > 0) {
         const tradesByUser: Record<string, { count: number; pnl: number; wins: number; lastDate: string | null }> = {};
 
@@ -138,12 +124,13 @@ export default function AdminPage() {
             tradesByUser[trade.user_id] = { count: 0, pnl: 0, wins: 0, lastDate: null };
           }
           tradesByUser[trade.user_id].count++;
-          tradesByUser[trade.user_id].pnl += trade.pnl || 0;
-          if ((trade.pnl || 0) > 0) {
+          tradesByUser[trade.user_id].pnl += trade.net_pnl || 0;
+          if ((trade.net_pnl || 0) > 0) {
             tradesByUser[trade.user_id].wins++;
           }
-          if (!tradesByUser[trade.user_id].lastDate || trade.entry_date > tradesByUser[trade.user_id].lastDate) {
-            tradesByUser[trade.user_id].lastDate = trade.entry_date;
+          const userTrades = tradesByUser[trade.user_id];
+          if (!userTrades.lastDate || trade.entry_date > userTrades.lastDate) {
+            userTrades.lastDate = trade.entry_date;
           }
         });
 
@@ -297,13 +284,6 @@ export default function AdminPage() {
           </CardContent>
         </Card>
       )}
-
-      {/* Debug Info */}
-      <Card className="border-blue-500/50 bg-blue-500/10">
-        <CardContent className="pt-4 text-sm text-blue-600 dark:text-blue-400">
-          <strong>Debug:</strong> {debugInfo || "Loading..."}
-        </CardContent>
-      </Card>
 
       {/* Summary Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
