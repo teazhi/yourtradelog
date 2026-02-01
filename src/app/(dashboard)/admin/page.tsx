@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format } from "date-fns";
+import { format, differenceInDays } from "date-fns";
 import {
   Shield,
   Users,
@@ -13,6 +13,9 @@ import {
   ArrowUp,
   ArrowDown,
   AlertCircle,
+  UserCheck,
+  UserX,
+  Clock,
 } from "lucide-react";
 import {
   Button,
@@ -31,6 +34,8 @@ import { getLevelFromXP, formatXP } from "@/lib/leveling";
 // Admin email - only this user can access the admin panel
 const ADMIN_EMAIL = "zhuot03@gmail.com";
 
+type UserStatus = "active" | "inactive" | "churned" | "new";
+
 interface UserStats {
   id: string;
   email: string;
@@ -40,26 +45,69 @@ interface UserStats {
   trader_title: string;
   created_at: string;
   tradeCount: number;
-  totalPnL: number;
-  winRate: number;
   lastActive: string | null;
+  daysSinceActive: number | null;
+  status: UserStatus;
 }
 
-type SortField = "email" | "total_xp" | "tradeCount" | "totalPnL" | "winRate" | "created_at";
+type SortField = "email" | "total_xp" | "tradeCount" | "lastActive" | "status" | "created_at";
+
+// Get user status based on activity
+function getUserStatus(lastActive: string | null, createdAt: string): { status: UserStatus; daysSinceActive: number | null } {
+  const now = new Date();
+  const created = new Date(createdAt);
+  const daysSinceCreated = differenceInDays(now, created);
+
+  // New user (joined within last 7 days and no trades yet)
+  if (!lastActive && daysSinceCreated <= 7) {
+    return { status: "new", daysSinceActive: null };
+  }
+
+  if (!lastActive) {
+    // Never traded - churned if account is old
+    return { status: "churned", daysSinceActive: null };
+  }
+
+  const lastActiveDate = new Date(lastActive);
+  const daysSinceActive = differenceInDays(now, lastActiveDate);
+
+  if (daysSinceActive <= 7) {
+    return { status: "active", daysSinceActive };
+  } else if (daysSinceActive <= 30) {
+    return { status: "inactive", daysSinceActive };
+  } else {
+    return { status: "churned", daysSinceActive };
+  }
+}
+
+function getStatusBadge(status: UserStatus) {
+  switch (status) {
+    case "active":
+      return <Badge className="bg-green-500/20 text-green-600 border-green-500/30">Active</Badge>;
+    case "inactive":
+      return <Badge className="bg-yellow-500/20 text-yellow-600 border-yellow-500/30">Inactive</Badge>;
+    case "churned":
+      return <Badge className="bg-red-500/20 text-red-600 border-red-500/30">Churned</Badge>;
+    case "new":
+      return <Badge className="bg-blue-500/20 text-blue-600 border-blue-500/30">New</Badge>;
+  }
+}
 
 export default function AdminPage() {
   const [isLoading, setIsLoading] = React.useState(true);
   const [isAuthorized, setIsAuthorized] = React.useState(false);
   const [users, setUsers] = React.useState<UserStats[]>([]);
-  const [sortField, setSortField] = React.useState<SortField>("total_xp");
+  const [sortField, setSortField] = React.useState<SortField>("lastActive");
   const [sortAsc, setSortAsc] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
 
   // Summary stats
   const [totalUsers, setTotalUsers] = React.useState(0);
   const [totalTrades, setTotalTrades] = React.useState(0);
-  const [totalXPAwarded, setTotalXPAwarded] = React.useState(0);
-  const [activeToday, setActiveToday] = React.useState(0);
+  const [activeUsers, setActiveUsers] = React.useState(0);
+  const [inactiveUsers, setInactiveUsers] = React.useState(0);
+  const [churnedUsers, setChurnedUsers] = React.useState(0);
+  const [newUsers, setNewUsers] = React.useState(0);
 
   const fetchData = React.useCallback(async () => {
     setError(null);
@@ -88,12 +136,9 @@ export default function AdminPage() {
         return;
       }
 
-      // Note: Due to RLS, we can only see our own trades
-      // For a proper admin panel, you'd need to create a database function with SECURITY DEFINER
-      // or add an admin RLS policy
-
       // For now, we'll show profile data which should be accessible
       const userStats: UserStats[] = (profiles || []).map((profile: any) => {
+        const { status, daysSinceActive } = getUserStatus(null, profile.created_at);
         return {
           id: profile.id,
           email: profile.email || "No email",
@@ -102,11 +147,10 @@ export default function AdminPage() {
           current_level: profile.current_level || 1,
           trader_title: profile.trader_title || "Rookie",
           created_at: profile.created_at,
-          // These will be 0 due to RLS - need admin function to get real data
           tradeCount: 0,
-          totalPnL: 0,
-          winRate: 0,
           lastActive: null,
+          daysSinceActive,
+          status,
         };
       });
 
@@ -117,17 +161,13 @@ export default function AdminPage() {
 
       // If we got trades, aggregate by user
       if (adminTrades && adminTrades.length > 0) {
-        const tradesByUser: Record<string, { count: number; pnl: number; wins: number; lastDate: string | null }> = {};
+        const tradesByUser: Record<string, { count: number; lastDate: string | null }> = {};
 
         adminTrades.forEach((trade: any) => {
           if (!tradesByUser[trade.user_id]) {
-            tradesByUser[trade.user_id] = { count: 0, pnl: 0, wins: 0, lastDate: null };
+            tradesByUser[trade.user_id] = { count: 0, lastDate: null };
           }
           tradesByUser[trade.user_id].count++;
-          tradesByUser[trade.user_id].pnl += trade.net_pnl || 0;
-          if ((trade.net_pnl || 0) > 0) {
-            tradesByUser[trade.user_id].wins++;
-          }
           const userTrades = tradesByUser[trade.user_id];
           if (!userTrades.lastDate || trade.entry_date > userTrades.lastDate) {
             userTrades.lastDate = trade.entry_date;
@@ -139,9 +179,10 @@ export default function AdminPage() {
           const trades = tradesByUser[user.id];
           if (trades) {
             user.tradeCount = trades.count;
-            user.totalPnL = trades.pnl;
-            user.winRate = trades.count > 0 ? (trades.wins / trades.count) * 100 : 0;
             user.lastActive = trades.lastDate;
+            const { status, daysSinceActive } = getUserStatus(trades.lastDate, user.created_at);
+            user.status = status;
+            user.daysSinceActive = daysSinceActive;
           }
         });
       }
@@ -151,14 +192,17 @@ export default function AdminPage() {
       // Calculate summary stats
       setTotalUsers(userStats.length);
       setTotalTrades(userStats.reduce((sum, u) => sum + u.tradeCount, 0));
-      setTotalXPAwarded(userStats.reduce((sum, u) => sum + u.total_xp, 0));
 
-      // Active today
-      const today = format(new Date(), "yyyy-MM-dd");
-      const activeCount = userStats.filter(u =>
-        u.lastActive && u.lastActive.startsWith(today)
-      ).length;
-      setActiveToday(activeCount);
+      // Count by status
+      const statusCounts = userStats.reduce((acc, u) => {
+        acc[u.status] = (acc[u.status] || 0) + 1;
+        return acc;
+      }, {} as Record<UserStatus, number>);
+
+      setActiveUsers(statusCounts.active || 0);
+      setInactiveUsers(statusCounts.inactive || 0);
+      setChurnedUsers(statusCounts.churned || 0);
+      setNewUsers(statusCounts.new || 0);
 
     } catch (err: any) {
       console.error("Error fetching admin data:", err);
@@ -174,6 +218,13 @@ export default function AdminPage() {
 
   // Sort users
   const sortedUsers = React.useMemo(() => {
+    const statusOrder: Record<UserStatus, number> = {
+      active: 0,
+      new: 1,
+      inactive: 2,
+      churned: 3,
+    };
+
     const sorted = [...users].sort((a, b) => {
       let aVal: any;
       let bVal: any;
@@ -191,13 +242,14 @@ export default function AdminPage() {
           aVal = a.tradeCount;
           bVal = b.tradeCount;
           break;
-        case "totalPnL":
-          aVal = a.totalPnL;
-          bVal = b.totalPnL;
+        case "lastActive":
+          // Sort by days since active (null = very old)
+          aVal = a.daysSinceActive ?? 9999;
+          bVal = b.daysSinceActive ?? 9999;
           break;
-        case "winRate":
-          aVal = a.winRate;
-          bVal = b.winRate;
+        case "status":
+          aVal = statusOrder[a.status];
+          bVal = statusOrder[b.status];
           break;
         case "created_at":
           aVal = new Date(a.created_at).getTime();
@@ -266,7 +318,7 @@ export default function AdminPage() {
             Admin Panel
           </h1>
           <p className="text-muted-foreground">
-            Monitor user activity and platform statistics
+            Monitor user engagement and platform activity
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={fetchData}>
@@ -286,7 +338,7 @@ export default function AdminPage() {
       )}
 
       {/* Summary Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
             <Users className="h-5 w-5 text-blue-500 mx-auto mb-1" />
@@ -297,25 +349,41 @@ export default function AdminPage() {
 
         <Card>
           <CardContent className="pt-4 pb-3 text-center">
-            <BarChart3 className="h-5 w-5 text-green-500 mx-auto mb-1" />
+            <BarChart3 className="h-5 w-5 text-purple-500 mx-auto mb-1" />
             <div className="text-2xl font-bold">{totalTrades.toLocaleString()}</div>
             <div className="text-xs text-muted-foreground">Total Trades</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-green-500/30 bg-green-500/5">
           <CardContent className="pt-4 pb-3 text-center">
-            <Zap className="h-5 w-5 text-yellow-500 mx-auto mb-1" />
-            <div className="text-2xl font-bold">{formatXP(totalXPAwarded)}</div>
-            <div className="text-xs text-muted-foreground">Total XP</div>
+            <UserCheck className="h-5 w-5 text-green-500 mx-auto mb-1" />
+            <div className="text-2xl font-bold text-green-600">{activeUsers}</div>
+            <div className="text-xs text-muted-foreground">Active (7d)</div>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-blue-500/30 bg-blue-500/5">
           <CardContent className="pt-4 pb-3 text-center">
-            <Activity className="h-5 w-5 text-purple-500 mx-auto mb-1" />
-            <div className="text-2xl font-bold">{activeToday}</div>
-            <div className="text-xs text-muted-foreground">Active Today</div>
+            <Zap className="h-5 w-5 text-blue-500 mx-auto mb-1" />
+            <div className="text-2xl font-bold text-blue-600">{newUsers}</div>
+            <div className="text-xs text-muted-foreground">New Users</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <CardContent className="pt-4 pb-3 text-center">
+            <Clock className="h-5 w-5 text-yellow-500 mx-auto mb-1" />
+            <div className="text-2xl font-bold text-yellow-600">{inactiveUsers}</div>
+            <div className="text-xs text-muted-foreground">Inactive (7-30d)</div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-red-500/30 bg-red-500/5">
+          <CardContent className="pt-4 pb-3 text-center">
+            <UserX className="h-5 w-5 text-red-500 mx-auto mb-1" />
+            <div className="text-2xl font-bold text-red-600">{churnedUsers}</div>
+            <div className="text-xs text-muted-foreground">Churned (30d+)</div>
           </CardContent>
         </Card>
       </div>
@@ -328,7 +396,7 @@ export default function AdminPage() {
             All Users ({users.length})
           </CardTitle>
           <CardDescription>
-            Click column headers to sort
+            Click column headers to sort • Active = traded in last 7 days • Inactive = 7-30 days • Churned = 30+ days
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -345,11 +413,19 @@ export default function AdminPage() {
                     </div>
                   </th>
                   <th
+                    className="text-center py-3 px-3 font-medium cursor-pointer hover:bg-muted transition-colors"
+                    onClick={() => handleSort("status")}
+                  >
+                    <div className="flex items-center justify-center">
+                      Status <SortIcon field="status" />
+                    </div>
+                  </th>
+                  <th
                     className="text-right py-3 px-3 font-medium cursor-pointer hover:bg-muted transition-colors"
-                    onClick={() => handleSort("total_xp")}
+                    onClick={() => handleSort("lastActive")}
                   >
                     <div className="flex items-center justify-end">
-                      XP <SortIcon field="total_xp" />
+                      Last Active <SortIcon field="lastActive" />
                     </div>
                   </th>
                   <th
@@ -362,18 +438,10 @@ export default function AdminPage() {
                   </th>
                   <th
                     className="text-right py-3 px-3 font-medium cursor-pointer hover:bg-muted transition-colors"
-                    onClick={() => handleSort("totalPnL")}
+                    onClick={() => handleSort("total_xp")}
                   >
                     <div className="flex items-center justify-end">
-                      P&L <SortIcon field="totalPnL" />
-                    </div>
-                  </th>
-                  <th
-                    className="text-right py-3 px-3 font-medium cursor-pointer hover:bg-muted transition-colors"
-                    onClick={() => handleSort("winRate")}
-                  >
-                    <div className="flex items-center justify-end">
-                      Win % <SortIcon field="winRate" />
+                      XP <SortIcon field="total_xp" />
                     </div>
                   </th>
                   <th
@@ -411,26 +479,35 @@ export default function AdminPage() {
                           </div>
                         </div>
                       </td>
+                      <td className="py-3 px-3 text-center">
+                        {getStatusBadge(user.status)}
+                      </td>
+                      <td className="py-3 px-3 text-right">
+                        {user.lastActive ? (
+                          <div>
+                            <div className="font-medium">
+                              {format(new Date(user.lastActive), "MMM d, yyyy")}
+                            </div>
+                            <div className="text-xs text-muted-foreground">
+                              {user.daysSinceActive === 0
+                                ? "Today"
+                                : user.daysSinceActive === 1
+                                  ? "Yesterday"
+                                  : `${user.daysSinceActive} days ago`}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-muted-foreground">Never</span>
+                        )}
+                      </td>
+                      <td className="py-3 px-3 text-right font-medium">
+                        {user.tradeCount}
+                      </td>
                       <td className="py-3 px-3 text-right">
                         <div className="font-medium">{formatXP(user.total_xp)}</div>
                         <div className="text-xs text-muted-foreground">
                           Lvl {level.level}
                         </div>
-                      </td>
-                      <td className="py-3 px-3 text-right font-medium">
-                        {user.tradeCount}
-                      </td>
-                      <td className={cn(
-                        "py-3 px-3 text-right font-medium",
-                        user.totalPnL > 0 ? "text-green-500" : user.totalPnL < 0 ? "text-red-500" : ""
-                      )}>
-                        ${user.totalPnL.toFixed(2)}
-                      </td>
-                      <td className={cn(
-                        "py-3 px-3 text-right font-medium",
-                        user.winRate >= 50 ? "text-green-500" : user.winRate > 0 ? "text-red-500" : ""
-                      )}>
-                        {user.winRate.toFixed(1)}%
                       </td>
                       <td className="py-3 px-3 text-right text-muted-foreground">
                         {format(new Date(user.created_at), "MMM d, yyyy")}
