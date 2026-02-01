@@ -277,6 +277,36 @@ export default function DashboardLayout({
               );
             })}
           </ul>
+
+          {/* Admin Section - Only visible to admin */}
+          {user?.email === "zhuot03@gmail.com" && (
+            <>
+              {sidebarOpen && (
+                <div className="mt-6 mb-2 px-3">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-red-500">
+                    Admin
+                  </span>
+                </div>
+              )}
+              {!sidebarOpen && <div className="my-4 border-t border-red-500/30" />}
+              <ul className="space-y-1">
+                <li>
+                  <Link
+                    href="/admin"
+                    className={cn(
+                      "flex items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
+                      pathname === "/admin"
+                        ? "bg-red-500 text-white"
+                        : "text-red-500 hover:bg-red-500/10"
+                    )}
+                  >
+                    <Shield className="h-4 w-4 shrink-0" />
+                    {sidebarOpen && <span>Admin Panel</span>}
+                  </Link>
+                </li>
+              </ul>
+            </>
+          )}
         </nav>
 
         {/* Sidebar Footer with Logout */}
