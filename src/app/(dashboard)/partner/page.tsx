@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { format, parseISO, differenceInDays, addDays } from "date-fns";
+import { format, parseISO, differenceInDays, addDays, getDay } from "date-fns";
 import {
   Users,
   UserPlus,
@@ -222,6 +222,27 @@ export default function PartnerPage() {
 
   // Loading states for actions
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+
+  // Trading days configuration (synced with discipline page)
+  const DEFAULT_TRADING_DAYS = [1, 2, 3, 4, 5]; // Mon-Fri
+  const [tradingDays, setTradingDays] = React.useState<number[]>(DEFAULT_TRADING_DAYS);
+  const todayDayOfWeek = getDay(new Date());
+  const isTradingDay = tradingDays.includes(todayDayOfWeek);
+
+  // Load trading days from localStorage (synced with discipline page)
+  React.useEffect(() => {
+    try {
+      const saved = localStorage.getItem("discipline_trading_days");
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          setTradingDays(parsed);
+        }
+      }
+    } catch (e) {
+      console.error("Error loading trading days:", e);
+    }
+  }, []);
 
   // =====================================================
   // HANDLERS
@@ -824,37 +845,55 @@ export default function PartnerPage() {
               {/* Partner's Journal Status */}
               <div className="mt-3 pt-3 border-t border-blue-500/20">
                 <div className="text-xs font-medium text-muted-foreground mb-2">{partnerName}'s Journal Today</div>
-                <div className="flex items-center gap-4">
+                {isTradingDay ? (
+                  <>
+                    <div className="flex items-center gap-4">
+                      <div className="flex items-center gap-1.5">
+                        {todayStatus.partner_pre_market_done ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Sun className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className={cn(
+                          "text-sm",
+                          todayStatus.partner_pre_market_done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                        )}>
+                          Pre-market
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        {todayStatus.partner_post_market_done ? (
+                          <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <Moon className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className={cn(
+                          "text-sm",
+                          todayStatus.partner_post_market_done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                        )}>
+                          Post-market
+                        </span>
+                      </div>
+                    </div>
+                    {!todayStatus.partner_pre_market_done && !todayStatus.partner_post_market_done && (
+                      <div className="text-xs text-muted-foreground mt-2">
+                        {partnerName} hasn't journaled today yet
+                      </div>
+                    )}
+                  </>
+                ) : (
                   <div className="flex items-center gap-1.5">
-                    {todayStatus.partner_pre_market_done ? (
+                    {todayStatus.partner_weekly_review_done ? (
                       <CheckCircle2 className="h-4 w-4 text-green-500" />
                     ) : (
-                      <Sun className="h-4 w-4 text-muted-foreground" />
+                      <Calendar className="h-4 w-4 text-muted-foreground" />
                     )}
                     <span className={cn(
                       "text-sm",
-                      todayStatus.partner_pre_market_done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
+                      todayStatus.partner_weekly_review_done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
                     )}>
-                      Pre-market
+                      {todayStatus.partner_weekly_review_done ? "Weekly review completed" : "Weekly review not done"}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    {todayStatus.partner_post_market_done ? (
-                      <CheckCircle2 className="h-4 w-4 text-green-500" />
-                    ) : (
-                      <Moon className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className={cn(
-                      "text-sm",
-                      todayStatus.partner_post_market_done ? "text-green-600 dark:text-green-400" : "text-muted-foreground"
-                    )}>
-                      Post-market
-                    </span>
-                  </div>
-                </div>
-                {!todayStatus.partner_pre_market_done && !todayStatus.partner_post_market_done && (
-                  <div className="text-xs text-muted-foreground mt-2">
-                    {partnerName} hasn't journaled today yet
                   </div>
                 )}
               </div>
@@ -874,83 +913,116 @@ export default function PartnerPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-base flex items-center gap-2">
                 <Target className="h-4 w-4" />
-                Daily Check-in
+                {isTradingDay ? "Daily Check-in" : "Weekly Review"}
               </CardTitle>
               <CardDescription>
-                Complete your routines to stay disciplined
+                {isTradingDay ? "Complete your routines to stay disciplined" : "Complete your weekly review in the Journal"}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
-              <button
-                onClick={() => {
-                  if (!todayStatus.pre_market_done) {
-                    setCheckInType("pre_market");
-                    setShowCheckInDialog(true);
-                  }
-                }}
-                disabled={todayStatus.pre_market_done}
-                className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-lg border transition-all",
-                  todayStatus.pre_market_done
-                    ? "bg-green-500/10 border-green-500/30 cursor-default"
-                    : "hover:bg-muted cursor-pointer"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center",
-                    todayStatus.pre_market_done ? "bg-green-500" : "bg-muted"
-                  )}>
-                    {todayStatus.pre_market_done ? (
-                      <Check className="h-4 w-4 text-white" />
-                    ) : (
-                      <Sun className="h-4 w-4 text-muted-foreground" />
+              {isTradingDay ? (
+                <>
+                  <button
+                    onClick={() => {
+                      if (!todayStatus.pre_market_done) {
+                        setCheckInType("pre_market");
+                        setShowCheckInDialog(true);
+                      }
+                    }}
+                    disabled={todayStatus.pre_market_done}
+                    className={cn(
+                      "w-full flex items-center justify-between p-3 rounded-lg border transition-all",
+                      todayStatus.pre_market_done
+                        ? "bg-green-500/10 border-green-500/30 cursor-default"
+                        : "hover:bg-muted cursor-pointer"
                     )}
-                  </div>
-                  <div className="text-left">
-                    <span className="font-medium text-sm">Pre-Market</span>
-                    <div className="text-xs text-muted-foreground">
-                      {todayStatus.pre_market_done ? "Completed" : "Prep before you trade"}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center",
+                        todayStatus.pre_market_done ? "bg-green-500" : "bg-muted"
+                      )}>
+                        {todayStatus.pre_market_done ? (
+                          <Check className="h-4 w-4 text-white" />
+                        ) : (
+                          <Sun className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <span className="font-medium text-sm">Pre-Market</span>
+                        <div className="text-xs text-muted-foreground">
+                          {todayStatus.pre_market_done ? "Completed" : "Prep before you trade"}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-                {!todayStatus.pre_market_done && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-              </button>
+                    {!todayStatus.pre_market_done && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  </button>
 
-              <button
-                onClick={() => {
-                  if (!todayStatus.post_market_done) {
-                    openPostMarketCheckIn();
-                  }
-                }}
-                disabled={todayStatus.post_market_done}
-                className={cn(
-                  "w-full flex items-center justify-between p-3 rounded-lg border transition-all",
-                  todayStatus.post_market_done
-                    ? "bg-green-500/10 border-green-500/30 cursor-default"
-                    : "hover:bg-muted cursor-pointer"
-                )}
-              >
-                <div className="flex items-center gap-3">
-                  <div className={cn(
-                    "w-8 h-8 rounded-full flex items-center justify-center",
-                    todayStatus.post_market_done ? "bg-green-500" : "bg-muted"
-                  )}>
-                    {todayStatus.post_market_done ? (
-                      <Check className="h-4 w-4 text-white" />
-                    ) : (
-                      <Moon className="h-4 w-4 text-muted-foreground" />
+                  <button
+                    onClick={() => {
+                      if (!todayStatus.post_market_done) {
+                        openPostMarketCheckIn();
+                      }
+                    }}
+                    disabled={todayStatus.post_market_done}
+                    className={cn(
+                      "w-full flex items-center justify-between p-3 rounded-lg border transition-all",
+                      todayStatus.post_market_done
+                        ? "bg-green-500/10 border-green-500/30 cursor-default"
+                        : "hover:bg-muted cursor-pointer"
                     )}
-                  </div>
-                  <div className="text-left">
-                    <span className="font-medium text-sm">Post-Market</span>
-                    <div className="text-xs text-muted-foreground">
-                      {todayStatus.post_market_done ? "Completed" : "Review your day"}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-8 h-8 rounded-full flex items-center justify-center",
+                        todayStatus.post_market_done ? "bg-green-500" : "bg-muted"
+                      )}>
+                        {todayStatus.post_market_done ? (
+                          <Check className="h-4 w-4 text-white" />
+                        ) : (
+                          <Moon className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </div>
+                      <div className="text-left">
+                        <span className="font-medium text-sm">Post-Market</span>
+                        <div className="text-xs text-muted-foreground">
+                          {todayStatus.post_market_done ? "Completed" : "Review your day"}
+                        </div>
+                      </div>
+                    </div>
+                    {!todayStatus.post_market_done && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
+                  </button>
+                </>
+              ) : (
+                <div
+                  className={cn(
+                    "w-full flex items-center justify-between p-3 rounded-lg border transition-all",
+                    todayStatus.my_weekly_review_done
+                      ? "bg-green-500/10 border-green-500/30"
+                      : "bg-muted/50"
+                  )}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center",
+                      todayStatus.my_weekly_review_done ? "bg-green-500" : "bg-muted"
+                    )}>
+                      {todayStatus.my_weekly_review_done ? (
+                        <Check className="h-4 w-4 text-white" />
+                      ) : (
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </div>
+                    <div className="text-left">
+                      <span className="font-medium text-sm">Weekly Review</span>
+                      <div className="text-xs text-muted-foreground">
+                        {todayStatus.my_weekly_review_done ? "Completed" : "Go to Journal to complete"}
+                      </div>
                     </div>
                   </div>
+                  {todayStatus.my_weekly_review_done && <CheckCircle2 className="h-4 w-4 text-green-500" />}
                 </div>
-                {!todayStatus.post_market_done && <ChevronRight className="h-4 w-4 text-muted-foreground" />}
-              </button>
+              )}
             </CardContent>
           </Card>
 

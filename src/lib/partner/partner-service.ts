@@ -540,7 +540,19 @@ export async function completeChallenge(challengeId: string, winnerId: string | 
 
 export async function getTodayCheckIns(partnershipId: string, userId: string): Promise<TodayStatus> {
   const supabase = createClient();
-  const today = new Date().toISOString().split('T')[0];
+  // Use local timezone for "today" to match discipline page
+  const now = new Date();
+  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+
+  // Get partnership to find partner ID
+  const { data: partnership } = await (supabase
+    .from('accountability_partners') as any)
+    .select('user_id, partner_id')
+    .eq('id', partnershipId)
+    .single();
+
+  const p = partnership as AnyRow | null;
+  const partnerId = p?.user_id === userId ? p?.partner_id : p?.user_id;
 
   // Get both users' check-ins for today
   const { data: checkIns } = await (supabase
@@ -553,6 +565,38 @@ export async function getTodayCheckIns(partnershipId: string, userId: string): P
   const myCheckIns = checkInList.filter(c => c.user_id === userId);
   const partnerCheckIns = checkInList.filter(c => c.user_id !== userId);
 
+  // Check for weekly reviews in journal_entries for both users
+  let myWeeklyReviewDone = false;
+  let partnerWeeklyReviewDone = false;
+
+  // Get my journal entry for today
+  const { data: myJournal } = await supabase
+    .from('journal_entries')
+    .select('weekly_review_notes, weekly_wins, weekly_improvements')
+    .eq('user_id', userId)
+    .eq('entry_date', today)
+    .single();
+
+  if (myJournal) {
+    const j = myJournal as AnyRow;
+    myWeeklyReviewDone = !!(j.weekly_review_notes || j.weekly_wins || j.weekly_improvements);
+  }
+
+  // Get partner's journal entry for today
+  if (partnerId) {
+    const { data: partnerJournal } = await supabase
+      .from('journal_entries')
+      .select('weekly_review_notes, weekly_wins, weekly_improvements')
+      .eq('user_id', partnerId as string)
+      .eq('entry_date', today)
+      .single();
+
+    if (partnerJournal) {
+      const j = partnerJournal as AnyRow;
+      partnerWeeklyReviewDone = !!(j.weekly_review_notes || j.weekly_wins || j.weekly_improvements);
+    }
+  }
+
   return {
     pre_market_done: myCheckIns.some(c => c.check_in_type === 'pre_market'),
     post_market_done: myCheckIns.some(c => c.check_in_type === 'post_market'),
@@ -560,6 +604,8 @@ export async function getTodayCheckIns(partnershipId: string, userId: string): P
     partner_post_market_done: partnerCheckIns.some(c => c.check_in_type === 'post_market'),
     my_check_in: myCheckIns[0] as unknown as PartnerCheckIn | undefined,
     partner_check_in: partnerCheckIns[0] as unknown as PartnerCheckIn | undefined,
+    my_weekly_review_done: myWeeklyReviewDone,
+    partner_weekly_review_done: partnerWeeklyReviewDone,
   };
 }
 

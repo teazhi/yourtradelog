@@ -360,6 +360,9 @@ export interface TodayStatus {
   partner_post_market_done: boolean;
   my_check_in?: PartnerCheckIn;
   partner_check_in?: PartnerCheckIn;
+  // Weekly review status (for non-trading days)
+  my_weekly_review_done: boolean;
+  partner_weekly_review_done: boolean;
 }
 
 // ============================================================================
