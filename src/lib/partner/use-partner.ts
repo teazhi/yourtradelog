@@ -78,6 +78,8 @@ const initialTodayStatus: TodayStatus = {
   post_market_done: false,
   partner_pre_market_done: false,
   partner_post_market_done: false,
+  my_weekly_review_done: false,
+  partner_weekly_review_done: false,
 };
 
 export function usePartner(): [UsePartnerState, UsePartnerActions] {
