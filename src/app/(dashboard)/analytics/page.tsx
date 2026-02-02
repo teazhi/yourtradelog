@@ -1,6 +1,7 @@
 "use client";
 
 import * as React from "react";
+import { parseISO, getDay, getHours } from "date-fns";
 import { CalendarDays, ChevronDown, TrendingUp, TrendingDown, ArrowUpRight, ArrowDownRight, Clock, Scale, Zap, Flame } from "lucide-react";
 import {
   Button,
@@ -111,7 +112,7 @@ function calculateAnalytics(trades: Trade[]) {
   let cumulative = 0;
 
   const sortedByDate = [...closedTrades].sort(
-    (a, b) => new Date(a.exit_date || a.entry_date).getTime() - new Date(b.exit_date || b.entry_date).getTime()
+    (a, b) => parseISO(a.exit_date || a.entry_date).getTime() - parseISO(b.exit_date || b.entry_date).getTime()
   );
 
   for (const trade of sortedByDate) {
@@ -157,8 +158,9 @@ function calculateAnalytics(trades: Trade[]) {
   const dayNames = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   closedTrades.forEach(trade => {
-    const date = new Date(trade.exit_date || trade.entry_date);
-    const dayName = dayNames[date.getDay()];
+    // Use parseISO to avoid timezone issues with date-only strings
+    const date = parseISO(trade.exit_date || trade.entry_date);
+    const dayName = dayNames[getDay(date)];
     if (pnlByDayMap[dayName]) {
       pnlByDayMap[dayName].pnl += trade.net_pnl || 0;
       pnlByDayMap[dayName].trades += 1;
@@ -177,8 +179,9 @@ function calculateAnalytics(trades: Trade[]) {
   const pnlByHourMap: Record<number, { pnl: number; trades: number; wins: number }> = {};
 
   closedTrades.forEach(trade => {
-    const date = new Date(trade.entry_date);
-    const hour = date.getHours();
+    // Use parseISO to avoid timezone issues
+    const date = parseISO(trade.entry_date);
+    const hour = getHours(date);
     if (!pnlByHourMap[hour]) {
       pnlByHourMap[hour] = { pnl: 0, trades: 0, wins: 0 };
     }
@@ -248,8 +251,9 @@ function calculateAnalytics(trades: Trade[]) {
   const monthlyMap: Record<string, { pnl: number; trades: number; wins: number; losses: number }> = {};
 
   closedTrades.forEach(trade => {
-    const date = new Date(trade.exit_date || trade.entry_date);
-    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    // Extract month directly from date string to avoid timezone issues
+    const dateStr = trade.exit_date || trade.entry_date;
+    const monthKey = dateStr.substring(0, 7); // Gets "YYYY-MM" from "YYYY-MM-DD"
     if (!monthlyMap[monthKey]) {
       monthlyMap[monthKey] = { pnl: 0, trades: 0, wins: 0, losses: 0 };
     }
@@ -361,7 +365,8 @@ function calculateAnalytics(trades: Trade[]) {
 
   const calculateHoldTimeMs = (trade: Trade) => {
     if (!trade.exit_date || !trade.entry_date) return 0;
-    return new Date(trade.exit_date).getTime() - new Date(trade.entry_date).getTime();
+    // Use parseISO for consistent date parsing
+    return parseISO(trade.exit_date).getTime() - parseISO(trade.entry_date).getTime();
   };
 
   const winnersWithHoldTime = tradesWithHoldTime.filter(t => (t.net_pnl || 0) > 0);
@@ -618,7 +623,8 @@ export default function AnalyticsPage() {
   const filteredTrades = React.useMemo(() => {
     const { start, end } = getDateRange(dateRange, customStartDate, customEndDate);
     return accountFilteredTrades.filter(trade => {
-      const tradeDate = new Date(trade.exit_date || trade.entry_date);
+      // Use parseISO to avoid timezone issues with date-only strings
+      const tradeDate = parseISO(trade.exit_date || trade.entry_date);
       return tradeDate >= start && tradeDate <= end;
     });
   }, [accountFilteredTrades, dateRange, customStartDate, customEndDate]);
@@ -1146,7 +1152,8 @@ export default function AnalyticsPage() {
                 <div className="space-y-4">
                   <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                     {analytics.monthlyPerformance.slice(-6).map(month => {
-                      const monthDate = new Date(month.month + "-01");
+                      // Use parseISO to avoid timezone issues
+                      const monthDate = parseISO(month.month + "-01");
                       const monthName = monthDate.toLocaleDateString("en-US", { month: "short", year: "numeric" });
                       return (
                         <div
@@ -1192,7 +1199,8 @@ export default function AnalyticsPage() {
                         </thead>
                         <tbody>
                           {analytics.monthlyPerformance.slice(0, -6).reverse().map(month => {
-                            const monthDate = new Date(month.month + "-01");
+                            // Use parseISO to avoid timezone issues
+                            const monthDate = parseISO(month.month + "-01");
                             const monthName = monthDate.toLocaleDateString("en-US", { month: "short", year: "numeric" });
                             return (
                               <tr key={month.month} className="border-t">
