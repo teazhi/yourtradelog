@@ -875,7 +875,7 @@ function AccountsSettings({
   onRefresh: () => void;
   onNavigateToTrading: () => void;
 }) {
-  const { selectAccount } = useAccount();
+  const { selectAccount, refreshAccounts } = useAccount();
   const [newName, setNewName] = React.useState("");
   const [newBroker, setNewBroker] = React.useState("");
   const [newBalance, setNewBalance] = React.useState("");
@@ -962,6 +962,7 @@ function AccountsSettings({
       setNewPropFirm("custom");
       setDialogOpen(false);
       onRefresh();
+      refreshAccounts();
     } catch {
       toast.error("Failed to add account");
     }
@@ -996,6 +997,7 @@ function AccountsSettings({
       setEditDialogOpen(false);
       setEditingAccount(null);
       onRefresh();
+      refreshAccounts();
     } catch {
       toast.error("Failed to update account");
     }
@@ -1010,6 +1012,7 @@ function AccountsSettings({
       await (supabase.from("accounts") as any).update({ is_default: true }).eq("id", id);
       toast.success("Default account updated");
       onRefresh();
+      refreshAccounts();
     } catch {
       toast.error("Failed to update default");
     }
@@ -1025,6 +1028,7 @@ function AccountsSettings({
       }
       toast.success("Account deleted");
       onRefresh();
+      refreshAccounts();
     } catch {
       toast.error("Failed to delete account");
     }
