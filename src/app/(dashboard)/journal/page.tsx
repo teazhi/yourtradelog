@@ -57,6 +57,13 @@ import {
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { useAccount } from "@/components/providers/account-provider";
+import {
+  POSITIVE_EMOTIONS,
+  NEGATIVE_EMOTIONS,
+  NEUTRAL_EMOTIONS,
+  EMOTION_LABELS,
+} from "@/lib/constants";
+import { EmotionTag } from "@/types/trade";
 import { JournalScreenshots } from "@/components/journal/journal-screenshots";
 import { JournalDailyScreenshots } from "@/components/journal/journal-daily-screenshots";
 import { UnlinkedScreenshots } from "@/components/journal/unlinked-screenshots";
@@ -430,6 +437,9 @@ function JournalPageContent() {
   const [disciplineRating, setDisciplineRating] = React.useState<number | null>(null);
   const [executionRating, setExecutionRating] = React.useState<number | null>(null);
 
+  // Daily emotions - will be applied to all trades from this day
+  const [dailyEmotions, setDailyEmotions] = React.useState<string[]>([]);
+
   // Share to feed dialog state
   const [showShareDialog, setShowShareDialog] = React.useState(false);
   const [shareTradeId, setShareTradeId] = React.useState<string | null>(null);
@@ -596,6 +606,19 @@ function JournalPageContent() {
 
         setTrades(tradesData || []);
 
+        // Extract existing emotions from trades (if any trade has emotions, use those)
+        if (tradesData && tradesData.length > 0) {
+          const existingEmotions = new Set<string>();
+          tradesData.forEach((trade: Trade) => {
+            if (trade.emotions && trade.emotions.length > 0) {
+              trade.emotions.forEach(e => existingEmotions.add(e));
+            }
+          });
+          if (existingEmotions.size > 0) {
+            setDailyEmotions(Array.from(existingEmotions));
+          }
+        }
+
         setHasChanges(false);
       } catch (err) {
         console.error("Exception fetching data:", err);
@@ -622,6 +645,7 @@ function JournalPageContent() {
     setFocusRating(null);
     setDisciplineRating(null);
     setExecutionRating(null);
+    setDailyEmotions([]);
     // Weekly review fields
     setWeeklyReviewNotes("");
     setWeeklyWins("");
@@ -640,6 +664,7 @@ function JournalPageContent() {
     postMarketNotes, whatWentWell, mistakesMade, lessonsLearned,
     moodRating, focusRating, disciplineRating, executionRating,
     weeklyReviewNotes, weeklyWins, weeklyImprovements, nextWeekGoals, weeklyRating,
+    dailyEmotions,
     isLoading
   ]);
 
@@ -710,6 +735,23 @@ function JournalPageContent() {
 
         if (error) throw error;
         setJournal(data as JournalData);
+      }
+
+      // Apply emotions to all trades from this day (if emotions are selected and trades exist)
+      if (dailyEmotions.length > 0 && trades.length > 0) {
+        const tradeIds = trades.map(t => t.id);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const { error: emotionsError } = await (supabase
+          .from("trades") as any)
+          .update({ emotions: dailyEmotions })
+          .in("id", tradeIds);
+
+        if (emotionsError) {
+          console.error("Error applying emotions to trades:", emotionsError);
+        } else {
+          // Update local state
+          setTrades(prev => prev.map(t => ({ ...t, emotions: dailyEmotions })));
+        }
       }
 
       setHasChanges(false);
@@ -1197,43 +1239,123 @@ function JournalPageContent() {
                     <BarChart3 className="h-5 w-5 text-blue-500" />
                     <CardTitle>Daily Breakdown</CardTitle>
                   </div>
+                  <CardDescription>
+                    Click on a trade to view that day's journal
+                  </CardDescription>
                 </CardHeader>
                 <CardContent>
                   {accountFilteredWeeklyTrades.length === 0 ? (
                     <p className="text-muted-foreground text-center py-4">No trades this week</p>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2">
                       {["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((day) => {
                         const dayTrades = tradesByDay[day] || [];
                         const dayPnL = dayTrades.reduce((sum, t) => sum + (t.net_pnl || 0), 0);
                         const dayWins = dayTrades.filter(t => (t.net_pnl || 0) > 0).length;
                         const dayLosses = dayTrades.filter(t => (t.net_pnl || 0) < 0).length;
 
+                        // Get the date for the first trade of this day (for navigation)
+                        const dayDate = dayTrades.length > 0
+                          ? format(new Date(dayTrades[0].entry_date), "yyyy-MM-dd")
+                          : null;
+
                         return (
-                          <div
-                            key={day}
-                            className={cn(
-                              "flex items-center justify-between p-3 rounded-lg",
-                              dayTrades.length > 0 ? "bg-muted/50" : "bg-muted/20"
+                          <div key={day} className="space-y-1">
+                            {/* Day Header - Clickable to go to that day's journal */}
+                            {dayDate ? (
+                              <Link
+                                href={`/journal?date=${dayDate}`}
+                                className={cn(
+                                  "flex items-center justify-between p-3 rounded-lg transition-colors",
+                                  dayTrades.length > 0
+                                    ? "bg-muted/50 hover:bg-muted cursor-pointer"
+                                    : "bg-muted/20"
+                                )}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <span className="font-medium w-24">{day}</span>
+                                  <span className="text-sm text-muted-foreground">
+                                    {dayTrades.length} trade{dayTrades.length !== 1 ? "s" : ""}
+                                  </span>
+                                  {dayTrades.length > 0 && (
+                                    <span className="text-xs text-muted-foreground">
+                                      ({dayWins}W / {dayLosses}L)
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  <span className={cn(
+                                    "font-semibold",
+                                    dayPnL > 0 ? "text-green-600" : dayPnL < 0 ? "text-red-600" : "text-muted-foreground"
+                                  )}>
+                                    {dayPnL !== 0 ? (dayPnL > 0 ? "+" : "") + dayPnL.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "-"}
+                                  </span>
+                                  <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                                </div>
+                              </Link>
+                            ) : (
+                              <div className={cn(
+                                "flex items-center justify-between p-3 rounded-lg",
+                                "bg-muted/20"
+                              )}>
+                                <div className="flex items-center gap-3">
+                                  <span className="font-medium w-24 text-muted-foreground">{day}</span>
+                                  <span className="text-sm text-muted-foreground">No trades</span>
+                                </div>
+                                <span className="text-muted-foreground">-</span>
+                              </div>
                             )}
-                          >
-                            <div className="flex items-center gap-3">
-                              <span className="font-medium w-24">{day}</span>
-                              <span className="text-sm text-muted-foreground">
-                                {dayTrades.length} trade{dayTrades.length !== 1 ? "s" : ""}
-                              </span>
-                              {dayTrades.length > 0 && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({dayWins}W / {dayLosses}L)
-                                </span>
-                              )}
-                            </div>
-                            <span className={cn(
-                              "font-semibold",
-                              dayPnL > 0 ? "text-green-600" : dayPnL < 0 ? "text-red-600" : "text-muted-foreground"
-                            )}>
-                              {dayPnL !== 0 ? (dayPnL > 0 ? "+" : "") + dayPnL.toLocaleString("en-US", { style: "currency", currency: "USD" }) : "-"}
-                            </span>
+
+                            {/* Individual Trades for the day - shown below the day header */}
+                            {dayTrades.length > 0 && (
+                              <div className="ml-4 space-y-1">
+                                {dayTrades.slice(0, 5).map((trade) => {
+                                  const tradeDate = format(new Date(trade.entry_date), "yyyy-MM-dd");
+                                  return (
+                                    <Link
+                                      key={trade.id}
+                                      href={`/journal?date=${tradeDate}`}
+                                      className="flex items-center justify-between p-2 rounded-md bg-background/50 hover:bg-background border border-transparent hover:border-border transition-colors text-sm"
+                                    >
+                                      <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                          "w-1.5 h-1.5 rounded-full",
+                                          (trade.net_pnl || 0) > 0 ? "bg-green-500" :
+                                          (trade.net_pnl || 0) < 0 ? "bg-red-500" : "bg-gray-400"
+                                        )} />
+                                        <span className="font-medium">{trade.symbol}</span>
+                                        <span className={cn(
+                                          "text-xs px-1.5 py-0.5 rounded",
+                                          trade.side === "long"
+                                            ? "bg-green-500/10 text-green-600"
+                                            : "bg-red-500/10 text-red-600"
+                                        )}>
+                                          {trade.side?.toUpperCase()}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          {format(new Date(trade.entry_date), "h:mm a")}
+                                        </span>
+                                      </div>
+                                      <span className={cn(
+                                        "font-medium",
+                                        (trade.net_pnl || 0) > 0 ? "text-green-600" :
+                                        (trade.net_pnl || 0) < 0 ? "text-red-600" : "text-muted-foreground"
+                                      )}>
+                                        {(trade.net_pnl || 0) >= 0 ? "+" : ""}${(trade.net_pnl || 0).toFixed(2)}
+                                      </span>
+                                    </Link>
+                                  );
+                                })}
+                                {dayTrades.length > 5 && (
+                                  <Link
+                                    href={`/journal?date=${dayDate}`}
+                                    className="block text-center text-xs text-primary hover:underline py-1"
+                                  >
+                                    +{dayTrades.length - 5} more trades
+                                  </Link>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
@@ -1249,6 +1371,9 @@ function JournalPageContent() {
                     <Flame className="h-5 w-5 text-orange-500" />
                     <CardTitle>Notable Trades</CardTitle>
                   </div>
+                  <CardDescription>
+                    Click to view the journal for that day
+                  </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {weeklyClosedTrades.length > 0 ? (
@@ -1259,18 +1384,30 @@ function JournalPageContent() {
                           const bestTrade = weeklyClosedTrades.reduce((best, t) =>
                             (t.net_pnl || 0) > (best.net_pnl || 0) ? t : best
                           );
+                          const tradeDate = format(new Date(bestTrade.entry_date), "yyyy-MM-dd");
                           return (
-                            <Link href={`/trades/${bestTrade.id}`} className="block">
+                            <Link href={`/journal?date=${tradeDate}`} className="block">
                               <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-950 hover:bg-green-100 dark:hover:bg-green-900 transition-colors">
-                                <div>
+                                <div className="flex items-center gap-2">
                                   <span className="font-medium">{bestTrade.symbol}</span>
-                                  <span className="text-sm text-muted-foreground ml-2">
+                                  <span className={cn(
+                                    "text-xs px-1.5 py-0.5 rounded",
+                                    bestTrade.side === "long"
+                                      ? "bg-green-500/20 text-green-700"
+                                      : "bg-red-500/20 text-red-700"
+                                  )}>
+                                    {bestTrade.side?.toUpperCase()}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
                                     {format(new Date(bestTrade.entry_date), "EEEE")}
                                   </span>
                                 </div>
-                                <span className="font-bold text-green-600">
-                                  +${(bestTrade.net_pnl || 0).toFixed(2)}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-green-600">
+                                    +${(bestTrade.net_pnl || 0).toFixed(2)}
+                                  </span>
+                                  <ChevronRight className="h-4 w-4 text-green-600/50" />
+                                </div>
                               </div>
                             </Link>
                           );
@@ -1282,18 +1419,30 @@ function JournalPageContent() {
                           const worstTrade = weeklyClosedTrades.reduce((worst, t) =>
                             (t.net_pnl || 0) < (worst.net_pnl || 0) ? t : worst
                           );
+                          const tradeDate = format(new Date(worstTrade.entry_date), "yyyy-MM-dd");
                           return (
-                            <Link href={`/trades/${worstTrade.id}`} className="block">
+                            <Link href={`/journal?date=${tradeDate}`} className="block">
                               <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-950 hover:bg-red-100 dark:hover:bg-red-900 transition-colors">
-                                <div>
+                                <div className="flex items-center gap-2">
                                   <span className="font-medium">{worstTrade.symbol}</span>
-                                  <span className="text-sm text-muted-foreground ml-2">
+                                  <span className={cn(
+                                    "text-xs px-1.5 py-0.5 rounded",
+                                    worstTrade.side === "long"
+                                      ? "bg-green-500/20 text-green-700"
+                                      : "bg-red-500/20 text-red-700"
+                                  )}>
+                                    {worstTrade.side?.toUpperCase()}
+                                  </span>
+                                  <span className="text-sm text-muted-foreground">
                                     {format(new Date(worstTrade.entry_date), "EEEE")}
                                   </span>
                                 </div>
-                                <span className="font-bold text-red-600">
-                                  ${(worstTrade.net_pnl || 0).toFixed(2)}
-                                </span>
+                                <div className="flex items-center gap-2">
+                                  <span className="font-bold text-red-600">
+                                    ${(worstTrade.net_pnl || 0).toFixed(2)}
+                                  </span>
+                                  <ChevronRight className="h-4 w-4 text-red-600/50" />
+                                </div>
                               </div>
                             </Link>
                           );
@@ -1658,6 +1807,96 @@ function JournalPageContent() {
                   customOptions={customMistakes}
                   onCustomOptionsChange={handleCustomMistakesChange}
                 />
+
+                {/* Daily Emotions - Applied to all trades */}
+                {trades.length > 0 && (
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Brain className="h-4 w-4 text-purple-500" />
+                      <span className="text-sm font-medium">Today's Emotional State</span>
+                      <Badge variant="outline" className="text-xs">
+                        Applied to {trades.length} trade{trades.length !== 1 ? "s" : ""}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Select the emotions you experienced while trading today. These will be applied to all your trades for psychology analysis.
+                    </p>
+                    <div className="space-y-2">
+                      <div className="text-xs text-muted-foreground font-medium">Positive</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {POSITIVE_EMOTIONS.map((emotion) => (
+                          <button
+                            key={emotion}
+                            type="button"
+                            onClick={() => {
+                              const newEmotions = dailyEmotions.includes(emotion)
+                                ? dailyEmotions.filter(e => e !== emotion)
+                                : [...dailyEmotions, emotion];
+                              setDailyEmotions(newEmotions);
+                              setTimeout(() => handleSave(), 150);
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 text-xs rounded-full border transition-all",
+                              dailyEmotions.includes(emotion)
+                                ? "bg-green-500/20 border-green-500/50 text-green-600 dark:text-green-400"
+                                : "bg-muted/50 border-transparent hover:border-green-500/30 hover:bg-green-500/10"
+                            )}
+                          >
+                            {EMOTION_LABELS[emotion]}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-medium pt-1">Negative</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {NEGATIVE_EMOTIONS.map((emotion) => (
+                          <button
+                            key={emotion}
+                            type="button"
+                            onClick={() => {
+                              const newEmotions = dailyEmotions.includes(emotion)
+                                ? dailyEmotions.filter(e => e !== emotion)
+                                : [...dailyEmotions, emotion];
+                              setDailyEmotions(newEmotions);
+                              setTimeout(() => handleSave(), 150);
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 text-xs rounded-full border transition-all",
+                              dailyEmotions.includes(emotion)
+                                ? "bg-red-500/20 border-red-500/50 text-red-600 dark:text-red-400"
+                                : "bg-muted/50 border-transparent hover:border-red-500/30 hover:bg-red-500/10"
+                            )}
+                          >
+                            {EMOTION_LABELS[emotion]}
+                          </button>
+                        ))}
+                      </div>
+                      <div className="text-xs text-muted-foreground font-medium pt-1">Neutral</div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {NEUTRAL_EMOTIONS.map((emotion) => (
+                          <button
+                            key={emotion}
+                            type="button"
+                            onClick={() => {
+                              const newEmotions = dailyEmotions.includes(emotion)
+                                ? dailyEmotions.filter(e => e !== emotion)
+                                : [...dailyEmotions, emotion];
+                              setDailyEmotions(newEmotions);
+                              setTimeout(() => handleSave(), 150);
+                            }}
+                            className={cn(
+                              "px-2.5 py-1 text-xs rounded-full border transition-all",
+                              dailyEmotions.includes(emotion)
+                                ? "bg-gray-500/20 border-gray-500/50 text-gray-600 dark:text-gray-400"
+                                : "bg-muted/50 border-transparent hover:border-gray-500/30 hover:bg-gray-500/10"
+                            )}
+                          >
+                            {EMOTION_LABELS[emotion]}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 {/* Post-Market Notes */}
                 <div className="space-y-2">
