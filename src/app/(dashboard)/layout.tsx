@@ -23,6 +23,7 @@ import {
   ChevronDown,
   UserCircle,
   Shield,
+  HelpCircle,
 } from "lucide-react";
 import { Button, cn } from "@/components/ui";
 import { ThemeToggle } from "@/components/layout/theme-toggle";
@@ -57,6 +58,7 @@ const socialItems = [
 const accountItems = [
   { title: "Profile", url: "/profile", icon: User },
   { title: "Settings", url: "/settings", icon: Settings },
+  { title: "Help", url: "/contact", icon: HelpCircle },
 ];
 
 export default function DashboardLayout({

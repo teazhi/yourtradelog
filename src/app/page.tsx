@@ -451,7 +451,7 @@ export default function LandingPage() {
             <div>
               <h4 className="font-semibold mb-4">Support</h4>
               <ul className="space-y-2 text-sm text-muted-foreground">
-                <li><a href="#" className="hover:text-foreground transition-colors">Contact</a></li>
+                <li><a href="/contact" className="hover:text-foreground transition-colors">Contact</a></li>
                 <li><a href="#" className="hover:text-foreground transition-colors">Feedback</a></li>
               </ul>
             </div>
