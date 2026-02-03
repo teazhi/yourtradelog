@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Quote, RefreshCw, Sparkles, X } from "lucide-react";
-import { cn } from "@/components/ui";
+import { cn, Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
 import { getDailyQuote, getRandomQuote, TRADING_QUOTES } from "@/lib/constants/motivational-quotes";
 
 interface DailyQuoteProps {
@@ -71,9 +71,31 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
     setIsDismissed(true);
   };
 
-  // Don't show if dismissed for today
+  // Bring back the quote
+  const handleShow = () => {
+    try {
+      localStorage.removeItem("daily_quote_dismissed");
+    } catch (e) {
+      console.error("Error removing dismissed state:", e);
+    }
+    setIsDismissed(false);
+  };
+
+  // Show a small button to bring back the quote if dismissed
   if (isDismissed) {
-    return null;
+    return (
+      <button
+        onClick={handleShow}
+        className={cn(
+          "flex items-center gap-1.5 px-2 py-1 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors",
+          className
+        )}
+        title="Show daily quote"
+      >
+        <Sparkles className="h-3 w-3" />
+        <span className="hidden sm:inline">Show Quote</span>
+      </button>
+    );
   }
 
   // Don't show on non-trading days (if configured)
@@ -86,45 +108,73 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
   }
 
   return (
-    <div
-      className={cn(
-        "relative overflow-hidden rounded-lg border bg-gradient-to-br from-primary/5 via-background to-primary/10 p-3",
-        className
-      )}
-    >
-      <div className="relative flex items-center gap-2">
-        {/* Quote icon */}
-        <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+    <Popover>
+      <PopoverTrigger asChild>
+        <div
+          className={cn(
+            "relative overflow-hidden rounded-lg border bg-gradient-to-br from-primary/5 via-background to-primary/10 p-3 cursor-pointer hover:border-primary/30 transition-colors",
+            className
+          )}
+        >
+          <div className="relative flex items-center gap-2">
+            {/* Quote icon */}
+            <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
 
-        {/* Quote content - single line with ellipsis on large screens */}
-        <p className="flex-1 min-w-0 text-xs text-foreground/80 italic truncate">
-          "{quote.quote}" <span className="text-muted-foreground not-italic">— {quote.author}</span>
-        </p>
+            {/* Quote content - single line with ellipsis on large screens */}
+            <p className="flex-1 min-w-0 text-xs text-foreground/80 italic truncate">
+              "{quote.quote}" <span className="text-muted-foreground not-italic">— {quote.author}</span>
+            </p>
 
-        {/* Action buttons */}
-        <div className="flex-shrink-0 flex items-center gap-0.5">
-          <button
-            onClick={handleRefresh}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            title="Get another quote"
-          >
-            <RefreshCw
-              className={cn(
-                "h-3 w-3",
-                isRefreshing && "animate-spin"
-              )}
-            />
-          </button>
-          <button
-            onClick={handleDismiss}
-            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-            title="Hide for today"
-          >
-            <X className="h-3 w-3" />
-          </button>
+            {/* Action buttons */}
+            <div className="flex-shrink-0 flex items-center gap-0.5">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleRefresh();
+                }}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title="Get another quote"
+              >
+                <RefreshCw
+                  className={cn(
+                    "h-3 w-3",
+                    isRefreshing && "animate-spin"
+                  )}
+                />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDismiss();
+                }}
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+                title="Hide for today"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          </div>
         </div>
-      </div>
-    </div>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-80 p-4"
+        align="start"
+        sideOffset={8}
+      >
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Daily Quote</span>
+          </div>
+          <p className="text-sm leading-relaxed italic text-foreground/90">
+            "{quote.quote}"
+          </p>
+          <p className="text-xs text-muted-foreground text-right">
+            — {quote.author}
+          </p>
+        </div>
+      </PopoverContent>
+    </Popover>
   );
 }
 
