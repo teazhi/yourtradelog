@@ -50,18 +50,18 @@ export default function ContactPage() {
                 Reach out to us on X (formerly Twitter)
               </p>
               <a
-                href="https://x.com/yourtradinglog"
+                href="https://x.com/yourtradelog"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-2 text-xl font-semibold text-primary hover:underline"
               >
-                @yourtradinglog
+                @yourtradelog
               </a>
             </div>
 
             <Button asChild size="lg" className="w-full sm:w-auto">
               <a
-                href="https://x.com/yourtradinglog"
+                href="https://x.com/yourtradelog"
                 target="_blank"
                 rel="noopener noreferrer"
               >
