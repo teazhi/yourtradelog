@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Quote, RefreshCw, Sparkles } from "lucide-react";
+import { Quote, RefreshCw, Sparkles, X } from "lucide-react";
 import { cn } from "@/components/ui";
 import { getDailyQuote, getRandomQuote, TRADING_QUOTES } from "@/lib/constants/motivational-quotes";
 
@@ -14,11 +14,23 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
   const [quote, setQuote] = React.useState<typeof TRADING_QUOTES[number] | null>(null);
   const [isTradingDay, setIsTradingDay] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [isDismissed, setIsDismissed] = React.useState(false);
 
   React.useEffect(() => {
     // Check if today is a trading day (Mon-Fri by default, or custom from localStorage)
     const today = new Date();
     const dayOfWeek = today.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+    const todayKey = today.toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // Check if quote was dismissed today
+    try {
+      const dismissedDate = localStorage.getItem("daily_quote_dismissed");
+      if (dismissedDate === todayKey) {
+        setIsDismissed(true);
+      }
+    } catch (e) {
+      console.error("Error checking dismissed state:", e);
+    }
 
     // Get trading days from localStorage (if set by discipline page)
     let tradingDays: number[] = [1, 2, 3, 4, 5]; // Default: Monday-Friday
@@ -48,6 +60,22 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
     setTimeout(() => setIsRefreshing(false), 500);
   };
 
+  // Dismiss the quote for today
+  const handleDismiss = () => {
+    const todayKey = new Date().toISOString().split('T')[0];
+    try {
+      localStorage.setItem("daily_quote_dismissed", todayKey);
+    } catch (e) {
+      console.error("Error saving dismissed state:", e);
+    }
+    setIsDismissed(true);
+  };
+
+  // Don't show if dismissed for today
+  if (isDismissed) {
+    return null;
+  }
+
   // Don't show on non-trading days (if configured)
   if (showOnlyOnTradingDays && !isTradingDay) {
     return null;
@@ -60,43 +88,41 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
   return (
     <div
       className={cn(
-        "relative overflow-hidden rounded-lg border bg-gradient-to-br from-primary/5 via-background to-primary/10 p-4",
+        "relative overflow-hidden rounded-lg border bg-gradient-to-br from-primary/5 via-background to-primary/10 p-3",
         className
       )}
     >
-      {/* Decorative elements */}
-      <div className="absolute -top-6 -right-6 h-24 w-24 rounded-full bg-primary/5 blur-2xl" />
-      <div className="absolute -bottom-4 -left-4 h-16 w-16 rounded-full bg-primary/5 blur-xl" />
-
-      <div className="relative flex items-start gap-3">
+      <div className="relative flex items-center gap-2">
         {/* Quote icon */}
-        <div className="flex-shrink-0 rounded-full bg-primary/10 p-2">
-          <Sparkles className="h-4 w-4 text-primary" />
-        </div>
+        <Sparkles className="h-3.5 w-3.5 text-primary flex-shrink-0" />
 
-        {/* Quote content */}
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium leading-relaxed text-foreground/90 italic">
-            "{quote.quote}"
-          </p>
-          <p className="mt-2 text-xs text-muted-foreground">
-            — {quote.author}
-          </p>
-        </div>
+        {/* Quote content - single line with ellipsis on large screens */}
+        <p className="flex-1 min-w-0 text-xs text-foreground/80 italic truncate">
+          "{quote.quote}" <span className="text-muted-foreground not-italic">— {quote.author}</span>
+        </p>
 
-        {/* Refresh button */}
-        <button
-          onClick={handleRefresh}
-          className="flex-shrink-0 p-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
-          title="Get another quote"
-        >
-          <RefreshCw
-            className={cn(
-              "h-3.5 w-3.5",
-              isRefreshing && "animate-spin"
-            )}
-          />
-        </button>
+        {/* Action buttons */}
+        <div className="flex-shrink-0 flex items-center gap-0.5">
+          <button
+            onClick={handleRefresh}
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Get another quote"
+          >
+            <RefreshCw
+              className={cn(
+                "h-3 w-3",
+                isRefreshing && "animate-spin"
+              )}
+            />
+          </button>
+          <button
+            onClick={handleDismiss}
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            title="Hide for today"
+          >
+            <X className="h-3 w-3" />
+          </button>
+        </div>
       </div>
     </div>
   );

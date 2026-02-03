@@ -8,7 +8,6 @@ import { RecentTrades } from "@/components/dashboard/recent-trades";
 import { EquityChart } from "@/components/dashboard/equity-chart";
 import { DailyPnL } from "@/components/dashboard/daily-pnl";
 import { PositionSizer } from "@/components/dashboard/position-sizer";
-import { DailyQuote } from "@/components/dashboard/daily-quote";
 import { createClient } from "@/lib/supabase/client";
 import { Trade } from "@/types/database";
 import { Spinner, Button } from "@/components/ui";
@@ -175,9 +174,6 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
-
-      {/* Daily Motivational Quote (only on trading days) */}
-      <DailyQuote />
 
       {/* Stats Cards */}
       <StatsCards stats={stats} />

@@ -31,6 +31,7 @@ import { ProfileCompletionBanner } from "@/components/layout/profile-completion-
 import { createClient } from "@/lib/supabase/client";
 import { AccountProvider } from "@/components/providers/account-provider";
 import { AccountSelector } from "@/components/layout/account-selector";
+import { DailyQuote } from "@/components/dashboard/daily-quote";
 
 const navigationItems = [
   { title: "Dashboard", url: "/dashboard", icon: Home },
@@ -488,18 +489,23 @@ export default function DashboardLayout({
       {/* Main Content */}
       <div className="flex flex-1 flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex h-14 sm:h-16 shrink-0 items-center justify-between border-b border-border bg-background px-3 sm:px-4">
-          <div className="flex items-center gap-2 min-w-0">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setMobileOpen(true)}
-              className="h-9 w-9 shrink-0 md:hidden"
-            >
-              <Menu className="h-5 w-5" />
-            </Button>
-            <h1 className="text-sm sm:text-lg font-semibold truncate">{greeting}</h1>
-          </div>
+        <header className="shrink-0 border-b border-border bg-background">
+          <div className="flex h-14 sm:h-16 items-center justify-between px-3 sm:px-4">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setMobileOpen(true)}
+                className="h-9 w-9 shrink-0 md:hidden"
+              >
+                <Menu className="h-5 w-5" />
+              </Button>
+              <h1 className="text-sm sm:text-lg font-semibold shrink-0">{greeting}</h1>
+              {/* Daily Quote - inline with welcome text */}
+              <div className="hidden lg:block flex-1 min-w-0 max-w-2xl">
+                <DailyQuote className="py-1" />
+              </div>
+            </div>
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <AccountSelector />
             <ThemeToggle />
@@ -557,6 +563,11 @@ export default function DashboardLayout({
                 </div>
               )}
             </div>
+          </div>
+          </div>
+          {/* Daily Quote - shown on smaller screens below the header */}
+          <div className="lg:hidden">
+            <DailyQuote className="mx-3 sm:mx-4 mb-3" />
           </div>
         </header>
 
