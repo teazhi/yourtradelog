@@ -4,11 +4,11 @@ import * as React from "react";
 import { format } from "date-fns";
 import { TrendingUp, TrendingDown, Clock, Target, Calendar } from "lucide-react";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
+  CustomDialog,
+  CustomDialogHeader,
+  CustomDialogTitle,
+  CustomDialogDescription,
+  CustomDialogContent,
   Badge,
   cn,
 } from "@/components/ui";
@@ -70,35 +70,35 @@ export function DaySummary({
   // Empty state - no trades for this day
   if (trades.length === 0) {
     return (
-      <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>{format(date, "EEEE, MMMM d, yyyy")}</DialogTitle>
-            <DialogDescription>No trades on this day</DialogDescription>
-          </DialogHeader>
+      <CustomDialog open={open} onOpenChange={onOpenChange}>
+        <CustomDialogHeader>
+          <CustomDialogTitle>{format(date, "EEEE, MMMM d, yyyy")}</CustomDialogTitle>
+          <CustomDialogDescription>No trades on this day</CustomDialogDescription>
+        </CustomDialogHeader>
+        <CustomDialogContent>
           <div className="flex flex-col items-center justify-center py-8 text-center">
             <Calendar className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-muted-foreground">
               No trades were recorded on this day.
             </p>
           </div>
-        </DialogContent>
-      </Dialog>
+        </CustomDialogContent>
+      </CustomDialog>
     );
   }
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl">
-        <DialogHeader>
-          <DialogTitle>{format(date, "EEEE, MMMM d, yyyy")}</DialogTitle>
-          <DialogDescription>Daily trading summary and trades</DialogDescription>
-        </DialogHeader>
+    <CustomDialog open={open} onOpenChange={onOpenChange}>
+      <CustomDialogHeader>
+        <CustomDialogTitle>{format(date, "EEEE, MMMM d, yyyy")}</CustomDialogTitle>
+        <CustomDialogDescription>Daily trading summary and trades</CustomDialogDescription>
+      </CustomDialogHeader>
 
+      <CustomDialogContent className="space-y-4">
         {/* Daily Stats */}
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           <div className="rounded-lg border p-3">
-            <p className="text-sm text-muted-foreground">Daily P&L</p>
+            <p className="text-xs text-muted-foreground">Daily P&L</p>
             <p
               className={cn(
                 "text-lg font-bold",
@@ -110,15 +110,15 @@ export function DaySummary({
             </p>
           </div>
           <div className="rounded-lg border p-3">
-            <p className="text-sm text-muted-foreground">Trades</p>
+            <p className="text-xs text-muted-foreground">Trades</p>
             <p className="text-lg font-bold">{trades.length}</p>
           </div>
           <div className="rounded-lg border p-3">
-            <p className="text-sm text-muted-foreground">Win Rate</p>
+            <p className="text-xs text-muted-foreground">Win Rate</p>
             <p className="text-lg font-bold">{winRate.toFixed(0)}%</p>
           </div>
           <div className="rounded-lg border p-3">
-            <p className="text-sm text-muted-foreground">Goal Progress</p>
+            <p className="text-xs text-muted-foreground">Goal Progress</p>
             <p
               className={cn(
                 "text-lg font-bold",
@@ -135,7 +135,7 @@ export function DaySummary({
         </div>
 
         {/* Win/Loss Stats */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-green-500" />
@@ -163,7 +163,7 @@ export function DaySummary({
         {/* Trades List */}
         <div className="space-y-2">
           <h3 className="font-medium">Trades</h3>
-          <div className="max-h-[300px] space-y-2 overflow-y-auto">
+          <div className="max-h-[250px] space-y-2 overflow-y-auto">
             {trades.map((trade) => (
               <div
                 key={trade.id}
@@ -236,7 +236,7 @@ export function DaySummary({
             ))}
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+      </CustomDialogContent>
+    </CustomDialog>
   );
 }

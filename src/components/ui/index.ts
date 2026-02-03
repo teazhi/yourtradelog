@@ -8,7 +8,7 @@ export * from "shadcn-packaged/ui/avatar";
 export * from "shadcn-packaged/ui/badge";
 export * from "shadcn-packaged/ui/breadcrumb";
 export * from "shadcn-packaged/ui/button";
-export * from "shadcn-packaged/ui/calendar";
+export * from "./calendar";
 export * from "shadcn-packaged/ui/card";
 export * from "shadcn-packaged/ui/carousel";
 export * from "shadcn-packaged/ui/chart";

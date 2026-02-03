@@ -2,8 +2,12 @@
 
 import * as React from "react";
 import { Quote, RefreshCw, Sparkles, X } from "lucide-react";
-import { cn, Popover, PopoverContent, PopoverTrigger } from "@/components/ui";
+import { cn, Popover, PopoverContent, PopoverTrigger, toast } from "@/components/ui";
 import { getDailyQuote, getRandomQuote, TRADING_QUOTES } from "@/lib/constants/motivational-quotes";
+import { createClient } from "@/lib/supabase/client";
+import { getLevelFromXP, checkLevelUp } from "@/lib/leveling";
+
+const QUOTE_XP_REWARD = 5; // XP for reading the daily quote
 
 interface DailyQuoteProps {
   className?: string;
@@ -15,6 +19,8 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
   const [isTradingDay, setIsTradingDay] = React.useState(false);
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [isDismissed, setIsDismissed] = React.useState(false);
+  const [xpClaimed, setXpClaimed] = React.useState(false);
+  const [isPopoverOpen, setIsPopoverOpen] = React.useState(false);
 
   React.useEffect(() => {
     // Check if today is a trading day (Mon-Fri by default, or custom from localStorage)
@@ -30,6 +36,16 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
       }
     } catch (e) {
       console.error("Error checking dismissed state:", e);
+    }
+
+    // Check if XP was already claimed today
+    try {
+      const xpClaimedDate = localStorage.getItem("daily_quote_xp_claimed");
+      if (xpClaimedDate === todayKey) {
+        setXpClaimed(true);
+      }
+    } catch (e) {
+      console.error("Error checking XP claimed state:", e);
     }
 
     // Get trading days from localStorage (if set by discipline page)
@@ -81,6 +97,67 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
     setIsDismissed(false);
   };
 
+  // Award XP for reading the daily quote (once per day)
+  const claimQuoteXP = async () => {
+    if (xpClaimed) return;
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) return;
+
+      // Get current XP
+      const { data: profile } = await (supabase
+        .from("profiles") as any)
+        .select("total_xp")
+        .eq("id", user.id)
+        .single();
+
+      const currentXP = profile?.total_xp || 0;
+      const newTotalXP = currentXP + QUOTE_XP_REWARD;
+      const newLevel = getLevelFromXP(newTotalXP);
+      const leveledUp = checkLevelUp(currentXP, newTotalXP);
+
+      // Update profile with new XP
+      const { error } = await (supabase
+        .from("profiles") as any)
+        .update({
+          total_xp: newTotalXP,
+          current_level: newLevel.level,
+          trader_title: newLevel.title,
+        })
+        .eq("id", user.id);
+
+      if (error) {
+        console.error("Error awarding quote XP:", error);
+        return;
+      }
+
+      // Mark as claimed for today
+      const todayKey = new Date().toISOString().split('T')[0];
+      localStorage.setItem("daily_quote_xp_claimed", todayKey);
+      setXpClaimed(true);
+
+      // Show toast
+      if (leveledUp) {
+        toast.success(`+${QUOTE_XP_REWARD} XP! 🎉 Level up! You're now a ${newLevel.title}!`);
+      } else {
+        toast.success(`+${QUOTE_XP_REWARD} XP for daily motivation!`);
+      }
+    } catch (e) {
+      console.error("Error claiming quote XP:", e);
+    }
+  };
+
+  // Handle popover open - claim XP on first open
+  const handlePopoverOpen = (open: boolean) => {
+    setIsPopoverOpen(open);
+    if (open && !xpClaimed) {
+      claimQuoteXP();
+    }
+  };
+
   // Show a small button to bring back the quote if dismissed
   if (isDismissed) {
     return (
@@ -108,7 +185,7 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
   }
 
   return (
-    <Popover>
+    <Popover open={isPopoverOpen} onOpenChange={handlePopoverOpen}>
       <PopoverTrigger asChild>
         <div
           className={cn(
@@ -162,9 +239,16 @@ export function DailyQuote({ className, showOnlyOnTradingDays = true }: DailyQuo
         sideOffset={8}
       >
         <div className="space-y-3">
-          <div className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4 text-primary" />
-            <span className="text-sm font-medium text-primary">Daily Quote</span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              <span className="text-sm font-medium text-primary">Daily Quote</span>
+            </div>
+            {!xpClaimed && (
+              <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
+                +{QUOTE_XP_REWARD} XP
+              </span>
+            )}
           </div>
           <p className="text-sm leading-relaxed italic text-foreground/90">
             "{quote.quote}"

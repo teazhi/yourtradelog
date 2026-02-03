@@ -20,6 +20,7 @@ import {
   CardHeader,
   CardTitle,
   Badge,
+  cn,
   toast,
 } from "@/components/ui";
 import { createClient } from "@/lib/supabase/client";
@@ -71,8 +72,10 @@ export function UnlinkedScreenshots({ date, onScreenshotLinked }: UnlinkedScreen
   const [selectedTradeId, setSelectedTradeId] = React.useState<string>("");
   const [selectedType, setSelectedType] = React.useState<string>("entry");
   const [isLinking, setIsLinking] = React.useState(false);
+  const [isDragging, setIsDragging] = React.useState(false);
 
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const dropZoneRef = React.useRef<HTMLDivElement>(null);
 
   // Fetch unlinked screenshots and trades for this date
   React.useEffect(() => {
@@ -125,10 +128,10 @@ export function UnlinkedScreenshots({ date, onScreenshotLinked }: UnlinkedScreen
     fetchData();
   }, [date]);
 
-  // Handle file upload
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  // Handle files (from input or drop)
+  const handleFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
 
     setIsUploading(true);
     const newScreenshots: UnlinkedScreenshot[] = [];
@@ -145,7 +148,7 @@ export function UnlinkedScreenshots({ date, onScreenshotLinked }: UnlinkedScreen
         return;
       }
 
-      const filesToUpload = Array.from(files);
+      const filesToUpload = fileArray;
 
       for (let i = 0; i < filesToUpload.length; i++) {
         let file = filesToUpload[i];
@@ -248,6 +251,52 @@ export function UnlinkedScreenshots({ date, onScreenshotLinked }: UnlinkedScreen
       setUploadProgress("");
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  // Handle file input change
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      handleFiles(files);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone entirely
+    if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Filter for image files only
+      const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        handleFiles(imageFiles);
+      } else {
+        toast.error("Please drop image files only");
       }
     }
   };
@@ -447,15 +496,36 @@ export function UnlinkedScreenshots({ date, onScreenshotLinked }: UnlinkedScreen
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent
+          ref={dropZoneRef}
+          className={cn(
+            "transition-colors",
+            isDragging && "bg-primary/5 rounded-lg"
+          )}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
           {screenshots.length === 0 ? (
             <div
-              className="flex flex-col items-center justify-center py-10 text-center border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-muted-foreground/50 transition-colors"
+              className={cn(
+                "flex flex-col items-center justify-center py-10 text-center border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+                isDragging
+                  ? "border-primary bg-primary/10"
+                  : "border-muted-foreground/25 hover:border-muted-foreground/50"
+              )}
               onClick={() => fileInputRef.current?.click()}
             >
-              <ImageIcon className="h-12 w-12 text-muted-foreground/50 mb-3" />
-              <p className="text-sm text-muted-foreground font-medium">
-                Upload screenshots as you trade
+              <ImageIcon className={cn(
+                "h-12 w-12 mb-3",
+                isDragging ? "text-primary" : "text-muted-foreground/50"
+              )} />
+              <p className={cn(
+                "text-sm font-medium",
+                isDragging ? "text-primary" : "text-muted-foreground"
+              )}>
+                {isDragging ? "Drop images here" : "Drag & drop or click to upload"}
               </p>
               <p className="text-xs text-muted-foreground mt-1 max-w-xs">
                 Link them to specific trades after you import your trades

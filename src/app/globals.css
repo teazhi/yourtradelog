@@ -1,5 +1,6 @@
 /* shadcn-packaged includes @import "tailwindcss" */
 @import "shadcn-packaged/index.css";
+@import "react-day-picker/style.css";
 
 /* Source detection for Tailwind to scan shadcn-packaged components */
 @source "../node_modules/shadcn-packaged";
@@ -348,4 +349,240 @@ div[class*="select-content"] {
 /* Legend text */
 .dark .recharts-legend-wrapper text {
   fill: var(--foreground) !important;
+}
+
+/* ============================================================================
+   React Day Picker Calendar Styling for Dark Mode
+   ============================================================================ */
+
+/* Override react-day-picker CSS variables for dark theme */
+.rdp-root {
+  --rdp-accent-color: oklch(0.95 0 0); /* Primary color (white in dark mode) */
+  --rdp-accent-background-color: oklch(0.32 0.005 260); /* Accent background */
+  --rdp-day-height: 36px;
+  --rdp-day-width: 36px;
+  --rdp-day_button-height: 32px;
+  --rdp-day_button-width: 32px;
+  --rdp-day_button-border-radius: 6px;
+  --rdp-today-color: oklch(0.75 0.18 142); /* Green for today */
+  --rdp-selected-border: 2px solid var(--rdp-accent-color);
+  --rdp-outside-opacity: 0.4;
+  --rdp-disabled-opacity: 0.3;
+  --rdp-range_middle-background-color: oklch(0.32 0.005 260);
+  --rdp-range_start-date-background-color: oklch(0.95 0 0);
+  --rdp-range_end-date-background-color: oklch(0.95 0 0);
+}
+
+/* Calendar root styling */
+.rdp-root {
+  background-color: var(--popover);
+  color: var(--popover-foreground);
+  padding: 16px;
+  border-radius: var(--radius);
+  font-family: inherit;
+  position: relative;
+}
+
+/* Month caption (header with month name) */
+.rdp-month_caption {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0;
+  margin-bottom: 0;
+  height: 28px;
+}
+
+.rdp-caption_label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--foreground);
+}
+
+/* Navigation container - positioned at top of .rdp-month */
+.rdp-nav {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 36px;
+  padding: 4px 0;
+  z-index: 1;
+}
+
+.rdp-button_previous,
+.rdp-button_next {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background-color: transparent;
+  color: var(--foreground);
+  transition: background-color 0.15s ease;
+  cursor: pointer;
+}
+
+.rdp-button_previous:hover,
+.rdp-button_next:hover {
+  background-color: var(--accent);
+}
+
+.rdp-button_previous:disabled,
+.rdp-button_next:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* Chevron icons */
+.rdp-chevron {
+  width: 16px;
+  height: 16px;
+  fill: currentColor;
+}
+
+/* Weekday headers */
+.rdp-weekdays {
+  display: flex;
+  margin-bottom: 4px;
+}
+
+.rdp-weekday {
+  flex: 1;
+  text-align: center;
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--muted-foreground);
+  padding: 4px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* Week rows */
+.rdp-week {
+  display: flex;
+}
+
+/* Day cells */
+.rdp-day {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1px;
+}
+
+/* Day button */
+.rdp-day_button {
+  width: var(--rdp-day_button-width);
+  height: var(--rdp-day_button-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--rdp-day_button-border-radius);
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: var(--foreground);
+  background-color: transparent;
+  border: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rdp-day_button:hover:not(:disabled) {
+  background-color: var(--accent);
+}
+
+.rdp-day_button:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+/* Today's date */
+.rdp-today .rdp-day_button {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+  font-weight: 600;
+}
+
+/* Selected day */
+.rdp-selected .rdp-day_button {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  font-weight: 600;
+}
+
+/* Outside days (previous/next month) */
+.rdp-outside .rdp-day_button {
+  color: var(--muted-foreground);
+  opacity: var(--rdp-outside-opacity);
+}
+
+/* Disabled days */
+.rdp-disabled .rdp-day_button {
+  opacity: var(--rdp-disabled-opacity);
+  cursor: not-allowed;
+}
+
+/* Range selection styles */
+.rdp-range_start .rdp-day_button,
+.rdp-range_end .rdp-day_button {
+  background-color: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+}
+
+.rdp-range_middle .rdp-day_button {
+  background-color: var(--accent);
+  color: var(--accent-foreground);
+  border-radius: 0;
+}
+
+/* Hidden days */
+.rdp-hidden {
+  visibility: hidden;
+}
+
+/* Months container */
+.rdp-months {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.rdp-month {
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
+/* Ensure calendar takes appropriate width */
+.rdp-month_grid {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+}
+
+/* Dropdown styling (if used) */
+.rdp-dropdown_root {
+  position: relative;
+}
+
+.rdp-dropdown {
+  appearance: none;
+  background-color: var(--popover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 4px 24px 4px 8px;
+  font-size: 0.875rem;
+  color: var(--foreground);
+  cursor: pointer;
+}
+
+.rdp-dropdown:focus {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
 }

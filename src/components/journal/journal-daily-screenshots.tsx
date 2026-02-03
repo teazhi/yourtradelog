@@ -70,7 +70,9 @@ export function JournalDailyScreenshots({
   const [previewTitle, setPreviewTitle] = React.useState<string>("");
   const [editingCaptionId, setEditingCaptionId] = React.useState<string | null>(null);
   const [captionInput, setCaptionInput] = React.useState<string>("");
+  const [isDragging, setIsDragging] = React.useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const dropZoneRef = React.useRef<HTMLDivElement>(null);
 
   const typeConfig = SCREENSHOT_TYPE_LABELS[type] || SCREENSHOT_TYPE_LABELS.general;
   const TypeIcon = typeConfig.icon;
@@ -110,10 +112,10 @@ export function JournalDailyScreenshots({
     fetchScreenshots();
   }, [date, type]);
 
-  // Handle file upload
-  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = event.target.files;
-    if (!files || files.length === 0) return;
+  // Handle files (from input or drop)
+  const handleFiles = async (files: FileList | File[]) => {
+    const fileArray = Array.from(files);
+    if (fileArray.length === 0) return;
 
     const remainingSlots = maxScreenshots - screenshots.length;
     if (remainingSlots <= 0) {
@@ -121,10 +123,10 @@ export function JournalDailyScreenshots({
       return;
     }
 
-    const filesToUpload = Array.from(files).slice(0, remainingSlots);
+    const filesToUpload = fileArray.slice(0, remainingSlots);
 
-    if (files.length > remainingSlots) {
-      toast.info(`Only uploading ${remainingSlots} of ${files.length} files (limit reached)`);
+    if (fileArray.length > remainingSlots) {
+      toast.info(`Only uploading ${remainingSlots} of ${fileArray.length} files (limit reached)`);
     }
 
     setIsUploading(true);
@@ -250,6 +252,52 @@ export function JournalDailyScreenshots({
     }
   };
 
+  // Handle file input change
+  const handleUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      handleFiles(files);
+    }
+  };
+
+  // Drag and drop handlers
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if we're leaving the drop zone entirely
+    if (dropZoneRef.current && !dropZoneRef.current.contains(e.relatedTarget as Node)) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      // Filter for image files only
+      const imageFiles = Array.from(files).filter(file => file.type.startsWith("image/"));
+      if (imageFiles.length > 0) {
+        handleFiles(imageFiles);
+      } else {
+        toast.error("Please drop image files only");
+      }
+    }
+  };
+
   // Handle caption update
   const handleCaptionSave = async (screenshot: JournalScreenshot) => {
     try {
@@ -337,7 +385,17 @@ export function JournalDailyScreenshots({
 
   return (
     <>
-      <div className="border rounded-lg p-4 space-y-3">
+      <div
+        ref={dropZoneRef}
+        className={cn(
+          "border rounded-lg p-4 space-y-3 transition-colors",
+          isDragging && "border-primary border-2 bg-primary/5"
+        )}
+        onDragEnter={handleDragEnter}
+        onDragLeave={handleDragLeave}
+        onDragOver={handleDragOver}
+        onDrop={handleDrop}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <TypeIcon className="h-4 w-4 text-muted-foreground" />
@@ -380,12 +438,23 @@ export function JournalDailyScreenshots({
 
         {screenshots.length === 0 ? (
           <div
-            className="flex flex-col items-center justify-center py-6 text-center border-2 border-dashed border-muted-foreground/25 rounded-lg cursor-pointer hover:border-muted-foreground/50 transition-colors"
+            className={cn(
+              "flex flex-col items-center justify-center py-6 text-center border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+              isDragging
+                ? "border-primary bg-primary/10"
+                : "border-muted-foreground/25 hover:border-muted-foreground/50"
+            )}
             onClick={() => fileInputRef.current?.click()}
           >
-            <ImageIcon className="h-8 w-8 text-muted-foreground/50 mb-2" />
-            <p className="text-sm text-muted-foreground">
-              Click to upload {typeConfig.label.toLowerCase()} charts
+            <ImageIcon className={cn(
+              "h-8 w-8 mb-2",
+              isDragging ? "text-primary" : "text-muted-foreground/50"
+            )} />
+            <p className={cn(
+              "text-sm",
+              isDragging ? "text-primary font-medium" : "text-muted-foreground"
+            )}>
+              {isDragging ? "Drop images here" : `Drag & drop or click to upload`}
             </p>
             <p className="text-xs text-muted-foreground mt-1">
               PNG, JPG up to 10MB
