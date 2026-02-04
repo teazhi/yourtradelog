@@ -31,6 +31,7 @@ import {
   BookOpen,
   Upload,
   Settings,
+  Shield,
 } from "lucide-react";
 import {
   Button,
@@ -69,6 +70,7 @@ import { JournalDailyScreenshots } from "@/components/journal/journal-daily-scre
 import { UnlinkedScreenshots } from "@/components/journal/unlinked-screenshots";
 import { TradeTable } from "@/components/trades/trade-table";
 import { ShareToX } from "@/components/journal/share-to-x";
+import { DisciplineChecklist } from "@/components/discipline/discipline-checklist";
 import {
   CustomDialog,
   CustomDialogContent,
@@ -1567,6 +1569,11 @@ function JournalPageContent() {
               <BarChart3 className="h-4 w-4" />
               Trades ({accountFilteredTrades.length})
             </TabsTrigger>
+            <TabsTrigger value="discipline" className="gap-2">
+              <Shield className="h-4 w-4 text-blue-500" />
+              <span>Discipline</span>
+              <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+            </TabsTrigger>
             <TabsTrigger value="screenshots" className="gap-2">
               <ImageIcon className="h-4 w-4" />
               Screenshots
@@ -2052,6 +2059,24 @@ function JournalPageContent() {
         </TabsContent>
 
         {/* Screenshots Tab */}
+        {/* Discipline Tab */}
+        <TabsContent value="discipline" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <Shield className="h-5 w-5 text-blue-500" />
+                <CardTitle>Discipline Check-in</CardTitle>
+              </div>
+              <CardDescription>
+                Track your rule compliance for {format(selectedDate, "MMMM d, yyyy")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <DisciplineChecklist date={selectedDate} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="screenshots" className="space-y-6">
           {/* Unlinked Screenshots - upload now, link later */}
           <UnlinkedScreenshots

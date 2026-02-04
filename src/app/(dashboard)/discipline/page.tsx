@@ -3,6 +3,23 @@
 import * as React from "react";
 import { format, subDays, startOfDay, parseISO, getDay } from "date-fns";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Shield,
   Plus,
   Check,
@@ -21,6 +38,7 @@ import {
   Star,
   Settings,
   CalendarDays,
+  GripVertical,
 } from "lucide-react";
 import {
   Button,
@@ -106,6 +124,104 @@ const DAYS_OF_WEEK = [
 
 // Default trading days (Monday-Friday)
 const DEFAULT_TRADING_DAYS = [1, 2, 3, 4, 5];
+
+// Sortable Rule Item Component
+function SortableRuleItem({
+  rule,
+  onEdit,
+  onDelete,
+}: {
+  rule: UserRuleWithCheck;
+  onEdit: (rule: UserRule) => void;
+  onDelete: (rule: UserRule) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: rule.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  const categoryConfig = CATEGORY_CONFIG[rule.category as keyof typeof CATEGORY_CONFIG] || CATEGORY_CONFIG.other;
+  const complianceRate = rule.totalChecks > 0
+    ? Math.round((rule.totalFollowed / rule.totalChecks) * 100)
+    : 0;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={cn(
+        "flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/30 transition-colors bg-background",
+        isDragging && "shadow-lg ring-2 ring-primary/20"
+      )}
+    >
+      {/* Drag Handle */}
+      <button
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing touch-none text-muted-foreground hover:text-foreground"
+      >
+        <GripVertical className="h-5 w-5" />
+      </button>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium text-sm">{rule.title}</span>
+          <Badge variant="outline" className={cn("text-xs", categoryConfig.color)}>
+            {categoryConfig.label}
+          </Badge>
+        </div>
+        {rule.description && (
+          <div className="text-xs text-muted-foreground mt-0.5">
+            {rule.description}
+          </div>
+        )}
+        <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <TrendingUp className="h-3 w-3" />
+            {complianceRate}% compliance
+          </span>
+          <span className="flex items-center gap-1">
+            <Flame className="h-3 w-3 text-orange-500" />
+            {rule.currentStreak} day streak
+          </span>
+          <span className="flex items-center gap-1">
+            <Star className="h-3 w-3 text-yellow-500" />
+            Best: {rule.longestStreak} days
+          </span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1">
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0"
+          onClick={() => onEdit(rule)}
+        >
+          <Edit2 className="h-4 w-4" />
+        </Button>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
+          onClick={() => onDelete(rule)}
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
 
 export default function DisciplinePage() {
   const [isLoading, setIsLoading] = React.useState(true);
@@ -570,6 +686,53 @@ export default function DisciplinePage() {
     setNewRuleCategory(preset.category);
   };
 
+  // Drag and drop sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  // Handle drag end - reorder rules
+  const handleDragEnd = async (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = rules.findIndex((r) => r.id === active.id);
+      const newIndex = rules.findIndex((r) => r.id === over.id);
+
+      const newRules = arrayMove(rules, oldIndex, newIndex);
+      setRules(newRules);
+
+      // Update display_order in database
+      try {
+        const supabase = createClient();
+        const updates = newRules.map((rule, index) => ({
+          id: rule.id,
+          display_order: index,
+        }));
+
+        for (const update of updates) {
+          await (supabase.from("user_rules") as any)
+            .update({ display_order: update.display_order })
+            .eq("id", update.id);
+        }
+
+        toast.success("Rules reordered");
+      } catch (error) {
+        console.error("Error reordering rules:", error);
+        toast.error("Failed to save order");
+        // Revert on error
+        await fetchData();
+      }
+    }
+  };
+
   // Calculate today's progress
   const todayProgress = rules.length > 0
     ? (Object.values(todayChecks).filter((c) => c.followed).length / rules.length) * 100
@@ -863,7 +1026,7 @@ export default function DisciplinePage() {
             <div>
               <CardTitle className="text-lg">Your Rules</CardTitle>
               <CardDescription>
-                Define the rules that will make you a better trader
+                Define the rules that will make you a better trader. Drag to reorder.
               </CardDescription>
             </div>
             <Button size="sm" onClick={() => setShowAddRuleDialog(true)}>
@@ -878,71 +1041,30 @@ export default function DisciplinePage() {
               No rules defined yet. Add some rules to start tracking your discipline!
             </div>
           ) : (
-            <div className="space-y-2">
-              {rules.map((rule) => {
-                const categoryConfig = CATEGORY_CONFIG[rule.category as keyof typeof CATEGORY_CONFIG] || CATEGORY_CONFIG.other;
-                const complianceRate = rule.totalChecks > 0
-                  ? Math.round((rule.totalFollowed / rule.totalChecks) * 100)
-                  : 0;
-
-                return (
-                  <div
-                    key={rule.id}
-                    className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/30 transition-colors"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{rule.title}</span>
-                        <Badge variant="outline" className={cn("text-xs", categoryConfig.color)}>
-                          {categoryConfig.label}
-                        </Badge>
-                      </div>
-                      {rule.description && (
-                        <div className="text-xs text-muted-foreground mt-0.5">
-                          {rule.description}
-                        </div>
-                      )}
-                      <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <TrendingUp className="h-3 w-3" />
-                          {complianceRate}% compliance
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Flame className="h-3 w-3 text-orange-500" />
-                          {rule.currentStreak} day streak
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <Star className="h-3 w-3 text-yellow-500" />
-                          Best: {rule.longestStreak} days
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0"
-                        onClick={() => openEditDialog(rule)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-8 w-8 p-0 text-red-500 hover:text-red-600"
-                        onClick={() => {
-                          setSelectedRule(rule);
-                          setShowDeleteConfirm(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={rules.map((r) => r.id)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div className="space-y-2">
+                  {rules.map((rule) => (
+                    <SortableRuleItem
+                      key={rule.id}
+                      rule={rule}
+                      onEdit={openEditDialog}
+                      onDelete={(rule) => {
+                        setSelectedRule(rule);
+                        setShowDeleteConfirm(true);
+                      }}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+            </DndContext>
           )}
         </CardContent>
       </Card>
