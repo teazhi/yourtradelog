@@ -1595,6 +1595,22 @@ function JournalPageContent() {
 
         {/* Pre-Market Tab */}
         <TabsContent value="pre-market" className="space-y-6">
+          {/* Pre-Market Screenshots - First thing users see */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-blue-500" />
+                <CardTitle>Pre-Market Charts</CardTitle>
+              </div>
+              <CardDescription>
+                Upload screenshots of your pre-market analysis, key levels, and market structure
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <JournalDailyScreenshots date={dateKey} type="pre_market" maxScreenshots={5} />
+            </CardContent>
+          </Card>
+
           <div className="grid gap-6 lg:grid-cols-2">
             {/* Game Plan */}
             <Card>
@@ -1756,39 +1772,36 @@ function JournalPageContent() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Pre-Market Screenshots */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5 text-blue-500" />
-                <CardTitle>Pre-Market Charts</CardTitle>
-              </div>
-              <CardDescription>
-                Upload screenshots of your pre-market analysis, key levels, and market structure
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <JournalDailyScreenshots date={dateKey} type="pre_market" maxScreenshots={5} />
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Post-Market Tab */}
         <TabsContent value="post-market" className="space-y-6">
+          {/* Post-Market Screenshots - First thing users see */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <ImageIcon className="h-5 w-5 text-indigo-500" />
+                <CardTitle>End of Day Charts</CardTitle>
+              </div>
+              <CardDescription>
+                Upload screenshots of your trade executions and end-of-day analysis
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <JournalDailyScreenshots date={dateKey} type="post_market" maxScreenshots={5} />
+            </CardContent>
+          </Card>
+
           <div className="grid gap-6 lg:grid-cols-2">
-            {/* Review */}
+            {/* Left Column - Performance Review */}
             <Card>
-              <CardHeader>
+              <CardHeader className="pb-4">
                 <div className="flex items-center gap-2">
                   <Moon className="h-5 w-5 text-indigo-500" />
-                  <CardTitle>End of Day Review</CardTitle>
+                  <CardTitle>Performance Review</CardTitle>
                 </div>
-                <CardDescription>
-                  Reflect on your trading performance
-                </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent className="space-y-5">
                 {/* What Went Well */}
                 <TagSelector
                   label="What Went Well"
@@ -1815,21 +1828,78 @@ function JournalPageContent() {
                   onCustomOptionsChange={handleCustomMistakesChange}
                 />
 
-                {/* Daily Emotions - Applied to all trades */}
+                {/* Self-Assessment Ratings */}
+                <div className="space-y-3 pt-2">
+                  <span className="text-sm font-medium">Self-Assessment</span>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <StarRating
+                      label="Focus"
+                      value={focusRating}
+                      onChange={setFocusRating}
+                      onChangeComplete={() => handleSave()}
+                      icon={Target}
+                    />
+                    <StarRating
+                      label="Discipline"
+                      value={disciplineRating}
+                      onChange={setDisciplineRating}
+                      onChangeComplete={() => handleSave()}
+                      icon={CheckCircle2}
+                    />
+                    <StarRating
+                      label="Execution"
+                      value={executionRating}
+                      onChange={setExecutionRating}
+                      onChangeComplete={() => handleSave()}
+                      icon={Zap}
+                    />
+                    <StarRating
+                      label="Mood"
+                      value={moodRating}
+                      onChange={setMoodRating}
+                      onChangeComplete={() => handleSave()}
+                      icon={Brain}
+                    />
+                  </div>
+                </div>
+
+                {/* Goal Review */}
+                {dailyGoals.length > 0 && (
+                  <div className="p-3 rounded-lg bg-muted/50 space-y-2">
+                    <span className="text-sm font-medium">Today's Goals</span>
+                    <div className="space-y-1">
+                      {dailyGoals.map((goal, index) => (
+                        <div key={index} className="flex items-center gap-2 text-sm">
+                          <span className="text-muted-foreground">•</span>
+                          <span>{goal}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Right Column - Reflection & Emotions */}
+            <Card>
+              <CardHeader className="pb-4">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-yellow-500" />
+                  <CardTitle>Reflection & Insights</CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                {/* Daily Emotions */}
                 {trades.length > 0 && (
                   <div className="space-y-3">
                     <div className="flex items-center gap-2">
                       <Brain className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm font-medium">Today's Emotional State</span>
+                      <span className="text-sm font-medium">Emotional State</span>
                       <Badge variant="outline" className="text-xs">
-                        Applied to {trades.length} trade{trades.length !== 1 ? "s" : ""}
+                        {trades.length} trade{trades.length !== 1 ? "s" : ""}
                       </Badge>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Select the emotions you experienced while trading today. These will be applied to all your trades for psychology analysis.
-                    </p>
                     <div className="space-y-2">
-                      <div className="text-xs text-muted-foreground font-medium">Positive</div>
                       <div className="flex flex-wrap gap-1.5">
                         {POSITIVE_EMOTIONS.map((emotion) => (
                           <button
@@ -1852,9 +1922,6 @@ function JournalPageContent() {
                             {EMOTION_LABELS[emotion]}
                           </button>
                         ))}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-medium pt-1">Negative</div>
-                      <div className="flex flex-wrap gap-1.5">
                         {NEGATIVE_EMOTIONS.map((emotion) => (
                           <button
                             key={emotion}
@@ -1876,9 +1943,6 @@ function JournalPageContent() {
                             {EMOTION_LABELS[emotion]}
                           </button>
                         ))}
-                      </div>
-                      <div className="text-xs text-muted-foreground font-medium pt-1">Neutral</div>
-                      <div className="flex flex-wrap gap-1.5">
                         {NEUTRAL_EMOTIONS.map((emotion) => (
                           <button
                             key={emotion}
@@ -1907,107 +1971,30 @@ function JournalPageContent() {
 
                 {/* Post-Market Notes */}
                 <div className="space-y-2">
-                  <span className="text-sm font-medium">Post-Market Notes</span>
+                  <span className="text-sm font-medium">End of Day Notes</span>
                   <Textarea
-                    placeholder="How did the day go? What patterns did you notice? Market behavior analysis..."
-                    className="min-h-[120px]"
+                    placeholder="How did the day go? What patterns did you notice?"
+                    className="min-h-[100px]"
                     value={postMarketNotes}
                     onChange={(e) => setPostMarketNotes(e.target.value)}
                     onBlur={handleAutoSave}
                   />
                 </div>
-              </CardContent>
-            </Card>
 
-            {/* Lessons & Ratings */}
-            <Card>
-              <CardHeader>
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-yellow-500" />
-                  <CardTitle>Lessons & Self-Assessment</CardTitle>
-                </div>
-                <CardDescription>
-                  Capture insights and rate your performance
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
                 {/* Lessons Learned */}
                 <div className="space-y-2">
-                  <span className="text-sm font-medium">Key Lessons / Insights</span>
+                  <span className="text-sm font-medium">Key Lessons</span>
                   <Textarea
-                    placeholder="What did you learn today? What will you do differently tomorrow?"
+                    placeholder="What did you learn? What will you do differently?"
                     className="min-h-[100px]"
                     value={lessonsLearned}
                     onChange={(e) => setLessonsLearned(e.target.value)}
                     onBlur={handleAutoSave}
                   />
                 </div>
-
-                {/* Self-Assessment Ratings */}
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <StarRating
-                    label="Focus Level"
-                    value={focusRating}
-                    onChange={setFocusRating}
-                    onChangeComplete={() => handleSave()}
-                    icon={Target}
-                  />
-                  <StarRating
-                    label="Discipline"
-                    value={disciplineRating}
-                    onChange={setDisciplineRating}
-                    onChangeComplete={() => handleSave()}
-                    icon={CheckCircle2}
-                  />
-                  <StarRating
-                    label="Execution Quality"
-                    value={executionRating}
-                    onChange={setExecutionRating}
-                    onChangeComplete={() => handleSave()}
-                    icon={Zap}
-                  />
-                  <StarRating
-                    label="Overall Mood"
-                    value={moodRating}
-                    onChange={setMoodRating}
-                    onChangeComplete={() => handleSave()}
-                    icon={Brain}
-                  />
-                </div>
-
-                {/* Goal Review */}
-                {dailyGoals.length > 0 && (
-                  <div className="p-4 rounded-lg bg-muted/50 space-y-2">
-                    <span className="text-sm font-medium">Did you achieve your goals?</span>
-                    <div className="space-y-1">
-                      {dailyGoals.map((goal, index) => (
-                        <div key={index} className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">•</span>
-                          <span>{goal}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </CardContent>
             </Card>
           </div>
-
-          {/* Post-Market Screenshots */}
-          <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5 text-indigo-500" />
-                <CardTitle>Post-Market Charts</CardTitle>
-              </div>
-              <CardDescription>
-                Upload screenshots of your end-of-day review, trade analysis, and market recap
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <JournalDailyScreenshots date={dateKey} type="post_market" maxScreenshots={5} />
-            </CardContent>
-          </Card>
         </TabsContent>
 
         {/* Trades Tab */}
