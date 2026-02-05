@@ -306,7 +306,7 @@ export function TradeTable({
     <div className="space-y-4">
       {/* Bulk Action Bar */}
       {selectedTrades.size > 0 && (
-        <div className="flex items-center justify-between rounded-lg border bg-muted/50 p-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-lg border bg-muted/50 p-3">
           <div className="flex items-center gap-3">
             <span className="text-sm font-medium">
               {selectedTrades.size} trade{selectedTrades.size !== 1 ? "s" : ""} selected
@@ -318,13 +318,13 @@ export function TradeTable({
           </div>
           <div className="flex items-center gap-2">
             {accounts.length > 0 && (
-              <div className="flex items-center gap-2">
-                <Wallet className="h-4 w-4 text-muted-foreground" />
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Wallet className="h-4 w-4 text-muted-foreground hidden sm:block" />
                 <Select
                   disabled={isAssigning}
                   onValueChange={handleBulkAccountAssign}
                 >
-                  <SelectTrigger className="w-[180px] h-8">
+                  <SelectTrigger className="w-full sm:w-[180px] h-8">
                     <SelectValue placeholder="Assign to account..." />
                   </SelectTrigger>
                   <SelectContent>
@@ -341,7 +341,8 @@ export function TradeTable({
         </div>
       )}
 
-      <div className="rounded-md border">
+      {/* Scrollable table container for mobile */}
+      <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
@@ -514,9 +515,9 @@ export function TradeTable({
       </div>
 
       {/* Pagination */}
-      <div className="flex items-center justify-between px-2">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-2">
         <div className="flex items-center space-x-2">
-          <p className="text-sm text-muted-foreground">Rows per page</p>
+          <p className="text-sm text-muted-foreground hidden sm:block">Rows per page</p>
           <Select
             value={pageSize.toString()}
             onValueChange={(value) => onPageSizeChange?.(parseInt(value))}
@@ -534,8 +535,8 @@ export function TradeTable({
           </Select>
         </div>
 
-        <div className="flex items-center space-x-6 lg:space-x-8">
-          <div className="flex w-[100px] items-center justify-center text-sm text-muted-foreground">
+        <div className="flex items-center space-x-4 sm:space-x-6 lg:space-x-8">
+          <div className="flex items-center justify-center text-sm text-muted-foreground">
             Page {currentPage} of {totalPages}
           </div>
           <div className="flex items-center space-x-2">

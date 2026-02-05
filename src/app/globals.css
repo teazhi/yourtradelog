@@ -586,3 +586,32 @@ div[class*="select-content"] {
   outline: 2px solid var(--ring);
   outline-offset: 2px;
 }
+
+/* Mobile-specific calendar styles for better touch targets */
+@media (max-width: 640px) {
+  :root {
+    --rdp-day-height: 44px;
+    --rdp-day-width: 44px;
+    --rdp-day_button-height: 40px;
+    --rdp-day_button-width: 40px;
+  }
+
+  .dark {
+    --rdp-day-height: 44px;
+    --rdp-day-width: 44px;
+    --rdp-day_button-height: 40px;
+    --rdp-day_button-width: 40px;
+  }
+
+  .rdp-root {
+    padding: 12px;
+  }
+
+  .rdp-day_button {
+    font-size: 0.9375rem;
+  }
+
+  .rdp-weekday {
+    font-size: 0.75rem;
+  }
+}

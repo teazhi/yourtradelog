@@ -287,6 +287,40 @@ export function TradeReviewScreenshots({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [previewScreenshot, currentPreviewIndex, screenshots]);
 
+  // Touch swipe support for mobile
+  const touchStartX = React.useRef<number | null>(null);
+  const touchEndX = React.useRef<number | null>(null);
+  const minSwipeDistance = 50;
+
+  const handleTouchStart = (e: React.TouchEvent) => {
+    touchStartX.current = e.touches[0].clientX;
+    touchEndX.current = null;
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    touchEndX.current = e.touches[0].clientX;
+  };
+
+  const handleTouchEnd = () => {
+    if (!touchStartX.current || !touchEndX.current) return;
+
+    const distance = touchStartX.current - touchEndX.current;
+    const isSwipe = Math.abs(distance) > minSwipeDistance;
+
+    if (isSwipe) {
+      if (distance > 0) {
+        // Swiped left - go to next
+        goToNext();
+      } else {
+        // Swiped right - go to previous
+        goToPrevious();
+      }
+    }
+
+    touchStartX.current = null;
+    touchEndX.current = null;
+  };
+
   // Drag and drop handlers
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -568,8 +602,11 @@ export function TradeReviewScreenshots({
       {/* Preview modal */}
       {previewScreenshot && (
         <div
-          className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4"
+          className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-2 sm:p-4"
           onClick={() => setPreviewScreenshot(null)}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
         >
           {/* Close button */}
           <Button
@@ -588,33 +625,33 @@ export function TradeReviewScreenshots({
             </div>
           )}
 
-          {/* Previous arrow */}
+          {/* Previous arrow - hidden on mobile (use swipe) */}
           {currentPreviewIndex > 0 && (
             <Button
               size="lg"
               variant="ghost"
-              className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-12 w-12 p-0"
+              className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-10 w-10 sm:h-12 sm:w-12 p-0 hidden sm:flex"
               onClick={(e) => {
                 e.stopPropagation();
                 goToPrevious();
               }}
             >
-              <ChevronLeft className="h-8 w-8" />
+              <ChevronLeft className="h-6 w-6 sm:h-8 sm:w-8" />
             </Button>
           )}
 
-          {/* Next arrow */}
+          {/* Next arrow - hidden on mobile (use swipe) */}
           {currentPreviewIndex < screenshots.length - 1 && (
             <Button
               size="lg"
               variant="ghost"
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-12 w-12 p-0"
+              className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-10 w-10 sm:h-12 sm:w-12 p-0 hidden sm:flex"
               onClick={(e) => {
                 e.stopPropagation();
                 goToNext();
               }}
             >
-              <ChevronRight className="h-8 w-8" />
+              <ChevronRight className="h-6 w-6 sm:h-8 sm:w-8" />
             </Button>
           )}
 
@@ -645,17 +682,17 @@ export function TradeReviewScreenshots({
             </div>
           )}
 
-          {/* Dot indicators */}
+          {/* Dot indicators - larger on mobile for touch */}
           {screenshots.length > 1 && (
             <div
-              className="flex gap-2 mt-4"
+              className="flex gap-3 sm:gap-2 mt-4"
               onClick={(e) => e.stopPropagation()}
             >
               {screenshots.map((s, idx) => (
                 <button
                   key={s.id}
                   className={cn(
-                    "w-2 h-2 rounded-full transition-colors",
+                    "w-3 h-3 sm:w-2 sm:h-2 rounded-full transition-colors",
                     idx === currentPreviewIndex ? "bg-white" : "bg-white/40 hover:bg-white/60"
                   )}
                   onClick={() => setPreviewScreenshot(screenshots[idx])}

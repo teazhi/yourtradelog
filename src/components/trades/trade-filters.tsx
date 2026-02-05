@@ -111,7 +111,7 @@ export function TradeFilters({
       </div>
 
       {/* Filter controls */}
-      <div className="flex flex-wrap gap-3">
+      <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-3">
         {/* Account Filter */}
         {accounts.length > 0 && (
           <div className="flex flex-col gap-1.5">
@@ -122,9 +122,9 @@ export function TradeFilters({
                 handleFilterChange("accountId", value === "all" ? "" : value)
               }
             >
-              <SelectTrigger className="w-[160px]">
+              <SelectTrigger className="w-full sm:w-[160px]">
                 <div className="flex items-center gap-2">
-                  <Wallet className="h-3.5 w-3.5" />
+                  <Wallet className="h-3.5 w-3.5 shrink-0" />
                   <SelectValue placeholder="All accounts" />
                 </div>
               </SelectTrigger>
@@ -148,14 +148,16 @@ export function TradeFilters({
               <Button
                 variant="outline"
                 className={cn(
-                  "w-[140px] justify-start text-left font-normal",
+                  "w-full sm:w-[140px] justify-start text-left font-normal",
                   !filters.dateFrom && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.dateFrom
-                  ? format(filters.dateFrom, "MMM d, yyyy")
-                  : "Start date"}
+                <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  {filters.dateFrom
+                    ? format(filters.dateFrom, "MMM d, yyyy")
+                    : "Start date"}
+                </span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -177,14 +179,16 @@ export function TradeFilters({
               <Button
                 variant="outline"
                 className={cn(
-                  "w-[140px] justify-start text-left font-normal",
+                  "w-full sm:w-[140px] justify-start text-left font-normal",
                   !filters.dateTo && "text-muted-foreground"
                 )}
               >
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.dateTo
-                  ? format(filters.dateTo, "MMM d, yyyy")
-                  : "End date"}
+                <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                <span className="truncate">
+                  {filters.dateTo
+                    ? format(filters.dateTo, "MMM d, yyyy")
+                    : "End date"}
+                </span>
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -207,7 +211,7 @@ export function TradeFilters({
               handleFilterChange("symbol", value === "all" ? "" : value)
             }
           >
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-full sm:w-[120px]">
               <SelectValue placeholder="All symbols" />
             </SelectTrigger>
             <SelectContent>
@@ -230,7 +234,7 @@ export function TradeFilters({
               handleFilterChange("side", value === "all" ? "" : value)
             }
           >
-            <SelectTrigger className="w-[110px]">
+            <SelectTrigger className="w-full sm:w-[110px]">
               <SelectValue placeholder="All sides" />
             </SelectTrigger>
             <SelectContent>
@@ -250,7 +254,7 @@ export function TradeFilters({
               handleFilterChange("setup", value === "all" ? "" : value)
             }
           >
-            <SelectTrigger className="w-[140px]">
+            <SelectTrigger className="w-full sm:w-[140px]">
               <SelectValue placeholder="All setups" />
             </SelectTrigger>
             <SelectContent>
@@ -273,7 +277,7 @@ export function TradeFilters({
               handleFilterChange("status", value === "all" ? "" : value)
             }
           >
-            <SelectTrigger className="w-[120px]">
+            <SelectTrigger className="w-full sm:w-[120px]">
               <SelectValue placeholder="All statuses" />
             </SelectTrigger>
             <SelectContent>

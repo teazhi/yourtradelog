@@ -148,9 +148,9 @@ export default function CalendarPage() {
     <div className="container max-w-6xl py-6 px-4 sm:px-6 space-y-6">
       {/* Page Header */}
       <div className="flex flex-col gap-1">
-        <h1 className="text-3xl font-bold tracking-tight">Trading Calendar</h1>
-        <p className="text-muted-foreground">
-          View your trading performance by day. Click on a trading day to see details.
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">Trading Calendar</h1>
+        <p className="text-sm sm:text-base text-muted-foreground">
+          View your trading performance by day. Tap a trading day to see details.
         </p>
       </div>
 

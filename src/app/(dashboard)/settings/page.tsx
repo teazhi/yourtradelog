@@ -806,7 +806,7 @@ function AppearanceSettings() {
           <CardDescription>Select your preferred color scheme</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-3 gap-4 max-w-md">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 max-w-md">
             <button
               onClick={() => setTheme("light")}
               className={cn(

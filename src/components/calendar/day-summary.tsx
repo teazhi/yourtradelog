@@ -72,7 +72,10 @@ export function DaySummary({
     return (
       <CustomDialog open={open} onOpenChange={onOpenChange}>
         <CustomDialogHeader>
-          <CustomDialogTitle>{format(date, "EEEE, MMMM d, yyyy")}</CustomDialogTitle>
+          <CustomDialogTitle>
+            <span className="hidden sm:inline">{format(date, "EEEE, MMMM d, yyyy")}</span>
+            <span className="sm:hidden">{format(date, "EEE, MMM d, yyyy")}</span>
+          </CustomDialogTitle>
           <CustomDialogDescription>No trades on this day</CustomDialogDescription>
         </CustomDialogHeader>
         <CustomDialogContent>
@@ -90,18 +93,21 @@ export function DaySummary({
   return (
     <CustomDialog open={open} onOpenChange={onOpenChange}>
       <CustomDialogHeader>
-        <CustomDialogTitle>{format(date, "EEEE, MMMM d, yyyy")}</CustomDialogTitle>
+        <CustomDialogTitle>
+          <span className="hidden sm:inline">{format(date, "EEEE, MMMM d, yyyy")}</span>
+          <span className="sm:hidden">{format(date, "EEE, MMM d, yyyy")}</span>
+        </CustomDialogTitle>
         <CustomDialogDescription>Daily trading summary and trades</CustomDialogDescription>
       </CustomDialogHeader>
 
-      <CustomDialogContent className="space-y-4">
+      <CustomDialogContent className="space-y-3 sm:space-y-4">
         {/* Daily Stats */}
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <div className="rounded-lg border p-3">
-            <p className="text-xs text-muted-foreground">Daily P&L</p>
+        <div className="grid grid-cols-2 gap-2 sm:gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Daily P&L</p>
             <p
               className={cn(
-                "text-lg font-bold",
+                "text-base sm:text-lg font-bold",
                 totalPnL >= 0 ? "text-green-500" : "text-red-500"
               )}
             >
@@ -109,19 +115,19 @@ export function DaySummary({
               {formatCurrency(totalPnL)}
             </p>
           </div>
-          <div className="rounded-lg border p-3">
-            <p className="text-xs text-muted-foreground">Trades</p>
-            <p className="text-lg font-bold">{trades.length}</p>
+          <div className="rounded-lg border p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Trades</p>
+            <p className="text-base sm:text-lg font-bold">{trades.length}</p>
           </div>
-          <div className="rounded-lg border p-3">
-            <p className="text-xs text-muted-foreground">Win Rate</p>
-            <p className="text-lg font-bold">{winRate.toFixed(0)}%</p>
+          <div className="rounded-lg border p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Win Rate</p>
+            <p className="text-base sm:text-lg font-bold">{winRate.toFixed(0)}%</p>
           </div>
-          <div className="rounded-lg border p-3">
-            <p className="text-xs text-muted-foreground">Goal Progress</p>
+          <div className="rounded-lg border p-2 sm:p-3">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">Goal Progress</p>
             <p
               className={cn(
-                "text-lg font-bold",
+                "text-base sm:text-lg font-bold",
                 goalProgress >= 100
                   ? "text-green-500"
                   : goalProgress >= 50
@@ -135,85 +141,86 @@ export function DaySummary({
         </div>
 
         {/* Win/Loss Stats */}
-        <div className="grid grid-cols-2 gap-3">
-          <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-3">
-            <div className="flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-green-500" />
-              <p className="text-sm font-medium text-green-600">
-                {winningTrades.length} Winning Trade{winningTrades.length !== 1 && "s"}
+        <div className="grid grid-cols-2 gap-2 sm:gap-3">
+          <div className="rounded-lg border border-green-500/20 bg-green-500/5 p-2 sm:p-3">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500 flex-shrink-0" />
+              <p className="text-xs sm:text-sm font-medium text-green-600">
+                {winningTrades.length} Win{winningTrades.length !== 1 && "s"}
               </p>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Avg Win: {formatCurrency(avgWin)}
+            <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+              Avg: {formatCurrency(avgWin)}
             </p>
           </div>
-          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3">
-            <div className="flex items-center gap-2">
-              <TrendingDown className="h-4 w-4 text-red-500" />
-              <p className="text-sm font-medium text-red-600">
-                {losingTrades.length} Losing Trade{losingTrades.length !== 1 && "s"}
+          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-2 sm:p-3">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500 flex-shrink-0" />
+              <p className="text-xs sm:text-sm font-medium text-red-600">
+                {losingTrades.length} Loss{losingTrades.length !== 1 && "es"}
               </p>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">
-              Avg Loss: {formatCurrency(avgLoss)}
+            <p className="mt-1 text-xs sm:text-sm text-muted-foreground">
+              Avg: {formatCurrency(avgLoss)}
             </p>
           </div>
         </div>
 
         {/* Trades List */}
         <div className="space-y-2">
-          <h3 className="font-medium">Trades</h3>
-          <div className="max-h-[250px] space-y-2 overflow-y-auto">
+          <h3 className="text-sm sm:text-base font-medium">Trades</h3>
+          <div className="max-h-[200px] sm:max-h-[250px] space-y-2 overflow-y-auto">
             {trades.map((trade) => (
               <div
                 key={trade.id}
-                className="flex items-center justify-between rounded-lg border p-3"
+                className="flex items-center justify-between rounded-lg border p-2 sm:p-3 gap-2"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                   <div
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-full",
+                      "flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-full flex-shrink-0",
                       trade.direction === "long"
                         ? "bg-green-500/10 text-green-500"
                         : "bg-red-500/10 text-red-500"
                     )}
                   >
                     {trade.direction === "long" ? (
-                      <TrendingUp className="h-4 w-4" />
+                      <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     ) : (
-                      <TrendingDown className="h-4 w-4" />
+                      <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                     )}
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <p className="font-medium">{trade.instrument}</p>
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+                      <p className="text-sm sm:text-base font-medium truncate">{trade.instrument}</p>
                       <Badge
                         variant={
                           trade.direction === "long" ? "default" : "secondary"
                         }
-                        className="text-xs"
+                        className="text-[10px] sm:text-xs px-1.5 sm:px-2"
                       >
                         {trade.direction.toUpperCase()}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Clock className="h-3 w-3" />
-                      {formatTime(trade.entryTime, false)} -{" "}
-                      {formatTime(trade.exitTime, false)}
+                    <div className="flex items-center gap-1 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground flex-wrap">
+                      <Clock className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" />
+                      <span className="truncate">
+                        {formatTime(trade.entryTime, false)} - {formatTime(trade.exitTime, false)}
+                      </span>
                       {trade.setup && (
-                        <>
-                          <span className="mx-1">|</span>
+                        <span className="hidden sm:flex items-center gap-1">
+                          <span>|</span>
                           <Target className="h-3 w-3" />
                           {trade.setup}
-                        </>
+                        </span>
                       )}
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
+                <div className="text-right flex-shrink-0">
                   <p
                     className={cn(
-                      "font-medium",
+                      "text-sm sm:text-base font-medium",
                       trade.pnl >= 0 ? "text-green-500" : "text-red-500"
                     )}
                   >
@@ -223,7 +230,7 @@ export function DaySummary({
                   {trade.rMultiple !== 0 && (
                     <p
                       className={cn(
-                        "text-xs",
+                        "text-[10px] sm:text-xs",
                         trade.rMultiple >= 0 ? "text-green-500" : "text-red-500"
                       )}
                     >

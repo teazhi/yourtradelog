@@ -688,7 +688,7 @@ export default function AnalyticsPage() {
         {/* Date Range Selector */}
         <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
           <PopoverTrigger asChild>
-            <Button variant="outline" className="w-[200px] justify-between">
+            <Button variant="outline" className="w-full sm:w-[200px] justify-between">
               <div className="flex items-center gap-2">
                 <CalendarDays className="h-4 w-4" />
                 <span>{selectedRangeLabel}</span>

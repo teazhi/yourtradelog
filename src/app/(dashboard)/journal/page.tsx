@@ -148,14 +148,14 @@ function StarRating({
         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
         <span className="text-sm font-medium">{label}</span>
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5 sm:gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <button
             key={star}
             type="button"
             disabled={disabled}
             className={cn(
-              "p-0.5 transition-colors",
+              "p-1.5 sm:p-1 transition-colors touch-manipulation",
               disabled && "cursor-not-allowed opacity-50"
             )}
             onMouseEnter={() => setHovered(star)}
@@ -164,7 +164,7 @@ function StarRating({
           >
             <Star
               className={cn(
-                "h-5 w-5 transition-colors",
+                "h-5 w-5 sm:h-5 sm:w-5 transition-colors",
                 (hovered !== null ? star <= hovered : star <= (value || 0))
                   ? "fill-yellow-400 text-yellow-400"
                   : "text-muted-foreground"
@@ -1062,8 +1062,8 @@ function JournalPageContent() {
       {/* Page Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-col gap-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-3xl font-bold tracking-tight">
+          <div className="flex items-center gap-2 flex-wrap">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight">
               {isWeekendReview ? "Weekly Review" : "Trading Journal"}
             </h1>
             {isWeekendReview && (
@@ -1091,7 +1091,7 @@ function JournalPageContent() {
               <Button
                 variant="outline"
                 className={cn(
-                  "min-w-[200px] justify-start text-left font-normal",
+                  "min-w-0 sm:min-w-[200px] justify-start text-left font-normal flex-1 sm:flex-none",
                   !selectedDate && "text-muted-foreground"
                 )}
               >
@@ -1144,48 +1144,48 @@ function JournalPageContent() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3 sm:gap-4">
                 <div className="col-span-2">
-                  <p className="text-sm text-muted-foreground mb-1">Weekly P&L</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Weekly P&L</p>
                   <p className={cn(
-                    "text-3xl font-bold",
+                    "text-2xl sm:text-3xl font-bold",
                     weeklyPnL >= 0 ? "text-green-600" : "text-red-600"
                   )}>
                     {weeklyPnL >= 0 ? "+" : ""}{weeklyPnL.toLocaleString("en-US", { style: "currency", currency: "USD" })}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Total Trades</p>
-                  <p className="text-xl font-semibold">{accountFilteredWeeklyTrades.length}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Trades</p>
+                  <p className="text-lg sm:text-xl font-semibold">{accountFilteredWeeklyTrades.length}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Win Rate</p>
-                  <p className="text-xl font-semibold">{weeklyWinRate.toFixed(0)}%</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Win Rate</p>
+                  <p className="text-lg sm:text-xl font-semibold">{weeklyWinRate.toFixed(0)}%</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1 flex items-center gap-1">
                     <TrendingUp className="h-3 w-3 text-green-600" /> Wins
                   </p>
-                  <p className="text-xl font-semibold text-green-600">{weeklyWinCount}</p>
+                  <p className="text-lg sm:text-xl font-semibold text-green-600">{weeklyWinCount}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1 flex items-center gap-1">
                     <TrendingDown className="h-3 w-3 text-red-600" /> Losses
                   </p>
-                  <p className="text-xl font-semibold text-red-600">{weeklyLossCount}</p>
+                  <p className="text-lg sm:text-xl font-semibold text-red-600">{weeklyLossCount}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Profit Factor</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Profit Factor</p>
                   <p className={cn(
-                    "text-xl font-semibold",
+                    "text-lg sm:text-xl font-semibold",
                     weeklyProfitFactor >= 1 ? "text-green-600" : "text-red-600"
                   )}>
                     {weeklyProfitFactor > 0 ? weeklyProfitFactor.toFixed(2) : "N/A"}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Avg Win/Loss</p>
-                  <p className="text-lg font-medium">
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Avg W/L</p>
+                  <p className="text-sm sm:text-lg font-medium">
                     <span className="text-green-600">${weeklyAvgWin.toFixed(0)}</span>
                     {" / "}
                     <span className="text-red-600">${weeklyAvgLoss.toFixed(0)}</span>
@@ -1579,45 +1579,45 @@ function JournalPageContent() {
             dailyPnL > 0 ? "border-l-green-500" : dailyPnL < 0 ? "border-l-red-500" : "border-l-gray-300"
           )}>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3 sm:gap-4">
                 <div className="col-span-2 sm:col-span-1">
-                  <p className="text-sm text-muted-foreground mb-1">Net P&L</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Net P&L</p>
                   <p className={cn(
-                    "text-2xl font-bold",
+                    "text-xl sm:text-2xl font-bold",
                     dailyPnL >= 0 ? "text-green-600" : "text-red-600"
                   )}>
                     {dailyPnL >= 0 ? "+" : ""}{dailyPnL.toLocaleString("en-US", { style: "currency", currency: "USD" })}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Trades</p>
-                  <p className="text-xl font-semibold">{accountFilteredTrades.length}</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Trades</p>
+                  <p className="text-lg sm:text-xl font-semibold">{accountFilteredTrades.length}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground mb-1">Win Rate</p>
-              <p className="text-xl font-semibold">{winRate.toFixed(0)}%</p>
+                  <p className="text-xs sm:text-sm text-muted-foreground mb-1">Win Rate</p>
+              <p className="text-lg sm:text-xl font-semibold">{winRate.toFixed(0)}%</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1 flex items-center gap-1">
                 <TrendingUp className="h-3 w-3 text-green-600" /> Wins
               </p>
-              <p className="text-xl font-semibold text-green-600">{winCount}</p>
+              <p className="text-lg sm:text-xl font-semibold text-green-600">{winCount}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1 flex items-center gap-1">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1 flex items-center gap-1">
                 <TrendingDown className="h-3 w-3 text-red-600" /> Losses
               </p>
-              <p className="text-xl font-semibold text-red-600">{lossCount}</p>
+              <p className="text-lg sm:text-xl font-semibold text-red-600">{lossCount}</p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Largest Win</p>
-              <p className="text-lg font-medium text-green-600">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">Lg. Win</p>
+              <p className="text-base sm:text-lg font-medium text-green-600">
                 +${largestWin.toFixed(0)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-muted-foreground mb-1">Largest Loss</p>
-              <p className="text-lg font-medium text-red-600">
+              <p className="text-xs sm:text-sm text-muted-foreground mb-1">Lg. Loss</p>
+              <p className="text-base sm:text-lg font-medium text-red-600">
                 ${largestLoss.toFixed(0)}
               </p>
             </div>
@@ -1627,30 +1627,35 @@ function JournalPageContent() {
 
       {/* Main Journal Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="pre-market" className="gap-2">
-              <Sun className="h-4 w-4" />
-              Pre-Market
-            </TabsTrigger>
-            <TabsTrigger value="post-market" className="gap-2">
-              <Moon className="h-4 w-4" />
-              Post-Market
-            </TabsTrigger>
-            <TabsTrigger value="trades" className="gap-2">
-              <BarChart3 className="h-4 w-4" />
-              Trades ({accountFilteredTrades.length})
-            </TabsTrigger>
-            <TabsTrigger value="discipline" className="gap-2">
-              <Shield className="h-4 w-4 text-blue-500" />
-              <span>Discipline</span>
-              <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
-            </TabsTrigger>
-            <TabsTrigger value="screenshots" className="gap-2">
-              <ImageIcon className="h-4 w-4" />
-              Screenshots
-            </TabsTrigger>
-          </TabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="overflow-x-auto -mx-4 px-4 sm:mx-0 sm:px-0">
+            <TabsList className="inline-flex w-max sm:w-auto">
+              <TabsTrigger value="pre-market" className="gap-1.5 sm:gap-2 px-2.5 sm:px-3">
+                <Sun className="h-4 w-4" />
+                <span className="hidden xs:inline">Pre-Market</span>
+                <span className="xs:hidden">Pre</span>
+              </TabsTrigger>
+              <TabsTrigger value="post-market" className="gap-1.5 sm:gap-2 px-2.5 sm:px-3">
+                <Moon className="h-4 w-4" />
+                <span className="hidden xs:inline">Post-Market</span>
+                <span className="xs:hidden">Post</span>
+              </TabsTrigger>
+              <TabsTrigger value="trades" className="gap-1.5 sm:gap-2 px-2.5 sm:px-3">
+                <BarChart3 className="h-4 w-4" />
+                <span>Trades</span>
+                <span className="text-xs">({accountFilteredTrades.length})</span>
+              </TabsTrigger>
+              <TabsTrigger value="discipline" className="gap-1.5 sm:gap-2 px-2.5 sm:px-3">
+                <Shield className="h-4 w-4 text-blue-500" />
+                <span className="hidden sm:inline">Discipline</span>
+                <span className="h-2.5 w-2.5 rounded-full bg-blue-500" />
+              </TabsTrigger>
+              <TabsTrigger value="screenshots" className="gap-1.5 sm:gap-2 px-2.5 sm:px-3">
+                <ImageIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">Screenshots</span>
+              </TabsTrigger>
+            </TabsList>
+          </div>
 
           <ShareToX
             dailyPnL={dailyPnL}
@@ -1699,7 +1704,7 @@ function JournalPageContent() {
                 {/* Market Bias */}
                 <div className="space-y-2">
                   <span className="text-sm font-medium">Market Bias</span>
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2">
                     {["Bullish", "Bearish", "Neutral", "Choppy"].map((bias) => (
                       <Button
                         key={bias}
@@ -1889,7 +1894,7 @@ function JournalPageContent() {
               {tradeNotes.map((trade, index) => (
                 <div key={trade.id} className="border rounded-lg overflow-hidden">
                   {/* Trade Header */}
-                  <div className="flex items-center justify-between p-3 bg-muted/30 border-b">
+                  <div className="flex items-center justify-between gap-2 p-3 bg-muted/30 border-b">
                     <Input
                       value={trade.title}
                       onChange={(e) => {
@@ -1898,7 +1903,7 @@ function JournalPageContent() {
                         setTradeNotes(updated);
                       }}
                       onBlur={handleAutoSave}
-                      className="font-semibold w-40 h-8 bg-transparent border-none focus-visible:ring-1"
+                      className="font-semibold flex-1 min-w-0 max-w-[200px] h-8 bg-transparent border-none focus-visible:ring-1"
                       placeholder="Trade name"
                     />
                     {deleteTradeConfirmIndex === index ? (
