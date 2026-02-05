@@ -464,6 +464,7 @@ function JournalPageContent() {
 
   // Trade reviews - separate journal for each trade (not synced with imported trades)
   const [tradeNotes, setTradeNotes] = React.useState<TradeReview[]>([]);
+  const [deleteTradeConfirmIndex, setDeleteTradeConfirmIndex] = React.useState<number | null>(null);
 
   // Share to feed dialog state
   const [showShareDialog, setShowShareDialog] = React.useState(false);
@@ -1897,17 +1898,40 @@ function JournalPageContent() {
                       className="font-semibold w-40 h-8 bg-transparent border-none focus-visible:ring-1"
                       placeholder="Trade name"
                     />
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500"
-                      onClick={() => {
-                        setTradeNotes(tradeNotes.filter((_, i) => i !== index));
-                        setTimeout(() => handleSave(), 150);
-                      }}
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
+                    {deleteTradeConfirmIndex === index ? (
+                      <div className="flex items-center gap-1">
+                        <span className="text-xs text-muted-foreground mr-1">Delete?</span>
+                        <Button
+                          size="sm"
+                          variant="destructive"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => {
+                            setTradeNotes(tradeNotes.filter((_, i) => i !== index));
+                            setDeleteTradeConfirmIndex(null);
+                            setTimeout(() => handleSave(), 150);
+                          }}
+                        >
+                          Yes
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          className="h-7 px-2 text-xs"
+                          onClick={() => setDeleteTradeConfirmIndex(null)}
+                        >
+                          No
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500"
+                        onClick={() => setDeleteTradeConfirmIndex(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
 
                   <div className="p-4 space-y-5">
