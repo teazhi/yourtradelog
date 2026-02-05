@@ -744,8 +744,8 @@ function JournalPageContent() {
     await handleSave();
   };
 
-  // Save journal entry
-  const handleSave = async () => {
+  // Save journal entry (accepts optional overrides to avoid closure issues)
+  const handleSave = async (overrides?: { tradeNotes?: TradeReview[] }) => {
     setIsSaving(true);
     try {
       const supabase = createClient();
@@ -755,6 +755,9 @@ function JournalPageContent() {
         toast("You must be logged in to save journal entries");
         return;
       }
+
+      // Use overrides if provided, otherwise use state
+      const tradeNotesToSave = overrides?.tradeNotes ?? tradeNotes;
 
       // Prepare journal data with all fields
       const journalPayload = {
@@ -772,7 +775,7 @@ function JournalPageContent() {
         what_went_well: whatWentWell,
         mistakes_made: mistakesMade,
         lessons_learned: lessonsLearned || null,
-        trade_notes: tradeNotes,
+        trade_notes: tradeNotesToSave,
         // Ratings
         mood_rating: moodRating,
         focus_rating: focusRating,
@@ -1906,9 +1909,10 @@ function JournalPageContent() {
                           variant="destructive"
                           className="h-7 px-2 text-xs"
                           onClick={() => {
-                            setTradeNotes(tradeNotes.filter((_, i) => i !== index));
+                            const filteredNotes = tradeNotes.filter((_, i) => i !== index);
+                            setTradeNotes(filteredNotes);
                             setDeleteTradeConfirmIndex(null);
-                            setTimeout(() => handleSave(), 150);
+                            handleSave({ tradeNotes: filteredNotes });
                           }}
                         >
                           Yes
