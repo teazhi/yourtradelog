@@ -434,14 +434,14 @@ export default function ChallengesPage() {
       // Fetch today's journal with content check
       const { data: todayJournal } = await (supabase
         .from("daily_journals") as any)
-        .select("id, pre_market_notes, post_market_notes, lessons_learned")
+        .select("id, pre_market_notes, post_market_notes, lessons_learned, trade_notes")
         .eq("user_id", user.id)
         .eq("date", today.toISOString().split('T')[0]);
 
       // Fetch this week's journals
       const { data: weekJournals } = await (supabase
         .from("daily_journals") as any)
-        .select("id, pre_market_notes, post_market_notes, weekly_review_notes, weekly_wins, weekly_improvements")
+        .select("id, pre_market_notes, post_market_notes, weekly_review_notes, weekly_wins, weekly_improvements, trade_notes")
         .eq("user_id", user.id)
         .gte("date", weekStart.toISOString().split('T')[0]);
 
@@ -463,18 +463,31 @@ export default function ChallengesPage() {
         j.post_market_notes && j.post_market_notes.trim().length > 0
       ) || false;
 
+      // Helper to check if trade_notes has content
+      const hasTradeNotesContent = (tradeNotes: any[]): boolean => {
+        if (!Array.isArray(tradeNotes)) return false;
+        return tradeNotes.some((t: any) =>
+          (t.notes && t.notes.trim().length > 0) ||
+          (t.lessons && t.lessons.trim().length > 0) ||
+          (Array.isArray(t.whatWentWell) && t.whatWentWell.length > 0) ||
+          (Array.isArray(t.mistakesMade) && t.mistakesMade.length > 0)
+        );
+      };
+
       // Check if journal has content (for journalToday)
       const journalToday = todayJournal?.some((j: any) =>
         (j.pre_market_notes && j.pre_market_notes.trim().length > 0) ||
         (j.post_market_notes && j.post_market_notes.trim().length > 0) ||
-        (j.lessons_learned && j.lessons_learned.trim().length > 0)
+        (j.lessons_learned && j.lessons_learned.trim().length > 0) ||
+        hasTradeNotesContent(j.trade_notes)
       ) || false;
 
       // Count journals with content this week
       const journalsThisWeek = (weekJournals || []).filter((j: any) =>
         (j.pre_market_notes && j.pre_market_notes.trim().length > 0) ||
         (j.post_market_notes && j.post_market_notes.trim().length > 0) ||
-        j.weekly_review_notes || j.weekly_wins || j.weekly_improvements
+        j.weekly_review_notes || j.weekly_wins || j.weekly_improvements ||
+        hasTradeNotesContent(j.trade_notes)
       ).length;
 
       // Check if weekly review is completed (weekend journal with review content)

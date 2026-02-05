@@ -68,6 +68,7 @@ import { EmotionTag } from "@/types/trade";
 import { JournalScreenshots } from "@/components/journal/journal-screenshots";
 import { JournalDailyScreenshots } from "@/components/journal/journal-daily-screenshots";
 import { UnlinkedScreenshots } from "@/components/journal/unlinked-screenshots";
+import { TradeReviewScreenshots } from "@/components/journal/trade-review-screenshots";
 import { TradeTable } from "@/components/trades/trade-table";
 import { ShareToX } from "@/components/journal/share-to-x";
 import { DisciplineChecklist } from "@/components/discipline/discipline-checklist";
@@ -364,6 +365,24 @@ function TagSelector({
   );
 }
 
+// Trade review interface for individual trade journals
+interface TradeReview {
+  id: string;
+  title: string;
+  // Performance
+  whatWentWell: string[];
+  mistakesMade: string[];
+  // Ratings
+  focusRating: number | null;
+  disciplineRating: number | null;
+  executionRating: number | null;
+  moodRating: number | null;
+  // Reflection
+  emotions: string[];
+  notes: string;
+  lessons: string;
+}
+
 // Journal data interface
 interface JournalData {
   id?: string;
@@ -381,6 +400,7 @@ interface JournalData {
   what_went_well: string[];
   mistakes_made: string[];
   lessons_learned: string | null;
+  trade_notes: Array<TradeReview>;
   // Ratings
   mood_rating: number | null;
   focus_rating: number | null;
@@ -441,6 +461,9 @@ function JournalPageContent() {
 
   // Daily emotions - will be applied to all trades from this day
   const [dailyEmotions, setDailyEmotions] = React.useState<string[]>([]);
+
+  // Trade reviews - separate journal for each trade (not synced with imported trades)
+  const [tradeNotes, setTradeNotes] = React.useState<TradeReview[]>([]);
 
   // Share to feed dialog state
   const [showShareDialog, setShowShareDialog] = React.useState(false);
@@ -601,6 +624,36 @@ function JournalPageContent() {
           setFocusRating(journalData.focus_rating);
           setDisciplineRating(journalData.discipline_rating);
           setExecutionRating((journalData as JournalData).execution_rating || null);
+          const loadedTradeNotes = (journalData as JournalData).trade_notes || [];
+          // Initialize with default Trade 1 if empty - migrate old daily-level data if it exists
+          if (loadedTradeNotes.length === 0) {
+            // Check if there's existing data in the old daily-level fields
+            const oldWhatWentWell = (journalData as JournalData).what_went_well || [];
+            const oldMistakesMade = (journalData as JournalData).mistakes_made || [];
+            const oldFocusRating = journalData.focus_rating;
+            const oldDisciplineRating = journalData.discipline_rating;
+            const oldExecutionRating = (journalData as JournalData).execution_rating;
+            const oldMoodRating = journalData.mood_rating;
+            const oldPostMarketNotes = journalData.post_market_notes || "";
+            const oldLessonsLearned = (journalData as JournalData).lessons_learned || "";
+
+            // Create Trade 1 with the old data (migrating existing entries)
+            setTradeNotes([{
+              id: crypto.randomUUID(),
+              title: "Trade 1",
+              whatWentWell: oldWhatWentWell,
+              mistakesMade: oldMistakesMade,
+              focusRating: oldFocusRating,
+              disciplineRating: oldDisciplineRating,
+              executionRating: oldExecutionRating,
+              moodRating: oldMoodRating,
+              emotions: [],
+              notes: oldPostMarketNotes,
+              lessons: oldLessonsLearned
+            }]);
+          } else {
+            setTradeNotes(loadedTradeNotes);
+          }
         } else {
           setJournal(null);
           resetForm();
@@ -648,6 +701,20 @@ function JournalPageContent() {
     setDisciplineRating(null);
     setExecutionRating(null);
     setDailyEmotions([]);
+    // Initialize with default Trade 1
+    setTradeNotes([{
+      id: crypto.randomUUID(),
+      title: "Trade 1",
+      whatWentWell: [],
+      mistakesMade: [],
+      focusRating: null,
+      disciplineRating: null,
+      executionRating: null,
+      moodRating: null,
+      emotions: [],
+      notes: "",
+      lessons: ""
+    }]);
     // Weekly review fields
     setWeeklyReviewNotes("");
     setWeeklyWins("");
@@ -666,7 +733,7 @@ function JournalPageContent() {
     postMarketNotes, whatWentWell, mistakesMade, lessonsLearned,
     moodRating, focusRating, disciplineRating, executionRating,
     weeklyReviewNotes, weeklyWins, weeklyImprovements, nextWeekGoals, weeklyRating,
-    dailyEmotions,
+    dailyEmotions, tradeNotes,
     isLoading
   ]);
 
@@ -704,6 +771,7 @@ function JournalPageContent() {
         what_went_well: whatWentWell,
         mistakes_made: mistakesMade,
         lessons_learned: lessonsLearned || null,
+        trade_notes: tradeNotes,
         // Ratings
         mood_rating: moodRating,
         focus_rating: focusRating,
@@ -1588,8 +1656,8 @@ function JournalPageContent() {
             tradeCount={closedTrades.length}
             date={format(selectedDate, "MMM d, yyyy")}
             isWeekendReview={false}
-            lessonsLearned={lessonsLearned}
-            whatWentWell={whatWentWell}
+            lessonsLearned={tradeNotes.map(t => t.lessons).filter(Boolean).join(" | ")}
+            whatWentWell={[...new Set(tradeNotes.flatMap(t => t.whatWentWell || []))]}
           />
         </div>
 
@@ -1776,225 +1844,241 @@ function JournalPageContent() {
 
         {/* Post-Market Tab */}
         <TabsContent value="post-market" className="space-y-6">
-          {/* Post-Market Screenshots - First thing users see */}
+          {/* Trade Reviews - Each trade has its own screenshots */}
           <Card>
-            <CardHeader>
-              <div className="flex items-center gap-2">
-                <ImageIcon className="h-5 w-5 text-indigo-500" />
-                <CardTitle>End of Day Charts</CardTitle>
+            <CardHeader className="pb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <BookOpen className="h-5 w-5 text-emerald-500" />
+                  <CardTitle>Trade Reviews</CardTitle>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    const newReview: TradeReview = {
+                      id: crypto.randomUUID(),
+                      title: `Trade ${tradeNotes.length + 1}`,
+                      whatWentWell: [],
+                      mistakesMade: [],
+                      focusRating: null,
+                      disciplineRating: null,
+                      executionRating: null,
+                      moodRating: null,
+                      emotions: [],
+                      notes: "",
+                      lessons: ""
+                    };
+                    setTradeNotes([...tradeNotes, newReview]);
+                  }}
+                >
+                  <Plus className="h-4 w-4 mr-1" />
+                  Add Trade
+                </Button>
               </div>
               <CardDescription>
-                Upload screenshots of your trade executions and end-of-day analysis
+                Review each trade you took today
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              <JournalDailyScreenshots date={dateKey} type="post_market" maxScreenshots={5} />
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-6 lg:grid-cols-2">
-            {/* Left Column - Performance Review */}
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                  <Moon className="h-5 w-5 text-indigo-500" />
-                  <CardTitle>Performance Review</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {/* What Went Well */}
-                <TagSelector
-                  label="What Went Well"
-                  options={WHAT_WENT_WELL}
-                  selected={whatWentWell}
-                  onChange={setWhatWentWell}
-                  onChangeComplete={() => handleSave()}
-                  icon={CheckCircle2}
-                  variant="success"
-                  customOptions={customWhatWentWell}
-                  onCustomOptionsChange={handleCustomWhatWentWellChange}
-                />
-
-                {/* Mistakes Made */}
-                <TagSelector
-                  label="Mistakes Made"
-                  options={COMMON_MISTAKES}
-                  selected={mistakesMade}
-                  onChange={setMistakesMade}
-                  onChangeComplete={() => handleSave()}
-                  icon={AlertTriangle}
-                  variant="destructive"
-                  customOptions={customMistakes}
-                  onCustomOptionsChange={handleCustomMistakesChange}
-                />
-
-                {/* Self-Assessment Ratings */}
-                <div className="space-y-3 pt-2">
-                  <span className="text-sm font-medium">Self-Assessment</span>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <StarRating
-                      label="Focus"
-                      value={focusRating}
-                      onChange={setFocusRating}
-                      onChangeComplete={() => handleSave()}
-                      icon={Target}
+            <CardContent className="space-y-6">
+              {/* Trade Reviews */}
+              {tradeNotes.map((trade, index) => (
+                <div key={trade.id} className="border rounded-lg overflow-hidden">
+                  {/* Trade Header */}
+                  <div className="flex items-center justify-between p-3 bg-muted/30 border-b">
+                    <Input
+                      value={trade.title}
+                      onChange={(e) => {
+                        const updated = [...tradeNotes];
+                        updated[index] = { ...updated[index], title: e.target.value };
+                        setTradeNotes(updated);
+                      }}
+                      onBlur={handleAutoSave}
+                      className="font-semibold w-40 h-8 bg-transparent border-none focus-visible:ring-1"
+                      placeholder="Trade name"
                     />
-                    <StarRating
-                      label="Discipline"
-                      value={disciplineRating}
-                      onChange={setDisciplineRating}
-                      onChangeComplete={() => handleSave()}
-                      icon={CheckCircle2}
-                    />
-                    <StarRating
-                      label="Execution"
-                      value={executionRating}
-                      onChange={setExecutionRating}
-                      onChangeComplete={() => handleSave()}
-                      icon={Zap}
-                    />
-                    <StarRating
-                      label="Mood"
-                      value={moodRating}
-                      onChange={setMoodRating}
-                      onChangeComplete={() => handleSave()}
-                      icon={Brain}
-                    />
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 text-muted-foreground hover:text-red-500"
+                      onClick={() => {
+                        setTradeNotes(tradeNotes.filter((_, i) => i !== index));
+                        setTimeout(() => handleSave(), 150);
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-                </div>
 
-                {/* Goal Review */}
-                {dailyGoals.length > 0 && (
-                  <div className="p-3 rounded-lg bg-muted/50 space-y-2">
-                    <span className="text-sm font-medium">Today's Goals</span>
-                    <div className="space-y-1">
-                      {dailyGoals.map((goal, index) => (
-                        <div key={index} className="flex items-center gap-2 text-sm">
-                          <span className="text-muted-foreground">•</span>
-                          <span>{goal}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  <div className="p-4 space-y-5">
+                    {/* Trade Screenshots - At the top */}
+                    <TradeReviewScreenshots
+                      date={dateKey}
+                      tradeReviewId={trade.id}
+                      maxScreenshots={4}
+                    />
 
-            {/* Right Column - Reflection & Emotions */}
-            <Card>
-              <CardHeader className="pb-4">
-                <div className="flex items-center gap-2">
-                  <Lightbulb className="h-5 w-5 text-yellow-500" />
-                  <CardTitle>Reflection & Insights</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="space-y-5">
-                {/* Daily Emotions */}
-                {trades.length > 0 && (
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Brain className="h-4 w-4 text-purple-500" />
-                      <span className="text-sm font-medium">Emotional State</span>
-                      <Badge variant="outline" className="text-xs">
-                        {trades.length} trade{trades.length !== 1 ? "s" : ""}
-                      </Badge>
+                    {/* Performance Row */}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      {/* What Went Well */}
+                      <TagSelector
+                        label="What Went Well"
+                        options={WHAT_WENT_WELL}
+                        selected={trade.whatWentWell || []}
+                        onChange={(selected) => {
+                          const updated = [...tradeNotes];
+                          updated[index] = { ...updated[index], whatWentWell: selected };
+                          setTradeNotes(updated);
+                        }}
+                        onChangeComplete={() => handleSave()}
+                        icon={CheckCircle2}
+                        variant="success"
+                        customOptions={customWhatWentWell}
+                        onCustomOptionsChange={handleCustomWhatWentWellChange}
+                      />
+
+                      {/* Mistakes */}
+                      <TagSelector
+                        label="Mistakes"
+                        options={COMMON_MISTAKES}
+                        selected={trade.mistakesMade || []}
+                        onChange={(selected) => {
+                          const updated = [...tradeNotes];
+                          updated[index] = { ...updated[index], mistakesMade: selected };
+                          setTradeNotes(updated);
+                        }}
+                        onChangeComplete={() => handleSave()}
+                        icon={AlertTriangle}
+                        variant="destructive"
+                        customOptions={customMistakes}
+                        onCustomOptionsChange={handleCustomMistakesChange}
+                      />
                     </div>
+
+                    {/* Ratings Row */}
+                    <div className="grid gap-3 sm:grid-cols-4">
+                      <StarRating
+                        label="Focus"
+                        value={trade.focusRating}
+                        onChange={(val) => {
+                          const updated = [...tradeNotes];
+                          updated[index] = { ...updated[index], focusRating: val };
+                          setTradeNotes(updated);
+                        }}
+                        onChangeComplete={() => handleSave()}
+                        icon={Target}
+                      />
+                      <StarRating
+                        label="Discipline"
+                        value={trade.disciplineRating}
+                        onChange={(val) => {
+                          const updated = [...tradeNotes];
+                          updated[index] = { ...updated[index], disciplineRating: val };
+                          setTradeNotes(updated);
+                        }}
+                        onChangeComplete={() => handleSave()}
+                        icon={CheckCircle2}
+                      />
+                      <StarRating
+                        label="Execution"
+                        value={trade.executionRating}
+                        onChange={(val) => {
+                          const updated = [...tradeNotes];
+                          updated[index] = { ...updated[index], executionRating: val };
+                          setTradeNotes(updated);
+                        }}
+                        onChangeComplete={() => handleSave()}
+                        icon={Zap}
+                      />
+                      <StarRating
+                        label="Mood"
+                        value={trade.moodRating}
+                        onChange={(val) => {
+                          const updated = [...tradeNotes];
+                          updated[index] = { ...updated[index], moodRating: val };
+                          setTradeNotes(updated);
+                        }}
+                        onChangeComplete={() => handleSave()}
+                        icon={Brain}
+                      />
+                    </div>
+
+                    {/* Emotions */}
                     <div className="space-y-2">
+                      <div className="flex items-center gap-2">
+                        <Brain className="h-4 w-4 text-purple-500" />
+                        <span className="text-sm font-medium">Emotions</span>
+                      </div>
                       <div className="flex flex-wrap gap-1.5">
-                        {POSITIVE_EMOTIONS.map((emotion) => (
+                        {[...POSITIVE_EMOTIONS, ...NEGATIVE_EMOTIONS.slice(0, 4), ...NEUTRAL_EMOTIONS.slice(0, 2)].map((emotion) => (
                           <button
                             key={emotion}
                             type="button"
                             onClick={() => {
-                              const newEmotions = dailyEmotions.includes(emotion)
-                                ? dailyEmotions.filter(e => e !== emotion)
-                                : [...dailyEmotions, emotion];
-                              setDailyEmotions(newEmotions);
+                              const updated = [...tradeNotes];
+                              const current = updated[index].emotions || [];
+                              updated[index] = {
+                                ...updated[index],
+                                emotions: current.includes(emotion)
+                                  ? current.filter(e => e !== emotion)
+                                  : [...current, emotion]
+                              };
+                              setTradeNotes(updated);
                               setTimeout(() => handleSave(), 150);
                             }}
                             className={cn(
-                              "px-2.5 py-1 text-xs rounded-full border transition-all",
-                              dailyEmotions.includes(emotion)
-                                ? "bg-green-500/20 border-green-500/50 text-green-600 dark:text-green-400"
-                                : "bg-muted/50 border-transparent hover:border-green-500/30 hover:bg-green-500/10"
+                              "px-2 py-1 text-xs rounded-full border transition-all",
+                              (trade.emotions || []).includes(emotion)
+                                ? POSITIVE_EMOTIONS.includes(emotion as any)
+                                  ? "bg-green-500/20 border-green-500/50 text-green-600 dark:text-green-400"
+                                  : NEGATIVE_EMOTIONS.includes(emotion as any)
+                                    ? "bg-red-500/20 border-red-500/50 text-red-600 dark:text-red-400"
+                                    : "bg-gray-500/20 border-gray-500/50 text-gray-600 dark:text-gray-400"
+                                : "bg-muted/50 border-transparent hover:bg-muted"
                             )}
                           >
-                            {EMOTION_LABELS[emotion]}
-                          </button>
-                        ))}
-                        {NEGATIVE_EMOTIONS.map((emotion) => (
-                          <button
-                            key={emotion}
-                            type="button"
-                            onClick={() => {
-                              const newEmotions = dailyEmotions.includes(emotion)
-                                ? dailyEmotions.filter(e => e !== emotion)
-                                : [...dailyEmotions, emotion];
-                              setDailyEmotions(newEmotions);
-                              setTimeout(() => handleSave(), 150);
-                            }}
-                            className={cn(
-                              "px-2.5 py-1 text-xs rounded-full border transition-all",
-                              dailyEmotions.includes(emotion)
-                                ? "bg-red-500/20 border-red-500/50 text-red-600 dark:text-red-400"
-                                : "bg-muted/50 border-transparent hover:border-red-500/30 hover:bg-red-500/10"
-                            )}
-                          >
-                            {EMOTION_LABELS[emotion]}
-                          </button>
-                        ))}
-                        {NEUTRAL_EMOTIONS.map((emotion) => (
-                          <button
-                            key={emotion}
-                            type="button"
-                            onClick={() => {
-                              const newEmotions = dailyEmotions.includes(emotion)
-                                ? dailyEmotions.filter(e => e !== emotion)
-                                : [...dailyEmotions, emotion];
-                              setDailyEmotions(newEmotions);
-                              setTimeout(() => handleSave(), 150);
-                            }}
-                            className={cn(
-                              "px-2.5 py-1 text-xs rounded-full border transition-all",
-                              dailyEmotions.includes(emotion)
-                                ? "bg-gray-500/20 border-gray-500/50 text-gray-600 dark:text-gray-400"
-                                : "bg-muted/50 border-transparent hover:border-gray-500/30 hover:bg-gray-500/10"
-                            )}
-                          >
-                            {EMOTION_LABELS[emotion]}
+                            {EMOTION_LABELS[emotion as keyof typeof EMOTION_LABELS] || emotion}
                           </button>
                         ))}
                       </div>
                     </div>
+
+                    {/* Notes & Lessons */}
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium">Trade Notes</span>
+                        <Textarea
+                          value={trade.notes}
+                          onChange={(e) => {
+                            const updated = [...tradeNotes];
+                            updated[index] = { ...updated[index], notes: e.target.value };
+                            setTradeNotes(updated);
+                          }}
+                          onBlur={handleAutoSave}
+                          placeholder="Entry reason, execution details..."
+                          className="min-h-[120px]"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <span className="text-sm font-medium">Lessons Learned</span>
+                        <Textarea
+                          value={trade.lessons}
+                          onChange={(e) => {
+                            const updated = [...tradeNotes];
+                            updated[index] = { ...updated[index], lessons: e.target.value };
+                            setTradeNotes(updated);
+                          }}
+                          onBlur={handleAutoSave}
+                          placeholder="What did you learn from this trade?"
+                          className="min-h-[120px]"
+                        />
+                      </div>
+                    </div>
                   </div>
-                )}
-
-                {/* Post-Market Notes */}
-                <div className="space-y-2">
-                  <span className="text-sm font-medium">End of Day Notes</span>
-                  <Textarea
-                    placeholder="How did the day go? What patterns did you notice?"
-                    className="min-h-[100px]"
-                    value={postMarketNotes}
-                    onChange={(e) => setPostMarketNotes(e.target.value)}
-                    onBlur={handleAutoSave}
-                  />
                 </div>
-
-                {/* Lessons Learned */}
-                <div className="space-y-2">
-                  <span className="text-sm font-medium">Key Lessons</span>
-                  <Textarea
-                    placeholder="What did you learn? What will you do differently?"
-                    className="min-h-[100px]"
-                    value={lessonsLearned}
-                    onChange={(e) => setLessonsLearned(e.target.value)}
-                    onBlur={handleAutoSave}
-                  />
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+              ))}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         {/* Trades Tab */}

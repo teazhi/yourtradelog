@@ -165,7 +165,7 @@ export default function AchievementsPage() {
       // Fetch journal entries with all relevant content fields (including date for perfect week calculation)
       const { data: journals } = await supabase
         .from("daily_journals")
-        .select("id, date, pre_market_notes, post_market_notes, lessons_learned, weekly_review_notes, weekly_wins, weekly_improvements, goals, what_went_well, mistakes_made, mood_rating, focus_rating, discipline_rating, execution_rating")
+        .select("id, date, pre_market_notes, post_market_notes, lessons_learned, weekly_review_notes, weekly_wins, weekly_improvements, goals, what_went_well, mistakes_made, mood_rating, focus_rating, discipline_rating, execution_rating, trade_notes")
         .eq("user_id", user.id);
 
       // Fetch setups count
@@ -208,7 +208,19 @@ export default function AchievementsPage() {
           j.discipline_rating !== null ||
           j.execution_rating !== null;
 
-        return hasTextContent || hasArrayContent || hasRatings;
+        // Check trade_notes for content (new trade-by-trade journal format)
+        const hasTradeNotes = Array.isArray(j.trade_notes) && j.trade_notes.some((t: any) =>
+          (t.notes && t.notes.trim().length > 0) ||
+          (t.lessons && t.lessons.trim().length > 0) ||
+          (Array.isArray(t.whatWentWell) && t.whatWentWell.length > 0) ||
+          (Array.isArray(t.mistakesMade) && t.mistakesMade.length > 0) ||
+          t.focusRating !== null ||
+          t.disciplineRating !== null ||
+          t.executionRating !== null ||
+          t.moodRating !== null
+        );
+
+        return hasTextContent || hasArrayContent || hasRatings || hasTradeNotes;
       };
 
       // Count journals that have actual content
