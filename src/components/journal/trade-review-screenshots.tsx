@@ -10,6 +10,7 @@ import {
   ZoomIn,
   ChevronLeft,
   ChevronRight,
+  Camera,
 } from "lucide-react";
 import {
   Button,
@@ -53,6 +54,7 @@ export function TradeReviewScreenshots({
   const [captionInput, setCaptionInput] = React.useState("");
   const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const cameraInputRef = React.useRef<HTMLInputElement>(null);
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
 
   // Fetch screenshots for this trade review
@@ -377,33 +379,57 @@ export function TradeReviewScreenshots({
           </span>
         </div>
         {screenshots.length > 0 && screenshots.length < maxScreenshots && (
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={isUploading}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            {isUploading ? (
-              <>
-                <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                Uploading...
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-3 w-3" />
-                Upload
-              </>
-            )}
-          </Button>
+          <div className="flex gap-1.5">
+            {/* Camera button - mobile only */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => cameraInputRef.current?.click()}
+              className="sm:hidden"
+            >
+              <Camera className="h-4 w-4" />
+            </Button>
+            {/* Upload button */}
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={isUploading}
+              onClick={() => fileInputRef.current?.click()}
+            >
+              {isUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                  <span className="hidden sm:inline">Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <Upload className="h-3 w-3 sm:mr-2" />
+                  <span className="hidden sm:inline">Upload</span>
+                </>
+              )}
+            </Button>
+          </div>
         )}
       </div>
 
-      {/* Hidden file input */}
+      {/* Hidden file input for gallery */}
       <input
         ref={fileInputRef}
         type="file"
         accept="image/*"
         multiple
+        className="hidden"
+        onChange={(e) => handleFileUpload(e.target.files)}
+        disabled={isUploading}
+      />
+
+      {/* Hidden file input for camera (mobile) */}
+      <input
+        ref={cameraInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
         className="hidden"
         onChange={(e) => handleFileUpload(e.target.files)}
         disabled={isUploading}
@@ -425,33 +451,59 @@ export function TradeReviewScreenshots({
           /* Empty state - show upload prompt */
           <div
             className={cn(
-              "flex flex-col items-center justify-center py-6 text-center border-2 border-dashed rounded-lg cursor-pointer transition-colors",
+              "flex flex-col items-center justify-center py-6 text-center border-2 border-dashed rounded-lg transition-colors",
               isDragging
                 ? "border-primary bg-primary/10"
-                : "border-muted-foreground/25 hover:border-muted-foreground/50"
+                : "border-muted-foreground/25"
             )}
-            onClick={() => fileInputRef.current?.click()}
           >
             {isUploading ? (
               <>
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground mb-2" />
                 <span className="text-sm text-muted-foreground">Uploading...</span>
               </>
+            ) : isDragging ? (
+              <>
+                <ImageIcon className="h-6 w-6 mb-2 text-primary" />
+                <p className="text-sm text-primary font-medium">Drop images here</p>
+              </>
             ) : (
               <>
-                <ImageIcon className={cn(
-                  "h-6 w-6 mb-2",
-                  isDragging ? "text-primary" : "text-muted-foreground/50"
-                )} />
-                <p className={cn(
-                  "text-sm",
-                  isDragging ? "text-primary font-medium" : "text-muted-foreground"
-                )}>
-                  {isDragging ? "Drop images here" : "Drag & drop or click to upload"}
+                <ImageIcon className="h-6 w-6 mb-2 text-muted-foreground/50" />
+                <p className="text-sm text-muted-foreground mb-3">
+                  Add screenshots
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  PNG, JPG up to 10MB
-                </p>
+                {/* Mobile: Show camera and gallery buttons */}
+                <div className="flex gap-2 sm:hidden">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => cameraInputRef.current?.click()}
+                  >
+                    <Camera className="mr-2 h-4 w-4" />
+                    Camera
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                  >
+                    <ImageIcon className="mr-2 h-4 w-4" />
+                    Gallery
+                  </Button>
+                </div>
+                {/* Desktop: Show drag & drop message */}
+                <div
+                  className="hidden sm:block cursor-pointer hover:text-foreground transition-colors"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  <p className="text-sm text-muted-foreground">
+                    Drag & drop or click to upload
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    PNG, JPG up to 10MB
+                  </p>
+                </div>
               </>
             )}
           </div>
