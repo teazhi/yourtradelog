@@ -8,6 +8,8 @@ import {
   Loader2,
   Trash2,
   ZoomIn,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   Button,
@@ -45,10 +47,11 @@ export function TradeReviewScreenshots({
   const [screenshots, setScreenshots] = React.useState<TradeReviewScreenshot[]>([]);
   const [isLoading, setIsLoading] = React.useState(true);
   const [isUploading, setIsUploading] = React.useState(false);
-  const [previewImage, setPreviewImage] = React.useState<string | null>(null);
+  const [previewScreenshot, setPreviewScreenshot] = React.useState<TradeReviewScreenshot | null>(null);
   const [isDragging, setIsDragging] = React.useState(false);
   const [editingCaptionId, setEditingCaptionId] = React.useState<string | null>(null);
   const [captionInput, setCaptionInput] = React.useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const dropZoneRef = React.useRef<HTMLDivElement>(null);
 
@@ -249,6 +252,41 @@ export function TradeReviewScreenshots({
     return data.publicUrl;
   };
 
+  // Navigation for preview modal
+  const currentPreviewIndex = previewScreenshot
+    ? screenshots.findIndex(s => s.id === previewScreenshot.id)
+    : -1;
+
+  const goToPrevious = () => {
+    if (currentPreviewIndex > 0) {
+      setPreviewScreenshot(screenshots[currentPreviewIndex - 1]);
+    }
+  };
+
+  const goToNext = () => {
+    if (currentPreviewIndex < screenshots.length - 1) {
+      setPreviewScreenshot(screenshots[currentPreviewIndex + 1]);
+    }
+  };
+
+  // Keyboard navigation for preview
+  React.useEffect(() => {
+    if (!previewScreenshot) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "ArrowLeft") {
+        goToPrevious();
+      } else if (e.key === "ArrowRight") {
+        goToNext();
+      } else if (e.key === "Escape") {
+        setPreviewScreenshot(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [previewScreenshot, currentPreviewIndex, screenshots]);
+
   // Drag and drop handlers
   const handleDragEnter = (e: React.DragEvent) => {
     e.preventDefault();
@@ -394,7 +432,7 @@ export function TradeReviewScreenshots({
                 {/* Image - clickable for preview */}
                 <div
                   className="absolute inset-0 cursor-pointer"
-                  onClick={() => setPreviewImage(getScreenshotUrl(screenshot.file_path))}
+                  onClick={() => setPreviewScreenshot(screenshot)}
                 >
                   <img
                     src={getScreenshotUrl(screenshot.file_path)}
@@ -404,29 +442,67 @@ export function TradeReviewScreenshots({
                 </div>
 
                 {/* Overlay on hover */}
-                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none flex items-center justify-center gap-2">
-                  <Button
-                    variant="secondary"
-                    size="icon"
-                    className="h-7 w-7 pointer-events-auto"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPreviewImage(getScreenshotUrl(screenshot.file_path));
-                    }}
-                  >
-                    <ZoomIn className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="h-7 w-7 pointer-events-auto"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleDelete(screenshot);
-                    }}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                <div className={cn(
+                  "absolute inset-0 bg-black/50 transition-opacity pointer-events-none flex items-center justify-center gap-2",
+                  deleteConfirmId === screenshot.id ? "opacity-100" : "opacity-0 group-hover:opacity-100"
+                )}>
+                  {deleteConfirmId === screenshot.id ? (
+                    /* Delete confirmation */
+                    <div className="flex flex-col items-center gap-2 pointer-events-auto">
+                      <p className="text-white text-xs font-medium">Delete?</p>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="destructive"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(screenshot);
+                            setDeleteConfirmId(null);
+                          }}
+                        >
+                          Yes
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          size="sm"
+                          className="h-7 px-2 text-xs"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setDeleteConfirmId(null);
+                          }}
+                        >
+                          No
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Normal hover actions */
+                    <>
+                      <Button
+                        variant="secondary"
+                        size="icon"
+                        className="h-7 w-7 pointer-events-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPreviewScreenshot(screenshot);
+                        }}
+                      >
+                        <ZoomIn className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="h-7 w-7 pointer-events-auto"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeleteConfirmId(screenshot.id);
+                        }}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </>
+                  )}
                 </div>
 
                 {/* Caption - click to edit */}
@@ -490,25 +566,103 @@ export function TradeReviewScreenshots({
       </div>
 
       {/* Preview modal */}
-      {previewImage && (
+      {previewScreenshot && (
         <div
-          className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-          onClick={() => setPreviewImage(null)}
+          className="fixed inset-0 z-50 bg-black/90 flex flex-col items-center justify-center p-4"
+          onClick={() => setPreviewScreenshot(null)}
         >
+          {/* Close button */}
           <Button
             size="sm"
             variant="ghost"
-            className="absolute top-4 right-4 text-white hover:bg-white/20"
-            onClick={() => setPreviewImage(null)}
+            className="absolute top-4 right-4 text-white hover:bg-white/20 z-10"
+            onClick={() => setPreviewScreenshot(null)}
           >
             <X className="h-6 w-6" />
           </Button>
+
+          {/* Image counter */}
+          {screenshots.length > 1 && (
+            <div className="absolute top-4 left-4 text-white/70 text-sm">
+              {currentPreviewIndex + 1} / {screenshots.length}
+            </div>
+          )}
+
+          {/* Previous arrow */}
+          {currentPreviewIndex > 0 && (
+            <Button
+              size="lg"
+              variant="ghost"
+              className="absolute left-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-12 w-12 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToPrevious();
+              }}
+            >
+              <ChevronLeft className="h-8 w-8" />
+            </Button>
+          )}
+
+          {/* Next arrow */}
+          {currentPreviewIndex < screenshots.length - 1 && (
+            <Button
+              size="lg"
+              variant="ghost"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-white hover:bg-white/20 h-12 w-12 p-0"
+              onClick={(e) => {
+                e.stopPropagation();
+                goToNext();
+              }}
+            >
+              <ChevronRight className="h-8 w-8" />
+            </Button>
+          )}
+
+          {/* Image */}
           <img
-            src={previewImage}
-            alt="Preview"
-            className="max-w-full max-h-full object-contain"
+            src={getScreenshotUrl(previewScreenshot.file_path)}
+            alt={previewScreenshot.file_name}
+            className="max-w-full max-h-[80vh] object-contain"
             onClick={(e) => e.stopPropagation()}
           />
+
+          {/* Caption display */}
+          {previewScreenshot.caption && (
+            <div
+              className="mt-4 px-4 py-2 bg-black/60 rounded-lg max-w-2xl text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-white text-sm">{previewScreenshot.caption}</p>
+            </div>
+          )}
+          {/* File name as fallback if no caption */}
+          {!previewScreenshot.caption && (
+            <div
+              className="mt-4 px-4 py-2 text-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <p className="text-white/50 text-xs">{previewScreenshot.file_name}</p>
+            </div>
+          )}
+
+          {/* Dot indicators */}
+          {screenshots.length > 1 && (
+            <div
+              className="flex gap-2 mt-4"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {screenshots.map((s, idx) => (
+                <button
+                  key={s.id}
+                  className={cn(
+                    "w-2 h-2 rounded-full transition-colors",
+                    idx === currentPreviewIndex ? "bg-white" : "bg-white/40 hover:bg-white/60"
+                  )}
+                  onClick={() => setPreviewScreenshot(screenshots[idx])}
+                />
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>
